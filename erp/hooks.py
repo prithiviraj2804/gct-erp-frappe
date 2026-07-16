@@ -21,6 +21,11 @@ app_license = "mit"
 # 	}
 # ]
 
+website_route_rules = [
+    {"from_route": "/erp/<path:app_path>", "to_route": "erp"},
+    {"from_route": "/erp", "to_route": "erp"},
+]
+
 # Includes in <head>
 # ------------------
 
@@ -145,6 +150,13 @@ app_license = "mit"
 # 		"on_trash": "method"
 # 	}
 # }
+
+# Auto-generate a UUID `id` column on every doctype that defines the field.
+doc_events = {
+	"*": {
+		"before_insert": "erp.utils.set_uuid_id",
+	}
+}
 
 # Scheduled Tasks
 # ---------------
