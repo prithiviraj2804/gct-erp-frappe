@@ -1,0 +1,263 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "format:{college}-{programme_code}",
+ "creation": "2026-07-19 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "basic_information_section",
+  "id",
+  "college",
+  "institution",
+  "department",
+  "campus",
+  "programme_code",
+  "programme_name",
+  "short_name",
+  "column_break_basic",
+  "degree",
+  "programme_level",
+  "specialization",
+  "status",
+  "academic_structure_section",
+  "academic_structure",
+  "terms_per_year",
+  "duration_years",
+  "column_break_structure",
+  "total_terms",
+  "has_internship",
+  "internship_months",
+  "intake_capacity",
+  "notes_section",
+  "description"
+ ],
+ "fields": [
+  {
+   "fieldname": "basic_information_section",
+   "fieldtype": "Section Break",
+   "label": "Basic Information"
+  },
+  {
+   "fieldname": "id",
+   "fieldtype": "Data",
+   "label": "ID",
+   "unique": 1,
+   "read_only": 1,
+   "no_copy": 1,
+   "in_standard_filter": 1,
+   "description": "Auto-generated UUID"
+  },
+  {
+   "fieldname": "college",
+   "fieldtype": "Link",
+   "label": "College",
+   "options": "College",
+   "reqd": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "description": "Parent College"
+  },
+  {
+   "fieldname": "institution",
+   "fieldtype": "Link",
+   "label": "Institution",
+   "options": "Institution",
+   "reqd": 1,
+   "read_only": 1,
+   "fetch_from": "college.institution",
+   "in_standard_filter": 1,
+   "description": "Parent Institution (auto-filled from College)"
+  },
+  {
+   "fieldname": "department",
+   "fieldtype": "Link",
+   "label": "Department",
+   "options": "Department",
+   "reqd": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "description": "Parent Department"
+  },
+  {
+   "fieldname": "campus",
+   "fieldtype": "Link",
+   "label": "Campus",
+   "options": "Campus",
+   "read_only": 1,
+   "fetch_from": "college.campus",
+   "in_standard_filter": 1,
+   "description": "Parent Campus (auto-filled from College)"
+  },
+  {
+   "fieldname": "programme_code",
+   "fieldtype": "Data",
+   "label": "Programme Code",
+   "length": 20,
+   "reqd": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "description": "Short code (BE-CSE, BCOM, MBA) — unique within the college"
+  },
+  {
+   "fieldname": "programme_name",
+   "fieldtype": "Data",
+   "label": "Programme Name",
+   "length": 255,
+   "reqd": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "short_name",
+   "fieldtype": "Data",
+   "label": "Short Name",
+   "length": 100,
+   "description": "Display Name (BE CSE)"
+  },
+  {
+   "fieldname": "column_break_basic",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "degree",
+   "fieldtype": "Link",
+   "label": "Degree",
+   "options": "Degree",
+   "reqd": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "description": "B.E., B.Tech., MBA, MBBS"
+  },
+  {
+   "fieldname": "programme_level",
+   "fieldtype": "Link",
+   "label": "Programme Level",
+   "options": "Programme Level",
+   "reqd": 1,
+   "read_only": 1,
+   "fetch_from": "degree.programme_level",
+   "in_standard_filter": 1,
+   "description": "Auto-filled from Degree"
+  },
+  {
+   "fieldname": "specialization",
+   "fieldtype": "Data",
+   "label": "Specialization",
+   "length": 140,
+   "description": "AI, Cyber Security (optional)"
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Active\nInactive",
+   "default": "Active",
+   "in_list_view": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "academic_structure_section",
+   "fieldtype": "Section Break",
+   "label": "Academic Structure"
+  },
+  {
+   "fieldname": "academic_structure",
+   "fieldtype": "Link",
+   "label": "Academic Structure",
+   "options": "Academic Structure",
+   "reqd": 1,
+   "in_standard_filter": 1,
+   "description": "Semester / Annual / Trimester"
+  },
+  {
+   "fieldname": "terms_per_year",
+   "fieldtype": "Int",
+   "label": "Terms Per Year",
+   "read_only": 1,
+   "fetch_from": "academic_structure.terms_per_year",
+   "description": "Auto-filled from Academic Structure"
+  },
+  {
+   "fieldname": "duration_years",
+   "fieldtype": "Float",
+   "label": "Duration (Years)",
+   "precision": "1",
+   "reqd": 1,
+   "description": "e.g. 4, 3, 5.5"
+  },
+  {
+   "fieldname": "column_break_structure",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "total_terms",
+   "fieldtype": "Int",
+   "label": "Total Terms",
+   "reqd": 1,
+   "description": "Total semesters/terms — drives Generate Semesters"
+  },
+  {
+   "fieldname": "has_internship",
+   "fieldtype": "Check",
+   "label": "Has Internship",
+   "default": "0",
+   "description": "Appends an internship term (e.g. MBBS)"
+  },
+  {
+   "fieldname": "internship_months",
+   "fieldtype": "Int",
+   "label": "Internship Months",
+   "depends_on": "eval:doc.has_internship",
+   "description": "Internship duration in months"
+  },
+  {
+   "fieldname": "intake_capacity",
+   "fieldtype": "Int",
+   "label": "Intake Capacity",
+   "description": "Sanctioned yearly seats"
+  },
+  {
+   "fieldname": "notes_section",
+   "fieldtype": "Section Break",
+   "label": "Notes",
+   "collapsible": 1
+  },
+  {
+   "fieldname": "description",
+   "fieldtype": "Small Text",
+   "label": "Description"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-07-19 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Master",
+ "name": "Programme",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "search_fields": "programme_name,short_name,programme_code",
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "programme_name",
+ "track_changes": 1
+}

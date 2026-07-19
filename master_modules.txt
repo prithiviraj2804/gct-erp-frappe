@@ -1,0 +1,51 @@
+Institution
+
+Campus
+
+College
+
+Department
+
+Programme
+
+Branch
+
+Semester
+
+Course
+
+Section
+
+Shift
+
+Hostel
+
+Transport
+
+Building
+
+Floor
+
+Room
+
+Classroom
+
+Staff Category
+
+Student Category
+
+Religion
+
+Community
+
+Nationality
+
+Blood Group
+
+Fee Head
+
+Scholarship
+
+Quota
+
+Admission Source

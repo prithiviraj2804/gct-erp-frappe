@@ -9,7 +9,11 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary/80",
+        // LOCAL EDIT — do not let `shadcn add --overwrite` revert this.
+        // Upstream is `hover:bg-primary/80`, which LIGHTENS. Against our brand primary
+        // (#225DB6) that resolves to #4E7DC5, dropping white text to 4.15:1 — a WCAG AA
+        // failure. --primary-hover is DESIGN.md's primary-dark (#1B4D99) at 8.18:1.
+        default: "bg-primary text-primary-foreground hover:bg-primary-hover",
         outline:
           "border-border bg-background hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50",
         secondary:
