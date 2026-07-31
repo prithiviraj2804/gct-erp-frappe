@@ -1,6 +1,6 @@
 /** A Module Def row from this app, as `erp.api.modules.get_allowed_modules` returns it. */
 export interface ErpModule {
-  /** Module Def primary key, e.g. "Gate_Entry". */
+  /** Module Def primary key, e.g. "Gate". */
   name: string
   module_name: string
 }

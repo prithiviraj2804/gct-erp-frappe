@@ -22,6 +22,10 @@ The goal is to build software people work inside for 8+ hours every day.
 
 ERP is a Multi-Tenant Education ERP where a single Institution manages multiple Colleges, Campuses and Departments.
 
+> **Domain vocabulary lives in [docs/PRODUCT.md](../../../docs/PRODUCT.md).** The same screens serve
+> colleges and K-12 schools, so user-facing labels for terms and programmes come from the record's
+> `Academic Structure` (`term_label`) rather than being hardcoded to "Semester".
+
 The interface should communicate:
 
 • Trust

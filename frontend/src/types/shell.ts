@@ -1,6 +1,6 @@
 /** One module in the icon rail, from `erp.api.navigation.get_module_rail`. */
 export interface RailModule {
-  /** Module Def name, e.g. "Gate_Entry". The API identity. */
+  /** Module Def name, e.g. "Gate". The API identity. */
   module: string
   /** URL segment, e.g. "gate-entry". */
   slug: string

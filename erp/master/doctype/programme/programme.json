@@ -77,7 +77,8 @@
    "reqd": 1,
    "in_list_view": 1,
    "in_standard_filter": 1,
-   "description": "Parent Department"
+   "link_filters": "[[\"Department\",\"college\",\"=\",\"eval:doc.college\"]]",
+   "description": "Parent Department — must belong to the College above"
   },
   {
    "fieldname": "campus",

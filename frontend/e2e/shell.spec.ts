@@ -13,7 +13,7 @@ const authenticated = { message: { user: 'test@example.com', full_name: 'Test Us
 const RAIL_TWO = {
   message: [
     { module: 'Master', slug: 'master', label: 'Master', icon: null, sequence_id: 1 },
-    { module: 'Gate_Entry', slug: 'gate-entry', label: 'Gate Entry', icon: null, sequence_id: 2 },
+    { module: 'Gate', slug: 'gate', label: 'Gate', icon: null, sequence_id: 2 },
   ],
 }
 
@@ -60,7 +60,7 @@ test('renders the rail and the selected module menu', async ({ page }) => {
 
   const rail = page.getByRole('navigation', { name: 'Modules' })
   await expect(rail.getByRole('button', { name: 'Master' })).toBeVisible()
-  await expect(rail.getByRole('button', { name: 'Gate Entry' })).toBeVisible()
+  await expect(rail.getByRole('button', { name: 'Gate' })).toBeVisible()
   // Home is the one rail item that navigates, so it is a link, not a button.
   await expect(rail.getByRole('link', { name: 'Home' })).toBeVisible()
 
@@ -71,13 +71,13 @@ test('selecting a module swaps the menu without navigating', async ({ page }) =>
   await page.route(RAIL, (r) => r.fulfill({ json: RAIL_TWO }))
   await page.route(MENU, (r) => {
     const url = new URL(r.request().url())
-    if (url.searchParams.get('module') === 'Gate_Entry') {
+    if (url.searchParams.get('module') === 'Gate') {
       return r.fulfill({
         json: {
           message: {
-            module: 'Gate_Entry',
-            module_slug: 'gate-entry',
-            label: 'Gate Entry',
+            module: 'Gate',
+            module_slug: 'gate',
+            label: 'Gate',
             icon: null,
             groups: [],
             doctype_by_slug: {},
@@ -91,7 +91,7 @@ test('selecting a module swaps the menu without navigating', async ({ page }) =>
   await page.goto('/dashboard')
   await expect(page.getByRole('link', { name: 'Institution' })).toBeVisible()
 
-  await page.getByRole('navigation', { name: 'Modules' }).getByRole('button', { name: 'Gate Entry' }).click()
+  await page.getByRole('navigation', { name: 'Modules' }).getByRole('button', { name: 'Gate' }).click()
 
   // The whole point of the two-level design: the menu changes, the page does not.
   await expect(page).toHaveURL(/\/dashboard$/)

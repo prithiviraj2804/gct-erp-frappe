@@ -90,8 +90,9 @@ export function ModuleMenuPanel({ module, label }: { module: string | null; labe
 
   const menu: ModuleMenu = data
 
-  // Reachable today: Gate_Entry has no doctypes, and any user without permission on a
-  // module's doctypes sees this too. Not an edge case — the common case.
+  // Reachable today: any user without permission on a module's doctypes lands here, and so
+  // does a module whose workspace has no link rows yet. Not an edge case — the common case
+  // while modules are still being filled in.
   if (menu.groups.length === 0) {
     return (
       <PanelShell title={menu.label}>

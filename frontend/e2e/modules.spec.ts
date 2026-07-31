@@ -30,16 +30,18 @@ test.beforeEach(async ({ page }) => {
 test('renders the modules a user is allowed', async ({ page }) => {
   await page.route(MODULES, (r) =>
     r.fulfill({
-      json: { message: [{ name: 'Gate_Entry', module_name: 'Gate_Entry' }, { name: 'Master', module_name: 'Master' }] },
+      json: { message: [{ name: 'Hostel_Pass', module_name: 'Hostel_Pass' }, { name: 'Master', module_name: 'Master' }] },
     }),
   )
 
   await page.goto('/dashboard')
 
-  // Underscores are Module Def identifiers, not labels — the UI must not show them.
-  await expect(main(page).getByRole('listitem').filter({ hasText: 'Gate Entry' })).toBeVisible()
+  // Underscores are Module Def identifiers, not labels — the UI must not show them. The
+  // fixture is a module this app does not have, on purpose: every real module name today
+  // is a single word, so a real one would let a broken moduleLabel() pass unnoticed.
+  await expect(main(page).getByRole('listitem').filter({ hasText: 'Hostel Pass' })).toBeVisible()
   await expect(main(page).getByRole('listitem')).toHaveCount(2)
-  await expect(page.getByText('Gate_Entry')).toHaveCount(0)
+  await expect(page.getByText('Hostel_Pass')).toHaveCount(0)
 })
 
 test('explains an empty module list instead of rendering a blank grid', async ({ page }) => {

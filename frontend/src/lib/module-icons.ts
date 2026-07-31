@@ -11,7 +11,7 @@ import { BoxIcon, DoorOpenIcon, LayersIcon, type LucideIcon } from 'lucide-react
  * "Cannot create components during render" rule. A lookup is just data.
  */
 export const MODULE_ICONS: Record<string, LucideIcon> = {
-  Gate_Entry: DoorOpenIcon,
+  Gate: DoorOpenIcon,
   Master: LayersIcon,
 }
 

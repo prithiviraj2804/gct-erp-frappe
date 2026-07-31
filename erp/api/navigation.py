@@ -131,8 +131,9 @@ def get_module_rail() -> list[dict]:
 		)
 
 	# Order by the workspace's sequence_id, NOT the module name. get_allowed_modules is
-	# alphabetical, which would put an empty "Gate_Entry" ahead of "Master" and make the
-	# shell open on an empty menu. sequence_id is the field that exists to control this.
+	# alphabetical, which would put "Gate" ahead of "Master" regardless of how thin its menu
+	# is, and the shell opens on whatever comes first. sequence_id is the field that exists
+	# to control this.
 	rail.sort(key=lambda m: (m["sequence_id"], m["label"]))
 
 	return rail

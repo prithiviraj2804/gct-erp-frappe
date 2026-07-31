@@ -11,7 +11,7 @@ export async function fetchAllowedModules(): Promise<ErpModule[]> {
 }
 
 /**
- * Module Def names are code identifiers ("Gate_Entry"), not labels. Frappe has no
+ * Module Def names are code identifiers ("Hostel_Pass"), not labels. Frappe has no
  * display-name field for them, so the underscore has to be undone here.
  */
 export function moduleLabel(module: ErpModule): string {

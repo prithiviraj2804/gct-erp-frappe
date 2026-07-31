@@ -1,0 +1,105 @@
+{
+  "doctype": "Workspace",
+  "name": "Master",
+  "label": "Master",
+  "module": "Master",
+  "public": 1,
+  "is_hidden": 0,
+  "sequence_id": 1,
+  "links": [
+    {
+      "type": "Card Break",
+      "label": "Organisation"
+    },
+    {
+      "type": "Link",
+      "link_type": "DocType",
+      "link_to": "Institution",
+      "label": "Institution"
+    },
+    {
+      "type": "Link",
+      "link_type": "DocType",
+      "link_to": "Campus",
+      "label": "Campus"
+    },
+    {
+      "type": "Link",
+      "link_type": "DocType",
+      "link_to": "College",
+      "label": "College"
+    },
+    {
+      "type": "Link",
+      "link_type": "DocType",
+      "link_to": "Department",
+      "label": "Department"
+    },
+    {
+      "type": "Card Break",
+      "label": "Academic"
+    },
+    {
+      "type": "Link",
+      "link_type": "DocType",
+      "link_to": "Programme Level",
+      "label": "Programme Level"
+    },
+    {
+      "type": "Link",
+      "link_type": "DocType",
+      "link_to": "Degree",
+      "label": "Degree"
+    },
+    {
+      "type": "Link",
+      "link_type": "DocType",
+      "link_to": "Academic Structure",
+      "label": "Academic Structure"
+    },
+    {
+      "type": "Link",
+      "link_type": "DocType",
+      "link_to": "Programme",
+      "label": "Programme"
+    },
+    {
+      "type": "Card Break",
+      "label": "Admissions"
+    },
+    {
+      "type": "Link",
+      "link_type": "DocType",
+      "link_to": "Academic Year",
+      "label": "Academic Year"
+    },
+    {
+      "type": "Link",
+      "link_type": "DocType",
+      "link_to": "Admission Type",
+      "label": "Admission Type"
+    },
+    {
+      "type": "Link",
+      "link_type": "DocType",
+      "link_to": "Programme Intake",
+      "label": "Programme Intake"
+    },
+    {
+      "type": "Link",
+      "link_type": "DocType",
+      "link_to": "Consultancy",
+      "label": "Consultancy"
+    },
+    {
+      "type": "Card Break",
+      "label": "People"
+    },
+    {
+      "type": "Link",
+      "link_type": "DocType",
+      "link_to": "Staff",
+      "label": "Staff"
+    }
+  ]
+}

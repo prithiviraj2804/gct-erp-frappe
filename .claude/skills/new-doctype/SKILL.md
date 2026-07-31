@@ -5,6 +5,18 @@ description: Create a new doctype in the erp app correctly — pick the module, 
 
 # Creating a doctype in `apps/erp`
 
+## Step 0 — is this doctype justified?
+
+**Name the feature slice and the journey that requires it.** If you can't, don't create it.
+
+This app builds features first: no master exists without a consumer that reads it. Eleven masters
+were built ahead of any feature and none has been proven by a journey — don't add to that pile.
+Check the masters backlog in [docs/DATA-MODEL.md](../../../docs/DATA-MODEL.md) first and reuse the
+name and intent if the concept is already listed there; being listed is not permission to build it.
+
+The procedure a doctype should be arriving from: [feature-slice](../feature-slice/SKILL.md) skill
+and [docs/METHOD.md](../../../docs/METHOD.md).
+
 ## There is no `bench new-doctype` command
 
 Frappe v16 does **not** ship a `new-doctype` CLI command — neither `bench new-doctype`
@@ -20,7 +32,7 @@ import frappe
 frappe.get_doc({
     "doctype": "DocType",
     "name": "Visitor Pass",
-    "module": "Gate_Entry",          # must match a line in erp/modules.txt
+    "module": "Gate",                # must match a line in erp/modules.txt
     "custom": 0,
     "naming_rule": "By fieldname",
     "autoname": "field:pass_code",
@@ -37,9 +49,9 @@ frappe.db.commit()
 
 ## Step 1 — pick the module
 
-Modules are declared in `erp/modules.txt`: `Erp`, `Gate_Entry`, `Master`. The doctype's
+Modules are declared in `erp/modules.txt`: `Erp`, `Gate`, `Master`. The doctype's
 `module` field must match one exactly, and the files land in that module's package
-(`erp/gate_entry/doctype/...`, `erp/master/doctype/...`). Adding a new module means adding
+(`erp/gate/doctype/...`, `erp/master/doctype/...`). Adding a new module means adding
 it to `modules.txt` **and** creating the package directory with `__init__.py` and `doctype/`.
 
 ## Step 2 — the mandatory `id` UUID field
@@ -108,7 +120,7 @@ rather than calling code directly from elsewhere. Tests use Frappe's unittest ru
 
 ```bash
 bench --site erp.localhost run-tests --doctype "Visitor Pass"
-bench --site erp.localhost run-tests --module erp.gate_entry.doctype.visitor_pass.test_visitor_pass
+bench --site erp.localhost run-tests --module erp.gate.doctype.admission_gate_pass.test_admission_gate_pass
 ```
 
 Python style is ruff-enforced: **tab indentation**, double quotes, line length 110. Do not
@@ -116,6 +128,8 @@ reformat to spaces.
 
 ## Checklist
 
+- [ ] a feature slice and a named journey require this doctype
+- [ ] fields are the minimum that journey uses, not everything it might one day want
 - [ ] `module` matches a line in `erp/modules.txt`
 - [ ] `id` field present in both `fields` and `field_order`
 - [ ] `autoname` uses a business key unless justified

@@ -5,12 +5,26 @@ import frappe
 from frappe import _
 from frappe.model.document import Document
 
+from erp.master.hierarchy import validate_same_parent
+
 
 class ProgrammeIntake(Document):
 	def validate(self):
+		self.validate_hierarchy()
 		self.validate_seats()
 		self.validate_percentage()
 		self.validate_unique_offering()
+
+	def validate_hierarchy(self):
+		"""An intake is the seat count for one programme in one academic year — both sides
+		must belong to the same institution, or the seats land in another tenant's ledger.
+
+		`institution`/`college` are `fetch_from` programme and normally rewritten on save;
+		they are asserted here for the same reason as on Programme, since `flags.ignore_links`
+		skips that rewrite.
+		"""
+		validate_same_parent(self, "programme", "institution", "college")
+		validate_same_parent(self, "academic_year", "institution")
 
 	def validate_seats(self):
 		if self.total_seats is not None and self.total_seats <= 0:

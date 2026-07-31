@@ -18,6 +18,16 @@ Always review code like it is going into production tomorrow.
 
 ---
 
+# Project context
+
+Domain vocabulary and the college/school one-model rule: [docs/PRODUCT.md](../../../docs/PRODUCT.md).
+Build rules — features first, no master without a consumer, the `id` UUID field, hierarchy
+validation via `validate_same_parent`: [docs/METHOD.md](../../../docs/METHOD.md) and
+[docs/DATA-MODEL.md](../../../docs/DATA-MODEL.md). A doctype in the diff that no journey requires is
+a review finding.
+
+---
+
 # Review Priorities
 
 Always review in this order.

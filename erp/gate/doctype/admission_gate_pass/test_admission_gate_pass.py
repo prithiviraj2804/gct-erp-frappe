@@ -1,0 +1,346 @@
+# Copyright (c) 2026, Prithivi and Contributors
+# See license.txt
+
+"""What a pass raised at the admission gate must not be allowed to record.
+
+Fixtures build two complete, disjoint institutions (A and B) — each with a campus, a
+college and a staff member — so every test can reach for a legitimate record and an alien
+one of the same doctype. Institution A additionally owns the open admission year and a
+consultancy, because A is the tenant the passes are raised under.
+
+Nothing is committed: `IntegrationTestCase` rolls the connection back at class teardown.
+"""
+
+import uuid
+
+import frappe
+from frappe.tests import IntegrationTestCase
+
+from erp.master.hierarchy import HierarchyMismatchError
+
+# Codes are prefixed `ZG` so they cannot collide with real master data on a dev site.
+INSTITUTION_A = "ZGA"
+INSTITUTION_B = "ZGB"
+CAMPUS_A = "ZGA-MAIN"
+CAMPUS_B = "ZGB-MAIN"
+COLLEGE_A = "ZGACOL"
+COLLEGE_B = "ZGBCOL"
+
+IN_TIME = "2030-06-01 09:00:00"
+
+# `photo` is reqd, and Attach Image only checks that the column is non-empty — the bytes
+# behind the URL are the File doctype's business, not this doctype's.
+PHOTO = "/private/files/zg-test-visitor.png"
+
+STAFF_1 = "Anitha Ramesh"
+STAFF_2 = "Bala Subramani"
+STAFF_3 = "Chitra Devi"
+
+
+class IntegrationTestAdmissionGatePass(IntegrationTestCase):
+	@classmethod
+	def setUpClass(cls):
+		super().setUpClass()
+
+		for code, name in ((INSTITUTION_A, "Alpha Institute"), (INSTITUTION_B, "Beta Institute")):
+			frappe.get_doc(
+				{"doctype": "Institution", "institution_code": code, "institution_name": name}
+			).insert()
+
+		for institution in (INSTITUTION_A, INSTITUTION_B):
+			frappe.get_doc(
+				{
+					"doctype": "Campus",
+					"institution": institution,
+					"campus_code": "MAIN",
+					"campus_name": f"{institution} Main Campus",
+				}
+			).insert()
+
+		for institution, campus, code in (
+			(INSTITUTION_A, CAMPUS_A, COLLEGE_A),
+			(INSTITUTION_B, CAMPUS_B, COLLEGE_B),
+		):
+			frappe.get_doc(
+				{
+					"doctype": "College",
+					"institution": institution,
+					"campus": campus,
+					"college_code": code,
+					"college_name": f"{code} College",
+				}
+			).insert()
+
+		# Only institution A has admissions open, so a pass raised under B leaves the year
+		# blank rather than borrowing A's.
+		year_a = frappe.get_doc(
+			{
+				"doctype": "Academic Year",
+				"institution": INSTITUTION_A,
+				"year_code": "2030-31",
+				"title": f"{INSTITUTION_A} 2030-31",
+				"start_date": "2030-06-01",
+				"end_date": "2031-05-31",
+				"is_admission_open": 1,
+			}
+		)
+		year_a.insert()
+		cls.year_a = year_a.name
+
+		# Staff and Consultancy are named by their own naming rules, which this slice does
+		# not own — keep the generated names rather than assuming their shape.
+		# Two staff records are enough now that only the Staff Reference route links one:
+		# A's to be accepted, B's to be refused. The three accountable-staff slots are typed
+		# names and need no records at all.
+		cls.staff_a = cls.make_staff(INSTITUTION_A, COLLEGE_A, "ZGASTF1", "Alpha Counsellor")
+		cls.staff_b = cls.make_staff(INSTITUTION_B, COLLEGE_B, "ZGBSTF1", "Beta Counsellor")
+
+		cls.consultancy_a = cls.make_consultancy(INSTITUTION_A, "ZGACON", "Alpha Admissions Partner")
+		cls.consultancy_b = cls.make_consultancy(INSTITUTION_B, "ZGBCON", "Beta Admissions Partner")
+
+	@staticmethod
+	def make_staff(institution, college, code, name):
+		staff = frappe.get_doc(
+			{
+				"doctype": "Staff",
+				"institution": institution,
+				"college": college,
+				"staff_code": code,
+				"staff_name": name,
+			}
+		)
+		staff.insert()
+		return staff.name
+
+	@staticmethod
+	def make_consultancy(institution, code, name):
+		consultancy = frappe.get_doc(
+			{
+				"doctype": "Consultancy",
+				"institution": institution,
+				"consultancy_code": code,
+				"consultancy_name": name,
+			}
+		)
+		consultancy.insert()
+		return consultancy.name
+
+	@classmethod
+	def make_pass(cls, **overrides):
+		values = {
+			"doctype": "Admission Gate Pass",
+			"student_name": "Arun Kumar",
+			"phone_number": "9876543210",
+			"aadhaar_number": "123456789012",
+			"parent_name": "Kumar S",
+			"native_place": "Madurai",
+			"college": COLLEGE_A,
+			"reference": "Direct Admission",
+			"reference_staff_1": STAFF_1,
+			"photo": PHOTO,
+			"in_time": IN_TIME,
+		}
+		values.update(overrides)
+		return frappe.get_doc(values)
+
+	# --- The happy path -------------------------------------------------------------
+
+	def test_valid_pass_inserts(self):
+		gate_pass = self.make_pass()
+		gate_pass.insert()
+
+		self.assertTrue(gate_pass.name.startswith("AGP-"), gate_pass.name)
+		self.assertEqual(str(uuid.UUID(gate_pass.id)), gate_pass.id)
+		self.assertEqual(gate_pass.institution, INSTITUTION_A)
+		self.assertEqual(gate_pass.status, "Inside")
+
+	def test_academic_year_comes_from_the_open_admission_year(self):
+		"""The desk never picks the year — it follows from the college's institution."""
+		gate_pass = self.make_pass()
+		gate_pass.insert()
+
+		self.assertEqual(gate_pass.academic_year, self.year_a)
+
+	def test_moving_the_pass_to_another_institution_redraws_the_year(self):
+		"""Correcting the college to one under a different institution has to be savable.
+
+		The year is read-only, so a stale one left on the row would be a hierarchy mismatch
+		the desk is given no way to clear — the pass would be stuck, unfixable, for as long
+		as it existed. B has no year flagged open, so the redraw here lands on blank.
+		"""
+		gate_pass = self.make_pass()
+		gate_pass.insert()
+		self.assertEqual(gate_pass.academic_year, self.year_a)
+
+		gate_pass.college = COLLEGE_B
+		gate_pass.save()
+
+		self.assertEqual(gate_pass.institution, INSTITUTION_B)
+		self.assertFalse(gate_pass.academic_year)
+
+	# --- Tenant boundaries ----------------------------------------------------------
+
+	def test_rejects_college_from_another_institution(self):
+		"""`institution` is `fetch_from` college and normally rewritten from it, but
+		`flags.ignore_links` skips that rewrite — the controller has to catch it."""
+		gate_pass = self.make_pass(college=COLLEGE_B, institution=INSTITUTION_A)
+		gate_pass.flags.ignore_links = True
+
+		with self.assertRaises(HierarchyMismatchError):
+			gate_pass.insert()
+
+	def test_rejects_a_referring_staff_from_another_institution(self):
+		"""A Link to Staff accepts any staff member in the system; only this check stops
+		one institution's counsellor being credited with another's walk-in."""
+		gate_pass = self.make_pass(reference="Staff Reference", staff_reference=self.staff_b)
+
+		with self.assertRaises(HierarchyMismatchError):
+			gate_pass.insert()
+
+	def test_accepts_a_referring_staff_from_its_own_institution(self):
+		gate_pass = self.make_pass(reference="Staff Reference", staff_reference=self.staff_a)
+		gate_pass.insert()
+
+		self.assertEqual(gate_pass.staff_reference, self.staff_a)
+
+	def test_rejects_consultancy_from_another_institution(self):
+		gate_pass = self.make_pass(reference="Consultancy Reference", consultancy=self.consultancy_b)
+
+		with self.assertRaises(HierarchyMismatchError):
+			gate_pass.insert()
+
+	def test_accepts_consultancy_from_its_own_institution(self):
+		gate_pass = self.make_pass(reference="Consultancy Reference", consultancy=self.consultancy_a)
+		gate_pass.insert()
+
+		self.assertEqual(gate_pass.consultancy, self.consultancy_a)
+
+	# --- Identity fields ------------------------------------------------------------
+
+	def test_rejects_aadhaar_that_is_not_twelve_digits(self):
+		gate_pass = self.make_pass(aadhaar_number="12345678901")
+
+		with self.assertRaises(frappe.ValidationError):
+			gate_pass.insert()
+
+	def test_stores_aadhaar_stripped_of_spacing(self):
+		gate_pass = self.make_pass(aadhaar_number="1234 5678 9012")
+		gate_pass.insert()
+
+		self.assertEqual(gate_pass.aadhaar_number, "123456789012")
+
+	def test_stores_phone_without_country_code_or_punctuation(self):
+		gate_pass = self.make_pass(phone_number="+91 98765 43210")
+		gate_pass.insert()
+
+		self.assertEqual(gate_pass.phone_number, "9876543210")
+
+	def test_rejects_a_short_phone_number(self):
+		gate_pass = self.make_pass(phone_number="9876543")
+
+		with self.assertRaises(frappe.ValidationError):
+			gate_pass.insert()
+
+	# --- Reference route ------------------------------------------------------------
+
+	def test_changing_the_route_drops_the_previous_referrer(self):
+		"""Otherwise the agency stays attached to an enquiry it did not send, and every
+		referral count built on that column credits it."""
+		gate_pass = self.make_pass(reference="Consultancy Reference", consultancy=self.consultancy_a)
+		gate_pass.insert()
+		self.assertEqual(gate_pass.consultancy, self.consultancy_a)
+
+		gate_pass.reference = "Direct Admission"
+		gate_pass.save()
+
+		self.assertFalse(gate_pass.consultancy)
+
+	def test_rejects_the_same_staff_in_two_slots(self):
+		"""Every slot, not just the second: a check that covers two of the three would leave
+		the third free to duplicate, which is the same accountability hole unguarded."""
+		for slot in ("reference_staff_2", "reference_staff_3"):
+			with self.subTest(slot=slot):
+				gate_pass = self.make_pass(**{slot: STAFF_1})
+
+				with self.assertRaises(frappe.ValidationError):
+					gate_pass.insert()
+
+	def test_rejects_the_same_staff_typed_differently(self):
+		"""Typed names, so " anitha  ramesh " and "Anitha Ramesh" are one person to
+		everyone except a string equality test."""
+		gate_pass = self.make_pass(reference_staff_2="  anitha   RAMESH ")
+
+		with self.assertRaises(frappe.ValidationError):
+			gate_pass.insert()
+
+	def test_trims_typed_staff_names(self):
+		"""A stray space would otherwise split one person across two rows of any count."""
+		gate_pass = self.make_pass(reference_staff_1="  Anitha Ramesh  ")
+		gate_pass.insert()
+
+		self.assertEqual(gate_pass.reference_staff_1, "Anitha Ramesh")
+
+	def test_accepts_three_different_staff(self):
+		gate_pass = self.make_pass(reference_staff_2=STAFF_2, reference_staff_3=STAFF_3)
+		gate_pass.insert()
+
+		self.assertEqual(gate_pass.reference_staff_2, STAFF_2)
+		self.assertEqual(gate_pass.reference_staff_3, STAFF_3)
+
+	def test_rejects_a_route_that_names_no_referrer(self):
+		"""`mandatory_depends_on` is a Desk rule the server never evaluates, so a route with
+		nobody on the end of it reaches the database unless the controller stops it."""
+		for reference, fieldname in (
+			("Staff Reference", "staff_reference"),
+			("Consultancy Reference", "consultancy"),
+			("Student Reference", "student_reference"),
+			("Other", "source_details"),
+		):
+			with self.subTest(reference=reference):
+				gate_pass = self.make_pass(reference=reference)
+
+				with self.assertRaises(frappe.MandatoryError):
+					gate_pass.insert()
+
+				self.assertFalse(gate_pass.get(fieldname))
+
+	def test_accepts_direct_admission_with_no_remarks(self):
+		"""Direct Admission is the one route that explains itself — the shared remarks field
+		is offered but never demanded, or every walk-in costs the desk a sentence."""
+		gate_pass = self.make_pass(reference="Direct Admission")
+		gate_pass.insert()
+
+		self.assertFalse(gate_pass.source_details)
+
+	def test_rejects_a_pass_with_no_photo(self):
+		gate_pass = self.make_pass(photo=None)
+
+		with self.assertRaises(frappe.MandatoryError):
+			gate_pass.insert()
+
+	def test_rejects_a_vehicle_with_no_number(self):
+		gate_pass = self.make_pass(vehicle=1)
+
+		with self.assertRaises(frappe.MandatoryError):
+			gate_pass.insert()
+
+	# --- Movement -------------------------------------------------------------------
+
+	def test_rejects_an_out_time_before_the_in_time(self):
+		gate_pass = self.make_pass()
+		gate_pass.insert()
+
+		gate_pass.out_time = "2030-06-01 08:00:00"
+		with self.assertRaises(frappe.ValidationError):
+			gate_pass.save()
+
+	def test_out_time_flips_status_to_exited(self):
+		"""Status is derived from the stamps, so it moves without anyone setting it."""
+		gate_pass = self.make_pass()
+		gate_pass.insert()
+		self.assertEqual(gate_pass.status, "Inside")
+
+		gate_pass.out_time = "2030-06-01 17:30:00"
+		gate_pass.save()
+
+		self.assertEqual(gate_pass.status, "Exited")
