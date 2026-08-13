@@ -71,7 +71,7 @@ at it, rather than inferring from code:
   `erp/public/dist/`, so **run `npm run build` first** or you're testing a stale bundle.
 
 Deep routes must survive a hard refresh (`website_route_rules` maps `/erp/<path>`);
-`/erp/dashboard` returning 200 is the check that client-side routing still works.
+`/erp/home` returning 200 is the check that client-side routing still works.
 
 Useful: `browser_navigate`, `browser_snapshot` (accessibility tree — prefer over
 screenshots for asserting structure), `browser_console_messages`, `browser_network_requests`.

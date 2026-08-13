@@ -1,7 +1,7 @@
 app_name = "erp"
 app_title = "Erp"
 app_publisher = "Prithivi"
-app_description = "ERP for colleges"
+app_description = "A multi-tenant ERP for education groups"
 app_email = "prithivi@gmail.com"
 app_license = "mit"
 
@@ -155,7 +155,14 @@ website_route_rules = [
 doc_events = {
 	"*": {
 		"before_insert": "erp.utils.set_uuid_id",
-	}
+	},
+	# The sign-in screen is branded from the Institution record, and that payload is cached in
+	# redis for anonymous callers. Without this, an admin who uploads a logo would keep seeing
+	# the old one until the TTL expired.
+	"Institution": {
+		"on_update": "erp.api.branding.clear_cache",
+		"on_trash": "erp.api.branding.clear_cache",
+	},
 }
 
 # Scheduled Tasks

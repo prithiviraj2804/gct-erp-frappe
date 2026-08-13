@@ -9,7 +9,7 @@ about where it will first be needed.
 
 ## Slice 1 — Admission Gate Pass · `Gate` ✅
 
-**Status: built (backend). SPA screens deferred by decision.** →
+**Status: built (backend). SPA read-only screens added by Slice 1.5; writes still Desk-only.** →
 [features/admission-gate-pass.md](features/admission-gate-pass.md)
 
 A prospective student arrives at the gate asking about admission. The desk records who came, which
@@ -23,6 +23,23 @@ A **Student** master was built here and then deleted. When the referring student
 rather than a picked record, Student had no consumer left — and a master with no consumer does not
 exist under this method. Deleting it was the method working, not a mistake: Student gets designed
 once, properly, by the slice that actually reads it.
+
+---
+
+## Slice 1.5 — Master data administration · `Master` ◐
+
+**Status: read-only screens built. Writes deferred.** →
+[features/master-data-administration.md](features/master-data-administration.md)
+
+Every doctype the app has built becomes reachable in the SPA: a list with the doctype's own columns,
+filters and search, and a read-only record laid out in its own sections. Two pages serve all fourteen
+screens, generated from `erp.api.doctype.get_doctype_schema` rather than hand-written per doctype.
+
+**Builds no masters.** It is surface over what Slices 0–1 already created, which is why it is 1.5
+rather than 2 — it does not consume the slice budget for new domain work.
+
+Numbered out of band on purpose: it was not planned, it was owed. Slice 1 shipped a workspace that
+generated fourteen SPA routes and zero SPA pages, and this pays that off.
 
 ---
 

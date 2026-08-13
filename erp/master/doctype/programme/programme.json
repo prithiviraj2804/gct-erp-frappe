@@ -28,7 +28,6 @@
   "total_terms",
   "has_internship",
   "internship_months",
-  "intake_capacity",
   "notes_section",
   "description"
  ],
@@ -211,12 +210,6 @@
    "label": "Internship Months",
    "depends_on": "eval:doc.has_internship",
    "description": "Internship duration in months"
-  },
-  {
-   "fieldname": "intake_capacity",
-   "fieldtype": "Int",
-   "label": "Intake Capacity",
-   "description": "Sanctioned yearly seats"
   },
   {
    "fieldname": "notes_section",

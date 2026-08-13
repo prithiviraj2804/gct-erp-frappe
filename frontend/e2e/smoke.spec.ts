@@ -4,6 +4,16 @@ import { expect, test } from '@playwright/test'
 // starter and will be replaced by the real shell. These check that the app
 // mounts and stays clean, which stays true across that rewrite.
 
+// "/" redirects to /login, which now asks the server which institution it belongs to. That
+// is one real request, so without a stub this bench-free file would fail on `requestfailed`
+// the moment no bench is running. Mocked to "no institution" — the unbranded fallback, and
+// the path most likely to break silently, since a fresh bench renders exactly this.
+const BRANDING = '**/api/method/erp.api.branding.get_login_branding'
+
+test.beforeEach(async ({ page }) => {
+  await page.route(BRANDING, (r) => r.fulfill({ json: { message: { institution: null, scope: null } } }))
+})
+
 test('app mounts into #root', async ({ page }) => {
   await page.goto('/')
 

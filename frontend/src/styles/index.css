@@ -13,6 +13,27 @@
    Brand tokens — see .claude/DESIGN.md, which is the source of truth.
    Hex values are converted to oklch so shadcn components pick them up directly.
 
+   PALETTE: "Ink & Sapphire". The chrome (sidebar, login identity panel) is a near-black
+   ink with a faint blue cast; chroma is spent almost entirely on one sapphire accent.
+
+   This replaced slate-800 (#1E293B) chrome over a #225DB6 mid-blue. Both were defaults —
+   slate-800 is the most-used sidebar fill on the web and a mid-chroma blue at that
+   lightness reads as an admin template. Two things changed and both matter:
+
+   - The chrome went DEEPER and LESS saturated (L 0.2795 -> 0.18, C 0.0368 -> 0.025), and
+     its dividers became translucent-white hairlines instead of a solid lighter slate.
+     Premium chrome separates surfaces with light, not with a value jump.
+   - The accent went DEEPER and MORE saturated (C 0.1538 -> 0.19). Chroma concentrated in
+     a small accent reads as intent; chroma spread across a large fill reads as noise.
+
+   There is a second, app-specific reason the chrome is near-neutral: it sits directly
+   beside an arbitrary tenant's logo. A committed navy fights a maroon or green college
+   crest. Ink flatters all of them, and lets the institution's mark be the brightest
+   object on the panel — which is the point of the screen.
+
+   Every value below was picked in OKLCH and then measured; the ratios in the comments are
+   computed, not estimated. Nothing here is within 0.1 of its bar.
+
    Two mapping rules that are easy to get wrong:
 
    1. shadcn's --secondary/--accent are ROLE tokens (neutral surfaces; --accent is the
@@ -27,201 +48,294 @@
       get different values rather than sharing one.
    --------------------------------------------------------------------------- */
 :root {
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+	font-synthesis: none;
+	text-rendering: optimizeLegibility;
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
 
-  /* Surfaces */
-  --background: oklch(0.9785 0.0045 258.32); /* #F6F8FB */
-  --foreground: oklch(0.2101 0.0318 264.66); /* #111827  16.67:1 on bg */
-  --card: oklch(1 0 0); /* #FFFFFF */
-  --card-foreground: oklch(0.2101 0.0318 264.66);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.2101 0.0318 264.66);
+	/* Surfaces */
+	--background: oklch(0.9785 0.0045 258.32); /* #F6F8FB */
+	--foreground: oklch(0.2101 0.0318 264.66); /* #111827  16.67:1 on bg */
+	--card: oklch(1 0 0); /* #FFFFFF */
+	--card-foreground: oklch(0.2101 0.0318 264.66);
+	--popover: oklch(1 0 0);
+	--popover-foreground: oklch(0.2101 0.0318 264.66);
+	/* Sticky table-header fill — a barely-cool tint so the frozen header separates from white body
+     rows without a heavy rule. Opaque on purpose: sticky cells scroll over the body, and a
+     translucent fill smears (same reason the sticky columns carry an opaque fill). */
+	--table-header: oklch(0.988 0.004 258); /* ~#FAFBFD */
 
-  /* Primary — the only colour used for actions (DESIGN.md: "reserved for actions") */
-  --primary: oklch(0.4914 0.1538 258.89); /* #225DB6  white text 6.35:1 */
-  --primary-foreground: oklch(1 0 0);
-  /* Hover DARKENS. `bg-primary/80` would lighten to #4E7DC5 -> white text 4.15:1, an AA
-     failure. DESIGN.md's primary-dark exists for exactly this. See button.tsx. */
-  --primary-hover: oklch(0.432 0.1355 258.99); /* #1B4D99  white text 8.18:1 */
-  --primary-subtle: oklch(0.9657 0.012 259.82); /* #EFF4FC */
+	/* Primary — sapphire, the only colour used for actions (DESIGN.md: "reserved for
+     actions"). Deeper and richer than the #225DB6 it replaces: same family, but the
+     chroma lift is what separates "brand blue" from "Bootstrap blue". */
+	--primary: oklch(0.47 0.19 262); /* #154FC3  white text 7.12:1 */
+	--primary-foreground: oklch(1 0 0);
+	/* Hover DARKENS. `bg-primary/80` would lighten and drop white text below AA.
+     DESIGN.md's primary-dark exists for exactly this. See button.tsx. */
+	--primary-hover: oklch(0.41 0.17 262); /* #0D40A4  white text 9.17:1 */
+	/* C is 0.015, not 0.018: at this lightness 0.018 leaves the sRGB gamut and the browser
+     silently clips it, which is how a "tint" turns into a slightly different tint. */
+	--primary-subtle: oklch(0.964 0.015 262); /* #EEF3FE  primary text on it 6.41:1 */
 
-  /* Neutral roles */
-  --secondary: oklch(0.9683 0.0069 247.9); /* #F1F5F9 */
-  --secondary-foreground: oklch(0.2101 0.0318 264.66);
-  --muted: oklch(0.9683 0.0069 247.9);
-  /* #475569 (7.12:1), not DESIGN.md's neutral-500 #64748B — that is 4.47:1 on
+	/* Neutral roles */
+	--secondary: oklch(0.9683 0.0069 247.9); /* #F1F5F9 */
+	--secondary-foreground: oklch(0.2101 0.0318 264.66);
+	--muted: oklch(0.9683 0.0069 247.9);
+	/* #475569 (7.12:1), not DESIGN.md's neutral-500 #64748B — that is 4.47:1 on
      --background and misses AA by 0.03. */
-  --muted-foreground: oklch(0.4455 0.0374 257.28); /* #475569 */
-  --accent: oklch(0.9683 0.0069 247.9);
-  --accent-foreground: oklch(0.2101 0.0318 264.66);
+	--muted-foreground: oklch(0.4455 0.0374 257.28); /* #475569 */
+	--accent: oklch(0.9683 0.0069 247.9);
+	--accent-foreground: oklch(0.2101 0.0318 264.66);
 
-  /* Destructive. The solid stays DESIGN.md's #DC2626 (white text 4.83:1), but text on a
+	/* Destructive. The solid stays DESIGN.md's #DC2626 (white text 4.83:1), but text on a
      10% tint of it is only 4.13:1 — so tinted surfaces use the darker foreground below. */
-  --destructive: oklch(0.5771 0.2152 27.33); /* #DC2626 */
-  --destructive-foreground: oklch(1 0 0);
-  --destructive-subtle: color-mix(in oklch, var(--destructive) 10%, var(--card));
-  --destructive-subtle-foreground: oklch(0.5054 0.1905 27.52); /* #B91C1C  5.54:1 on tint */
+	--destructive: oklch(0.5771 0.2152 27.33); /* #DC2626 */
+	--destructive-foreground: oklch(1 0 0);
+	--destructive-subtle: color-mix(in oklch, var(--destructive) 10%, var(--card));
+	--destructive-subtle-foreground: oklch(0.5054 0.1905 27.52); /* #B91C1C  5.54:1 on tint */
 
-  /* Boundaries */
-  --border: oklch(0.9288 0.0126 255.51); /* #E2E8F0 — decorative only */
-  --input: oklch(0.5544 0.0407 257.42); /* #64748B  4.76:1 — control boundary, WCAG 1.4.11 */
-  --ring: oklch(0.4914 0.1538 258.89); /* #225DB6  6.35:1 vs card */
+	/* Boundaries */
+	--border: oklch(0.9288 0.0126 255.51); /* #E2E8F0 — decorative only */
+	--input: oklch(0.5544 0.0407 257.42); /* #64748B  4.76:1 — control boundary, WCAG 1.4.11 */
+	--ring: oklch(0.47 0.19 262); /* #154FC3  7.12:1 vs card, 6.69:1 vs background */
 
-  /* Status. DESIGN.md's originals fail AA with white text (success 3.30, warning 3.19,
+	/* Status. DESIGN.md's originals fail AA with white text (success 3.30, warning 3.19,
      info 4.10), so these are the corrected steps. */
-  --success: oklch(0.5273 0.1371 150.07); /* #15803D  white 5.02:1 */
-  --success-foreground: oklch(1 0 0);
-  --warning: oklch(0.5553 0.1455 49); /* #B45309  white 5.02:1 */
-  --warning-foreground: oklch(1 0 0);
-  --info: oklch(0.5 0.1193 242.75); /* #0369A1  white 5.93:1 */
-  --info-foreground: oklch(1 0 0);
+	--success: oklch(0.5273 0.1371 150.07); /* #15803D  white 5.02:1 */
+	--success-foreground: oklch(1 0 0);
+	--warning: oklch(0.5553 0.1455 49); /* #B45309  white 5.02:1 */
+	--warning-foreground: oklch(1 0 0);
+	--info: oklch(0.5 0.1193 242.75); /* #0369A1  white 5.93:1 */
+	--info-foreground: oklch(1 0 0);
 
-  /* Brand accents — badges, charts, illustration. Never a button fill with white text. */
-  --brand-teal: oklch(0.5109 0.0861 186.39); /* #0F766E — DESIGN.md #18B6A3 is 2.54:1 */
-  --brand-indigo: oklch(0.5106 0.2301 276.97); /* #4F46E5 */
+	/* Brand accents — badges, charts, illustration. Never a button fill with white text.
+     The old --brand-indigo (#4F46E5, H 277) sat 15° from the new sapphire and read as a
+     second, slightly-wrong primary. Moved to a true violet so it separates. */
+	--brand-teal: oklch(0.5109 0.0861 186.39); /* #0F766E — DESIGN.md #18B6A3 is 2.54:1 */
+	--brand-violet: oklch(0.52 0.19 292); /* #6F49CA */
 
-  /* Charts — brand-anchored, not a rainbow (ui skill: "no colorful dashboards") */
-  --chart-1: oklch(0.4914 0.1538 258.89);
-  --chart-2: oklch(0.5109 0.0861 186.39);
-  --chart-3: oklch(0.5106 0.2301 276.97);
-  --chart-4: oklch(0.6069 0.1335 258.21);
-  --chart-5: oklch(0.5544 0.0407 257.42);
+	/* The exact logo blue — the Gnanamani "G" (#225DB6). This is the BRAND-MOMENT colour: the
+     sign-in identity panel, the institution mark, brand illustration. It is deliberately NOT
+     --primary. The action blue (#154FC3) is a deeper, more saturated sibling of this exact hue
+     family (h 259 vs 262) that carries white text at 7.12:1 where this reaches 6.35:1 — so the
+     button clicked ten thousand times a day is the accessible one, and the mark seen for a
+     second is the literal one. They read as one blue. Splitting brand colour from action colour
+     is what Stripe/Linear/Atlassian do, and why a logo hex on every button is the amateur move.
+     Passes AA with white text, so it MAY carry large brand type (unlike the accents above). */
+	--brand-blue: oklch(0.491 0.154 259); /* #225DB6  white text 6.35:1 (AA) */
+	--brand-blue-foreground: oklch(1 0 0);
+	--brand-blue-subtle: oklch(
+		0.965 0.017 259
+	); /* wash for brand surfaces; brand-blue on it 6.0:1 */
 
-  /* Sidebar is dark even in light mode (DESIGN.md sidebar #1E293B; cf. Fiori/ERPNext) */
-  --sidebar: oklch(0.2795 0.0368 260.03); /* #1E293B */
-  --sidebar-foreground: oklch(0.9683 0.0069 247.9); /* #F1F5F9  13.35:1 */
-  --sidebar-primary: oklch(0.4914 0.1538 258.89);
-  --sidebar-primary-foreground: oklch(1 0 0);
-  --sidebar-accent: oklch(0.3717 0.0392 257.29); /* #334155 sidebar-hover */
-  --sidebar-accent-foreground: oklch(0.9683 0.0069 247.9);
-  --sidebar-border: oklch(0.3717 0.0392 257.29);
-  --sidebar-ring: oklch(0.6069 0.1335 258.21);
+	/* Charts — brand-anchored, not a rainbow (ui skill: "no colorful dashboards") */
+	--chart-1: oklch(0.47 0.19 262);
+	--chart-2: oklch(0.5109 0.0861 186.39);
+	--chart-3: oklch(0.52 0.19 292);
+	--chart-4: oklch(0.6069 0.1335 258.21);
+	--chart-5: oklch(0.5544 0.0407 257.42);
 
-  --radius: 0.5rem; /* 8px — DESIGN.md button.radius / input.radius */
+	/* --- Chrome ------------------------------------------------------------------
+     Dark even in light mode (cf. Fiori/ERPNext). Used by the module rail, the module
+     menu panel, and the login identity panel, so those three read as one surface. */
+	--sidebar: oklch(0.18 0.025 264); /* #0C111D  ink */
+	--sidebar-foreground: oklch(0.93 0.009 258); /* #E4E8EE  15.32:1 */
+	--sidebar-primary: oklch(0.5 0.195 262); /* #1C58D0  white 6.25:1, 3.01:1 on ink */
+	--sidebar-primary-foreground: oklch(1 0 0);
+	/* NEUTRAL hover. Deliberately carries no chroma, so it cannot be mistaken for the
+     current page — see --sidebar-active. */
+	--sidebar-accent: oklch(0.25 0.027 262); /* #1B222F  1.18:1 on ink */
+	--sidebar-accent-foreground: oklch(0.93 0.009 258);
+	/* Current page in the module menu: a sapphire-TINTED surface, not the solid
+     --sidebar-primary fill. A saturated fill is right for the rail (one 48px square,
+     an anchor) and wrong for a list of full-width rows, where it turns the panel into a
+     block of colour. 1.16:1 against the neutral hover — subtle, but the indicator bar
+     below is what actually carries the state. */
+	--sidebar-active: oklch(0.3 0.09 262); /* #132B5A  fg on it 11.22:1 */
+	--sidebar-active-foreground: oklch(0.93 0.009 258);
+	/* The 2px bar marking the current item. Bright enough to read against BOTH the ink and
+     the active tint (--sidebar-primary is only 2.21:1 on the tint — it would disappear). */
+	--sidebar-indicator: oklch(0.68 0.16 262); /* #6095FA  6.43:1 on ink, 4.66:1 on tint */
+	/* Hairline, not a lighter solid. Light separating two same-coloured planes is the whole
+     difference between "deep" and "flat" here. */
+	--sidebar-border: oklch(1 0 0 / 10%);
+	--sidebar-ring: oklch(0.68 0.16 262); /* #6095FA  6.43:1 on ink */
+
+	/* --- Elevation ---------------------------------------------------------------
+     DESIGN.md's shadow scale (sm/md/lg), finally wired. Every surface in the app was
+     hairline-only ("flat"), and a soft shadow layered OVER a hairline is most of what separates
+     "premium" from "admin template". These are tuned tight — a shadow you'd miss, never one you
+     notice. Shadow colour is the ink foreground (#0F172A) so it reads as the surface's own cast,
+     not a grey smear. Dark mode swaps to black alpha (a tinted shadow on near-black is
+     invisible) and leans harder on the ring for separation. */
+	--elevation-card:
+		0 1px 2px 0 oklch(0.21 0.04 266 / 0.05), 0 1px 3px 0 oklch(0.21 0.04 266 / 0.04);
+	--elevation-raised:
+		0 4px 12px -2px oklch(0.21 0.04 266 / 0.1), 0 2px 6px -2px oklch(0.21 0.04 266 / 0.06);
+	--elevation-overlay:
+		0 8px 24px -4px oklch(0.21 0.04 266 / 0.12), 0 4px 8px -4px oklch(0.21 0.04 266 / 0.08);
+
+	/* Easing. DESIGN.md's asymmetric flyout curves, promoted to tokens so every surface settles
+     the same way: emphasized = a steep ease-out that decelerates and settles (entrances), exit
+     = get out of the way (leaves). Named after Material's vocabulary, valued from DESIGN.md. */
+	--ease-emphasized: cubic-bezier(0.16, 1, 0.3, 1);
+	--ease-exit: cubic-bezier(0.33, 0, 0.2, 1);
+
+	--radius: 0.5rem; /* 8px — DESIGN.md button.radius / input.radius */
 }
 
 /* Ships complete and coherent, but is currently UNREACHABLE: nothing adds the `.dark`
    class yet (no theme provider). Do not claim dark mode works until one exists. */
 .dark {
-  --background: oklch(0.2077 0.0398 265.75); /* #0F172A */
-  --foreground: oklch(0.9683 0.0069 247.9); /* 16.30:1 */
-  --card: oklch(0.2795 0.0368 260.03); /* #1E293B  13.35:1 */
-  --card-foreground: oklch(0.9683 0.0069 247.9);
-  --popover: oklch(0.2795 0.0368 260.03);
-  --popover-foreground: oklch(0.9683 0.0069 247.9);
+	--background: oklch(0.165 0.021 264); /* #0A0E18 */
+	--foreground: oklch(0.9683 0.0069 247.9); /* 17.60:1 */
+	--card: oklch(0.225 0.024 262); /* #161C27  16.00:1; 1.13:1 vs background */
+	--card-foreground: oklch(0.9683 0.0069 247.9);
+	--popover: oklch(0.225 0.024 262);
+	--popover-foreground: oklch(0.9683 0.0069 247.9);
+	--table-header: oklch(0.255 0.024 262); /* a step above --card */
 
-  --primary: oklch(0.5503 0.1584 258.18); /* #2F6FCC — lifted; white text 4.92:1 */
-  --primary-foreground: oklch(1 0 0);
-  --primary-hover: oklch(0.4914 0.1538 258.89); /* darkens on dark too */
-  --primary-subtle: oklch(0.3 0.06 258.5);
+	/* L is 0.555, not 0.58: at 0.58 white text measures 4.39:1 and misses AA. */
+	--primary: oklch(0.555 0.175 262); /* #356CD8 — lifted; white text 4.88:1 */
+	--primary-foreground: oklch(1 0 0);
+	--primary-hover: oklch(0.49 0.19 262); /* darkens on dark too */
+	--primary-subtle: oklch(0.29 0.07 262);
 
-  --secondary: oklch(0.3717 0.0392 257.29);
-  --secondary-foreground: oklch(0.9683 0.0069 247.9);
-  --muted: oklch(0.3717 0.0392 257.29);
-  --muted-foreground: oklch(0.7107 0.0351 256.79); /* #94A3B8  5.71:1 on card */
-  --accent: oklch(0.3717 0.0392 257.29);
-  --accent-foreground: oklch(0.9683 0.0069 247.9);
+	--secondary: oklch(0.285 0.027 262);
+	--secondary-foreground: oklch(0.9683 0.0069 247.9);
+	--muted: oklch(0.285 0.027 262);
+	--muted-foreground: oklch(0.72 0.027 258); /* #9AA5B6  7.07:1 on card */
+	--accent: oklch(0.285 0.027 262);
+	--accent-foreground: oklch(0.9683 0.0069 247.9);
 
-  --destructive: oklch(0.8077 0.1035 19.57); /* #FCA5A5 — lifted for dark surfaces */
-  --destructive-foreground: oklch(0.2077 0.0398 265.75);
-  --destructive-subtle: color-mix(in oklch, var(--destructive) 15%, var(--card));
-  --destructive-subtle-foreground: oklch(0.8077 0.1035 19.57);
+	--destructive: oklch(0.8077 0.1035 19.57); /* #FCA5A5 — lifted for dark surfaces */
+	--destructive-foreground: oklch(0.165 0.021 264);
+	--destructive-subtle: color-mix(in oklch, var(--destructive) 15%, var(--card));
+	--destructive-subtle-foreground: oklch(0.8077 0.1035 19.57);
 
-  --border: oklch(1 0 0 / 12%);
-  --input: oklch(1 0 0 / 30%);
-  --ring: oklch(0.6502 0.134 258.96); /* #5B8FE0  5.48:1 */
+	--border: oklch(1 0 0 / 10%);
+	--input: oklch(1 0 0 / 28%);
+	--ring: oklch(0.68 0.16 262); /* #6095FA  5.99:1 vs card */
 
-  --success: oklch(0.8003 0.1821 151.71);
-  --success-foreground: oklch(0.2077 0.0398 265.75);
-  --warning: oklch(0.8369 0.1644 84.43);
-  --warning-foreground: oklch(0.2077 0.0398 265.75);
-  --info: oklch(0.7854 0.1216 230.32);
-  --info-foreground: oklch(0.2077 0.0398 265.75);
+	--success: oklch(0.8003 0.1821 151.71);
+	--success-foreground: oklch(0.165 0.021 264);
+	--warning: oklch(0.8369 0.1644 84.43);
+	--warning-foreground: oklch(0.165 0.021 264);
+	--info: oklch(0.7854 0.1216 230.32);
+	--info-foreground: oklch(0.165 0.021 264);
 
-  --sidebar: oklch(0.1831 0.0309 263.38);
-  --sidebar-foreground: oklch(0.9683 0.0069 247.9);
-  --sidebar-primary: oklch(0.5503 0.1584 258.18);
-  --sidebar-primary-foreground: oklch(1 0 0);
-  --sidebar-accent: oklch(0.2795 0.0368 260.03);
-  --sidebar-accent-foreground: oklch(0.9683 0.0069 247.9);
-  --sidebar-border: oklch(1 0 0 / 12%);
-  --sidebar-ring: oklch(0.6502 0.134 258.96);
+	/* Chrome sits BELOW the page background in dark mode, so the rail recedes and the
+     content plane is the thing that reads as lit. */
+	--sidebar: oklch(0.13 0.019 264); /* #04070F */
+	--sidebar-foreground: oklch(0.93 0.009 258);
+	--sidebar-primary: oklch(0.555 0.175 262);
+	--sidebar-primary-foreground: oklch(1 0 0);
+	--sidebar-accent: oklch(0.23 0.025 262);
+	--sidebar-accent-foreground: oklch(0.93 0.009 258);
+	--sidebar-active: oklch(0.28 0.085 262);
+	--sidebar-active-foreground: oklch(0.93 0.009 258);
+	--sidebar-indicator: oklch(0.68 0.16 262);
+	--sidebar-border: oklch(1 0 0 / 10%);
+	--sidebar-ring: oklch(0.68 0.16 262);
+
+	/* Black alpha, not tinted: a coloured shadow on a near-black surface is invisible. Deeper
+     than light mode because the ring is doing less separating work here. */
+	--elevation-card: 0 1px 2px 0 oklch(0 0 0 / 0.3);
+	--elevation-raised: 0 4px 12px -2px oklch(0 0 0 / 0.45), 0 2px 6px -2px oklch(0 0 0 / 0.3);
+	--elevation-overlay: 0 12px 32px -8px oklch(0 0 0 / 0.55), 0 4px 8px -4px oklch(0 0 0 / 0.4);
 }
 
 @theme inline {
-  --font-sans: "Inter Variable", "Segoe UI", Roboto, system-ui, sans-serif;
-  --font-heading: var(--font-sans);
-  --font-mono: "JetBrains Mono Variable", ui-monospace, monospace;
+	--font-sans: "Inter Variable", "Segoe UI", Roboto, system-ui, sans-serif;
+	--font-heading: var(--font-sans);
+	--font-mono: "JetBrains Mono Variable", ui-monospace, monospace;
 
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-card: var(--card);
-  --color-card-foreground: var(--card-foreground);
-  --color-popover: var(--popover);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-primary: var(--primary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-primary-hover: var(--primary-hover);
-  --color-primary-subtle: var(--primary-subtle);
-  --color-secondary: var(--secondary);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-muted: var(--muted);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-destructive: var(--destructive);
-  --color-destructive-foreground: var(--destructive-foreground);
-  --color-destructive-subtle: var(--destructive-subtle);
-  --color-destructive-subtle-foreground: var(--destructive-subtle-foreground);
-  --color-border: var(--border);
-  --color-input: var(--input);
-  --color-ring: var(--ring);
-  --color-success: var(--success);
-  --color-success-foreground: var(--success-foreground);
-  --color-warning: var(--warning);
-  --color-warning-foreground: var(--warning-foreground);
-  --color-info: var(--info);
-  --color-info-foreground: var(--info-foreground);
-  --color-brand-teal: var(--brand-teal);
-  --color-brand-indigo: var(--brand-indigo);
-  --color-chart-1: var(--chart-1);
-  --color-chart-2: var(--chart-2);
-  --color-chart-3: var(--chart-3);
-  --color-chart-4: var(--chart-4);
-  --color-chart-5: var(--chart-5);
-  --color-sidebar: var(--sidebar);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-ring: var(--sidebar-ring);
+	--color-background: var(--background);
+	--color-foreground: var(--foreground);
+	--color-card: var(--card);
+	--color-card-foreground: var(--card-foreground);
+	--color-table-header: var(--table-header);
+	--color-popover: var(--popover);
+	--color-popover-foreground: var(--popover-foreground);
+	--color-primary: var(--primary);
+	--color-primary-foreground: var(--primary-foreground);
+	--color-primary-hover: var(--primary-hover);
+	--color-primary-subtle: var(--primary-subtle);
+	--color-secondary: var(--secondary);
+	--color-secondary-foreground: var(--secondary-foreground);
+	--color-muted: var(--muted);
+	--color-muted-foreground: var(--muted-foreground);
+	--color-accent: var(--accent);
+	--color-accent-foreground: var(--accent-foreground);
+	--color-destructive: var(--destructive);
+	--color-destructive-foreground: var(--destructive-foreground);
+	--color-destructive-subtle: var(--destructive-subtle);
+	--color-destructive-subtle-foreground: var(--destructive-subtle-foreground);
+	--color-border: var(--border);
+	--color-input: var(--input);
+	--color-ring: var(--ring);
+	--color-success: var(--success);
+	--color-success-foreground: var(--success-foreground);
+	--color-warning: var(--warning);
+	--color-warning-foreground: var(--warning-foreground);
+	--color-info: var(--info);
+	--color-info-foreground: var(--info-foreground);
+	--color-brand-teal: var(--brand-teal);
+	--color-brand-violet: var(--brand-violet);
+	--color-brand-blue: var(--brand-blue);
+	--color-brand-blue-foreground: var(--brand-blue-foreground);
+	--color-brand-blue-subtle: var(--brand-blue-subtle);
+	--color-chart-1: var(--chart-1);
+	--color-chart-2: var(--chart-2);
+	--color-chart-3: var(--chart-3);
+	--color-chart-4: var(--chart-4);
+	--color-chart-5: var(--chart-5);
+	--color-sidebar: var(--sidebar);
+	--color-sidebar-foreground: var(--sidebar-foreground);
+	--color-sidebar-primary: var(--sidebar-primary);
+	--color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+	--color-sidebar-accent: var(--sidebar-accent);
+	--color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+	--color-sidebar-active: var(--sidebar-active);
+	--color-sidebar-active-foreground: var(--sidebar-active-foreground);
+	--color-sidebar-indicator: var(--sidebar-indicator);
+	--color-sidebar-border: var(--sidebar-border);
+	--color-sidebar-ring: var(--sidebar-ring);
 
-  /* Explicit values, not multipliers. DESIGN.md's scale is 4/6/8/12, which the previous
+	/* Explicit values, not multipliers. DESIGN.md's scale is 4/6/8/12, which the previous
      0.6/0.8/1/1.4x scheme cannot produce (it yielded 4.8/6.4/11.2). --radius-xl is 10px
      because Card uses rounded-xl and DESIGN.md sets card.radius: 10px. */
-  --radius-xs: 4px;
-  --radius-sm: 6px;
-  --radius-md: 6px;
-  --radius-lg: var(--radius);
-  --radius-xl: 10px;
-  --radius-2xl: 12px;
-  --radius-3xl: 16px;
-  --radius-4xl: 24px;
+	--radius-xs: 4px;
+	--radius-sm: 6px;
+	--radius-md: 6px;
+	--radius-lg: var(--radius);
+	--radius-xl: 10px;
+	--radius-2xl: 12px;
+	--radius-3xl: 16px;
+	--radius-4xl: 24px;
+
+	/* Elevation utilities: `shadow-card` (resting surfaces), `shadow-raised` (popovers, menus,
+     the row hover lift), `shadow-overlay` (dialogs, command palette). Light/dark resolve through
+     the vars above. */
+	--shadow-card: var(--elevation-card);
+	--shadow-raised: var(--elevation-raised);
+	--shadow-overlay: var(--elevation-overlay);
+
+	/* Motion utilities: `ease-emphasized` for entrances, `ease-exit` for leaves. Raw values here
+     (not var()) so the utility is self-contained; the matching `:root` vars above cover
+     hand-written `transition-timing-function: var(--ease-emphasized)`. */
+	--ease-emphasized: cubic-bezier(0.16, 1, 0.3, 1);
+	--ease-exit: cubic-bezier(0.33, 0, 0.2, 1);
 }
 
 @layer base {
-  * {
-    @apply border-border outline-ring/50;
-  }
-  body {
-    @apply bg-background text-foreground;
-  }
-  html {
-    @apply font-sans;
-  }
+	* {
+		@apply border-border outline-ring/50;
+	}
+	body {
+		@apply bg-background text-foreground;
+	}
+	html {
+		@apply font-sans;
+	}
 }

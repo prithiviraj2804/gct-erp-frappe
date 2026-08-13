@@ -49,7 +49,7 @@ frappe.ui.form.on("Admission Gate Pass", {
 			// left, and the clock on a desk workstation is neither reliable nor beyond reach
 			// of the person being logged.
 			frappe.call({
-				method: "erp.api.gate.mark_exit",
+				method: "erp.api.gate.gate_pass.mark_exit",
 				args: { pass_name: frm.doc.name },
 				freeze: true,
 				freeze_message: __("Marking exit..."),

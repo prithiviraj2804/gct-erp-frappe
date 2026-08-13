@@ -88,8 +88,8 @@ Draft → Submitted → Approved → Closed
 ## 7. Frontend
 
 - **Routes:** `/<module-slug>/<page-slug>` — added to
-  [../../frontend/src/routes.tsx](../../frontend/src/routes.tsx) inside the `AppShell` layout route.
-- **Pages:** files under `frontend/src/pages/`.
+  [../../frontend/src/app/routes.tsx](../../frontend/src/app/routes.tsx) inside the `AppShell` layout route.
+- **Pages:** files under `frontend/src/screens/` (generic) or `frontend/src/modules/<module>/` (bespoke).
 - **Workspace links:** the rows added to `erp/<module>/workspace/…` so the menu surfaces this — see
   [../MODULES.md](../MODULES.md).
 - **Components / hooks / types:** which go where, per the folder layout in [../../CLAUDE.md](../../CLAUDE.md).

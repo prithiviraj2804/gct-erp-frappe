@@ -118,11 +118,24 @@ it. A conditional field that must actually hold a value needs an explicit check 
 [../erp/gate/doctype/admission_gate_pass/admission_gate_pass.py](../erp/gate/doctype/admission_gate_pass/admission_gate_pass.py).
 The JSON rule is still worth keeping — it drives the form — but treat it as presentation.
 
-The same distinction applies to link filtering: **`link_filters` in the JSON is enforced everywhere**
-the picker appears (form, quick-entry dialog, list-view filter), whereas a client script's
-`set_query` only applies on the form. Scoping a Link to its tenant belongs in `link_filters` —
-`college.json`, `department.json`, `programme.json` and `staff.json` all do it that way. A
-`set_query` alone leaves the quick-entry dialog offering every tenant's records.
+The same distinction applies to link filtering, with a sharper edge. **`link_filters` in the JSON
+applies everywhere the *Desk* picker appears** (form, quick-entry dialog, list-view filter), whereas
+a client script's `set_query` only applies on the form. So within Desk, scoping a Link to its tenant
+belongs in `link_filters` — `college.json`, `department.json`, `programme.json` and `staff.json` all
+do it that way, and a `set_query` alone leaves the quick-entry dialog offering every tenant's records.
+
+But it is **not enforced on save, and it never reaches the SPA**. `link_filters` appears nowhere in
+Frappe's Python model layer except a JSON-shape validator
+(`frappe/core/doctype/doctype/doctype.py`); its only runtime consumer is the Desk link control
+(`frappe/public/js/frappe/form/controls/link.js`), which parses it and passes the result to
+`search_link`. It is a **picker convenience, not an invariant**. Two consequences:
+
+- The React SPA gets nothing for free and carries its own copy — parsed server-side by
+  `parse_link_filters` in [../erp/api/doctype.py](../erp/api/doctype.py) and applied client-side.
+  Change one, change the other.
+- **Tenant scoping rests entirely on `validate_same_parent`.** A doctype that gains a Link needing
+  tenant scoping and relies on `link_filters` alone is scoped in the UI and unscoped in the API —
+  the most dangerous configuration, because it looks correct.
 
 ## The `id` UUID column
 

@@ -11,6 +11,7 @@ consultancy, because A is the tenant the passes are raised under.
 Nothing is committed: `IntegrationTestCase` rolls the connection back at class teardown.
 """
 
+import itertools
 import uuid
 
 import frappe
@@ -38,6 +39,12 @@ STAFF_3 = "Chitra Devi"
 
 
 class IntegrationTestAdmissionGatePass(IntegrationTestCase):
+	# One admission per Aadhaar per institution per year is now enforced, and this class inserts
+	# many passes that outlive one another (IntegrationTestCase rolls back once, at class teardown,
+	# not between tests). So the factory mints a fresh Aadhaar per call — real visitors never share
+	# one — and the tests that actually exercise the number override it explicitly.
+	_aadhaar_counter = itertools.count(1)
+
 	@classmethod
 	def setUpClass(cls):
 		super().setUpClass()
@@ -131,7 +138,7 @@ class IntegrationTestAdmissionGatePass(IntegrationTestCase):
 			"doctype": "Admission Gate Pass",
 			"student_name": "Arun Kumar",
 			"phone_number": "9876543210",
-			"aadhaar_number": "123456789012",
+			"aadhaar_number": f"{next(cls._aadhaar_counter):012d}",
 			"parent_name": "Kumar S",
 			"native_place": "Madurai",
 			"college": COLLEGE_A,
@@ -240,6 +247,83 @@ class IntegrationTestAdmissionGatePass(IntegrationTestCase):
 
 		with self.assertRaises(frappe.ValidationError):
 			gate_pass.insert()
+
+	# --- One admission per student --------------------------------------------------
+
+	def test_rejects_a_second_pass_for_the_same_aadhaar_in_one_cycle(self):
+		"""Two passes for one visitor could name different referrers, and every referral count
+		built on that column would charge the admission twice."""
+		aadhaar = "700000000000"
+		self.make_pass(aadhaar_number=aadhaar).insert()
+
+		duplicate = self.make_pass(aadhaar_number=aadhaar, student_name="Priya M")
+		with self.assertRaises(frappe.ValidationError):
+			duplicate.insert()
+
+	def test_accepts_the_same_aadhaar_in_a_later_admission_year(self):
+		"""The rule is scoped to the cycle: a returning student is a fresh admission, not a
+		duplicate, so the same Aadhaar in a different year of the same institution is allowed."""
+		aadhaar = "700000000001"
+		first = self.make_pass(aadhaar_number=aadhaar)
+		first.insert()
+		self.assertEqual(first.academic_year, self.year_a)
+
+		# A second cycle at the same institution. Left un-opened so it never displaces the year
+		# the desk auto-picks for every other pass in this class.
+		year_2 = frappe.get_doc(
+			{
+				"doctype": "Academic Year",
+				"institution": INSTITUTION_A,
+				"year_code": "2031-32",
+				"title": f"{INSTITUTION_A} 2031-32",
+				"start_date": "2031-06-01",
+				"end_date": "2032-05-31",
+			}
+		).insert()
+
+		# `academic_year` is read-only and auto-set, but an explicit year on the same institution
+		# is kept rather than redrawn (set_academic_year), so this pins the pass to the new cycle.
+		second = self.make_pass(aadhaar_number=aadhaar, academic_year=year_2.name)
+		second.insert()
+
+		self.assertEqual(second.academic_year, year_2.name)
+
+	def test_accepts_the_same_aadhaar_at_a_different_institution(self):
+		"""Institutions are separate tenants — one student may enrol at two of them, and the
+		check must scope to the institution, not just fall open on B's blank year."""
+		aadhaar = "700000000002"
+		self.make_pass(aadhaar_number=aadhaar).insert()
+
+		# B has no open admission year, so a B pass would otherwise land on a blank year and slip
+		# past via the blank-year guard. Give it an explicit (un-opened) cycle so the *institution*
+		# is what keeps the two apart — and so B still reads as "no year open" for other tests.
+		year_b = frappe.get_doc(
+			{
+				"doctype": "Academic Year",
+				"institution": INSTITUTION_B,
+				"year_code": "2030-31",
+				"title": f"{INSTITUTION_B} 2030-31",
+				"start_date": "2030-06-01",
+				"end_date": "2031-05-31",
+			}
+		).insert()
+
+		second = self.make_pass(college=COLLEGE_B, aadhaar_number=aadhaar, academic_year=year_b.name)
+		second.insert()
+
+		self.assertEqual(second.institution, INSTITUTION_B)
+		self.assertEqual(second.academic_year, year_b.name)
+
+	def test_rejects_editing_an_aadhaar_onto_one_already_in_the_cycle(self):
+		"""The guard has to catch the edit path too, not just the insert — otherwise a second
+		student's pass can be quietly moved onto the first's Aadhaar after the fact."""
+		self.make_pass(aadhaar_number="700000000003").insert()
+		mover = self.make_pass(aadhaar_number="700000000004", student_name="Divya R")
+		mover.insert()
+
+		mover.aadhaar_number = "700000000003"
+		with self.assertRaises(frappe.ValidationError):
+			mover.save()
 
 	# --- Reference route ------------------------------------------------------------
 

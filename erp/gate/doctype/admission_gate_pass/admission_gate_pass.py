@@ -44,6 +44,7 @@ class AdmissionGatePass(Document):
 		self.validate_conditionally_mandatory()
 		self.validate_hierarchy()
 		self.validate_aadhaar()
+		self.validate_unique_aadhaar()
 		self.validate_phone_number()
 		self.validate_reference_staff()
 		self.validate_movement()
@@ -114,6 +115,45 @@ class AdmissionGatePass(Document):
 		# Store the stripped form so "1234 5678 9012" and "123456789012" are one visitor
 		# when the desk searches for a repeat enquiry.
 		self.aadhaar_number = digits
+
+	def validate_unique_aadhaar(self):
+		"""One admission per student (Aadhaar) per institution per admission year.
+
+		A second pass for the same visitor could name a different `reference`, so the referral
+		credit would be disputed and every count built on that column double-charged. Scoped to
+		institution + academic_year: a student may re-apply in a later year or at another
+		institution, but not twice in one cycle.
+
+		Runs after `validate_aadhaar`, which rewrites the number to its 12-digit form — the
+		comparison must be against the normalised value, or "1234 5678 9012" would slip past the
+		bare "123456789012" already on file. A blank `academic_year` (no year flagged open) is
+		left unchecked on purpose: `set_academic_year` logs whoever walks up rather than refusing
+		them, and there is no cycle to be unique within.
+		"""
+		if not (self.aadhaar_number and self.institution and self.academic_year):
+			return
+
+		filters = {
+			"aadhaar_number": self.aadhaar_number,
+			"institution": self.institution,
+			"academic_year": self.academic_year,
+		}
+		# Aadhaar is not part of the `AGP-.YYYY.-.#####` autoname, so a duplicate lands on a
+		# different `name` — the `name != self.name` filter is the right guard (unlike Programme
+		# Intake, whose colliding rows share a name and must gate on is_new()).
+		if not self.is_new():
+			filters["name"] = ["!=", self.name]
+
+		duplicate = frappe.db.exists("Admission Gate Pass", filters)
+		if duplicate:
+			frappe.throw(
+				_("A gate pass for Aadhaar {0} already exists at this institution for {1} ({2}).").format(
+					frappe.bold(self.aadhaar_number),
+					frappe.bold(self.academic_year),
+					frappe.bold(duplicate),
+				),
+				title=_("Duplicate Admission"),
+			)
 
 	def validate_phone_number(self):
 		if not self.phone_number:

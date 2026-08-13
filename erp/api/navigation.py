@@ -115,8 +115,9 @@ def get_module_rail() -> list[dict]:
 			ignore_permissions=True,
 		)
 		# A module with no workspace has nothing to navigate to, so it never reaches the
-		# rail (this is why `Erp` is absent). It still appears on the launcher, which lists
-		# modules rather than menus.
+		# rail (this is why `Erp` is absent). Every navigation surface reads this one
+		# endpoint, so they show the same modules by construction, rather than by separate
+		# lists that have to be kept in agreement.
 		if not workspace or not _is_workspace_permitted(workspace[0]["name"]):
 			continue
 

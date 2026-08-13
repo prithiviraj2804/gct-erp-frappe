@@ -172,8 +172,8 @@ this slice. The three referrer links are checked as well as the ancestors, becau
 Consultancy from another institution named on this pass is precisely the cross-tenant contamination
 that guard exists to stop.
 
-**Endpoint.** `erp.api.gate.mark_exit(pass_name)`, whitelisted POST, in
-[../../erp/api/gate.py](../../erp/api/gate.py). A deliberate exception to the
+**Endpoint.** `erp.api.gate.gate_pass.mark_exit(pass_name)`, whitelisted POST, in
+[../../erp/api/gate/gate_pass.py](../../erp/api/gate/gate_pass.py). A deliberate exception to the
 [frappe-api](../../.claude/skills/frappe-api/SKILL.md) skill's "don't wrap CRUD" rule, for two
 reasons specific to a gate log: the exit time must be the **server's** (a wrong workstation clock
 would silently rewrite the audit trail), and leaving must not be repeatable (an update call would
@@ -181,8 +181,30 @@ happily overwrite a real departure with a later one).
 
 ## 7. Frontend
 
-**None this slice — Desk UI only, by decision.** The security desk works in Frappe Desk for now; the
-branded SPA screens are a separate piece of work.
+**Read-only in the SPA; writes still in Desk.** The original decision here was "none this slice —
+Desk UI only", and what that deferred was the *surface*, not the journeys: J2's "find the pass, or
+filter the list to status Inside" is a list screen, and it was written before any code.
+
+The generic doctype screens now serve it:
+
+- `/gate/admission-gate-pass` — the list, with the **Status** filter J2 asks for and search across
+  `student_name`, `phone_number` and `aadhaar_number`.
+- `/gate/admission-gate-pass/<name>` — one pass, read-only, laid out in the sections this JSON
+  authored. `depends_on` is honoured, so a pass with no vehicle does not show an empty Vehicle
+  Number, and only the reference route actually used appears.
+
+Both are rendered by [../../frontend/src/screens/doctype/pages/DoctypeListScreen.tsx](../../frontend/src/screens/doctype/pages/DoctypeListScreen.tsx)
+and `DoctypeRecordScreen.tsx` from `erp.api.doctype.get_doctype_schema` — there is no gate-specific page.
+
+**Still Desk-only, and why:** creating a pass, editing one, and **Mark Exit**. `photo` is `reqd: 1`
+and an `Attach Image`, so a pass cannot be created before its file exists — the SPA has no upload
+path yet, and a create form that cannot satisfy a mandatory field is worse than no create form. The
+`Mark Exit` action waits on the same work.
+
+**`link_filters` do not reach the SPA.** The picker scoping described below is a Desk-client rule
+only — its sole runtime consumer is `frappe/public/js/frappe/form/controls/link.js`, and nothing
+checks it on save. When SPA writes land they must re-implement it; the parsed form is already
+published by `erp.api.doctype.get_doctype_schema`. See [../DATA-MODEL.md](../DATA-MODEL.md).
 
 The client script [admission_gate_pass.js](../../erp/gate/doctype/admission_gate_pass/admission_gate_pass.js)
 does the form work: cascade-clears referrers when the college changes, clears the other routes when
@@ -195,8 +217,8 @@ Since `reference_staff_1` is required, an operator clicking "Create a new Staff"
 dialog — and with script-only filtering its college picker listed every tenant's colleges, failing
 only at save.
 
-The `Gate` workspace surfaces the doctype, so it appears in the SPA module rail already even though
-no SPA page renders it yet.
+The `Gate` workspace surfaces the doctype, which is what puts it in the SPA module rail and, now,
+what generates its screen routes.
 
 ## 8. Other surfaces
 
@@ -216,8 +238,12 @@ Nothing here reads `terms_per_year` or `term_label`, because nothing here is exp
 
 ## 10. Non-goals
 
-Turning the enquiry into an application, seat allotment, fee collection, the other four pass
-families in the sidebar mockup (visitor, hostel, staff, material), and any SPA screen.
+Turning the enquiry into an application, seat allotment, fee collection, and the other four pass
+families in the sidebar mockup (visitor, hostel, staff, material).
+
+"Any SPA screen" was listed here and no longer is — read-only list and record screens exist (§7).
+What remains out: SPA create/edit, SPA **Mark Exit**, photo capture in the browser, a print format,
+QR / ID-card scanning, and bulk actions.
 
 ## 11. Verification
 

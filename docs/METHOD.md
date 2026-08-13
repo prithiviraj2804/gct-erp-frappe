@@ -63,8 +63,8 @@ wraps `get_list` adds a permission surface and buys nothing.
 
 - **Workspace JSON** at `erp/<module>/workspace/<name>/<name>.json` — this is what puts the module
   in the SPA rail and its links in the menu. Details in [MODULES.md](MODULES.md).
-- **SPA pages** under `frontend/src/pages/`, routed in
-  [../frontend/src/routes.tsx](../frontend/src/routes.tsx) inside the `AppShell` layout route, so
+- **SPA pages** under `frontend/src/screens/` (generic) or `frontend/src/modules/<module>/` (bespoke), routed in
+  [../frontend/src/app/routes.tsx](../frontend/src/app/routes.tsx) inside the `AppShell` layout route, so
   the page never loses its navigation context.
 - Follow the [ui](../.claude/skills/ui/SKILL.md) skill and the tokens in
   [../.claude/DESIGN.md](../.claude/DESIGN.md).

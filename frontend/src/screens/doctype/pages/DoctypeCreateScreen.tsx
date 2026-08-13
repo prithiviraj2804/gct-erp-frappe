@@ -1,0 +1,95 @@
+import { DoctypeEditor } from '@/screens/doctype/form/DoctypeEditor'
+import { useDoctypeSchema } from '@/screens/doctype/hooks/use-doctype'
+import { useDoctypeRoute } from '@/screens/doctype/hooks/use-doctype-route'
+import { DoctypeLinkContext, useDoctypeLinkIndex } from '@/screens/doctype/lib/doctype-links'
+import { EmptyState } from '@/shared/components/feedback/EmptyState'
+import { ErrorState } from '@/shared/components/feedback/ErrorState'
+import { ScreenNotFound } from '@/shared/components/feedback/ScreenNotFound'
+import { PageHeader } from '@/shared/components/layout/PageHeader'
+import { RecordFrame, RecordSkeleton } from '@/screens/doctype/components/RecordFrame'
+import { useBrandedDocument, useInstitutionBranding } from '@/shared/hooks/use-branding'
+
+/**
+ * A new document of any doctype, from the same schema the list and record screens read.
+ *
+ * Routed at `/{module}/{doctype}/new`, which React Router ranks above `/{module}/{doctype}/:name`
+ * because a static segment always beats a dynamic one. The cost is that a record whose primary
+ * key is literally `new` would be unreachable — no naming rule in this app can produce that, and
+ * the alternative (`?new` or a separate `/create` prefix) reads worse in every other case.
+ */
+export default function DoctypeCreatePage() {
+  const route = useDoctypeRoute()
+  const { data: brand } = useInstitutionBranding()
+  const schemaQuery = useDoctypeSchema(route.doctype)
+  const linkIndex = useDoctypeLinkIndex()
+
+  const label = route.screenLabel ?? schemaQuery.data?.label ?? 'Record'
+  useBrandedDocument(`New ${label}`, brand?.institution ?? null)
+
+  if (route.status === 'pending' || (route.status === 'ready' && schemaQuery.isPending)) {
+    return <RecordSkeleton />
+  }
+
+  if (route.status === 'unknown-module') {
+    return (
+      <ScreenNotFound thing="Module" body="There is no module at this address, or it is not one of yours." />
+    )
+  }
+
+  if (route.status === 'unknown-doctype') return <ScreenNotFound />
+
+  const crumbs = [
+    { label: route.moduleLabel ?? 'Module', to: route.modulePath },
+    { label, to: route.listPath },
+    { label: 'New' },
+  ]
+
+  if (schemaQuery.isError || !schemaQuery.data) {
+    return (
+      <RecordFrame>
+        <PageHeader title={`New ${label.toLowerCase()}`} crumbs={crumbs} />
+        <div className="mt-8">
+          <ErrorState
+            error={schemaQuery.error}
+            title="Screen unavailable"
+            onRetry={() => void schemaQuery.refetch()}
+          />
+        </div>
+      </RecordFrame>
+    )
+  }
+
+  const schema = schemaQuery.data
+
+  // Advisory, exactly as the schema endpoint says it is: this decides whether the form renders,
+  // and the framework re-checks on the write regardless. Saying so plainly beats rendering a
+  // form whose Save button is guaranteed to 403.
+  if (!schema.permissions.can_create) {
+    return (
+      <RecordFrame>
+        <PageHeader title={`New ${label.toLowerCase()}`} crumbs={crumbs} />
+        <div className="mt-8">
+          <EmptyState
+            title="You cannot create these"
+            body={`Your account has read access to ${label.toLowerCase()} but not permission to add one. Ask your administrator.`}
+          />
+        </div>
+      </RecordFrame>
+    )
+  }
+
+  return (
+    <DoctypeLinkContext value={linkIndex}>
+      <RecordFrame>
+        <PageHeader
+          title={`New ${label.toLowerCase()}`}
+          subtitle="Fields marked with an asterisk are required."
+          crumbs={crumbs}
+        />
+        <div className="mt-6">
+          <DoctypeEditor schema={schema} listPath={route.listPath} label={label} />
+        </div>
+      </RecordFrame>
+    </DoctypeLinkContext>
+  )
+}

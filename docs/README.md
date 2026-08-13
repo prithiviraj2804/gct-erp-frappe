@@ -1,4 +1,4 @@
-# ERP for Colleges — project docs
+# Project docs
 
 These docs exist to answer one question before any code is written: **what are we building next,
 and what does it actually need?**

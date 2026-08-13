@@ -99,7 +99,7 @@
    "reqd": 1,
    "non_negative": 1,
    "in_list_view": 1,
-   "description": "Sanctioned seats for this year — overrides the Programme's default intake capacity"
+   "description": "Sanctioned seats for this programme in this academic year"
   },
   {
    "fieldname": "eligibility_section",
@@ -127,6 +127,7 @@
    "fieldname": "application_fee",
    "fieldtype": "Currency",
    "label": "Application Fee",
+   "reqd": 1,
    "non_negative": 1,
    "description": "Fee payable to submit an application"
   },

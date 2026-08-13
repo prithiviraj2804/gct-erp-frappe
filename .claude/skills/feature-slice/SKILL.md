@@ -81,7 +81,7 @@ whitelisted method only for aggregation, multi-doctype transactions or external 
 - **Workspace JSON** at `erp/<module>/workspace/<Name>/<Name>.json` — this is what puts the module in
   the SPA rail and its doctypes in the menu. A module with no workspace is invisible. See
   [docs/MODULES.md](../../../docs/MODULES.md).
-- **SPA pages** under `frontend/src/pages/`, routed in `frontend/src/routes.tsx` inside the
+- **SPA pages** under `frontend/src/screens/` (generic) or `frontend/src/modules/<module>/` (bespoke), routed in `frontend/src/app/routes.tsx` inside the
   `RequireAuth` → `AppShell` layout routes.
 - Follow the [ui](../ui/SKILL.md) skill and the tokens in `.claude/DESIGN.md`.
 

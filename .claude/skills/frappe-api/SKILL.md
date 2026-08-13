@@ -15,20 +15,39 @@ endpoint that just wraps `get_list` adds a permission surface for no benefit.
 
 ## Where it goes
 
-Shared server helpers live in `erp/api/` (currently only `permission.py`). One module per
-area; the dotted path is what the client calls:
+Everything whitelisted lives under `erp/api/`, and the dotted path is what the client calls.
+Keeping one prefix is the point: `grep -rn "erp\.api\." ` finds the app's entire public
+surface in one shot, which matters for a SPA-first app whose server is consumed over HTTP.
+
+**A file at the root is app-wide. A subpackage is a Frappe module.**
 
 ```
-erp/api/master.py  →  erp.api.master.<function_name>
+erp/api/
+  session.py      erp.api.session.get_session             ← app-wide: the platform. These
+  branding.py     erp.api.branding.get_login_branding       would still exist if every
+  modules.py      erp.api.modules.get_allowed_modules       business module were deleted.
+  navigation.py   erp.api.navigation.get_module_rail
+  doctype.py      erp.api.doctype.get_doctype_schema
+  permission.py   (hook target, not whitelisted)
+  gate/           ← a Frappe module, mirroring erp/gate/
+    gate_pass.py  erp.api.gate.gate_pass.mark_exit
 ```
+
+Create a subpackage when a module first needs an endpoint, not before — an empty package
+asserting a convention is the same mistake as an unused master. Name the file after what it
+serves (`gate_pass.py`), not after the module again (`gate/gate.py`).
+
+Note this is **not** upstream's layout — ERPNext has no `api` package at all and puts
+whitelisted methods beside the code they serve. The single-prefix rule is this app's choice,
+made because its consumer is a React client rather than Desk.
 
 Doctype-specific logic belongs on the controller in
 `erp/<module>/doctype/<name>/<name>.py` instead — a whitelisted method there is reachable
 at `erp.<module>.doctype.<name>.<name>.<function>`.
 
-> Note: as of writing, this app has **no** `@frappe.whitelist` endpoints yet. The patterns
-> below are Frappe conventions, not extracted from existing code in this repo — the first
-> one you add sets the precedent, so keep it clean.
+> Moving an endpoint renames its dotted path, which is a **breaking change to callers you do
+> not control from the frontend** — Desk client scripts (`<doctype>.js`) call these too, as do
+> docs and tests. `grep -rn "erp\.api\.<old>"` across the whole app before and after.
 
 ## The pattern
 

@@ -3,11 +3,11 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router'
 
-import { Toaster } from '@/components/ui/sonner'
-import { queryClient } from '@/global/query-client'
-import { ROUTER_BASENAME } from '@/lib/constants'
-import './styles/index.css'
-import App from './App.tsx'
+import { Toaster } from '@/shared/ui/sonner'
+import { queryClient } from '@/app/query-client'
+import { ROUTER_BASENAME } from '@/shared/lib/constants'
+import '@/styles/index.css'
+import App from '@/app/App'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
