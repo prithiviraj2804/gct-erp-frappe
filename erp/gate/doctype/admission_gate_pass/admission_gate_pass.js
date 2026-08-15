@@ -30,7 +30,29 @@ frappe.ui.form.on("Admission Gate Pass", {
 	},
 
 	refresh(frm) {
-		if (frm.is_new() || frm.doc.status !== "Inside") {
+		if (frm.is_new()) {
+			return;
+		}
+
+		// The gate pass is where an admission enquiry begins: the desk logs a walk-in, and a
+		// counsellor picks it up from here. The button hands the visitor's details to the
+		// Admission module, which creates (or, if this pass was already worked, reopens) the
+		// enquiry and routes straight to it.
+		frm.add_custom_button(__("Start Admission Enquiry"), () => {
+			frappe.call({
+				method: "erp.api.admission.enquiry.start_from_gate_pass",
+				args: { gate_pass: frm.doc.name },
+				freeze: true,
+				freeze_message: __("Starting enquiry..."),
+				callback: (r) => {
+					if (r.message && r.message.name) {
+						frappe.set_route("Form", "Admission Enquiry", r.message.name);
+					}
+				},
+			});
+		});
+
+		if (frm.doc.status !== "Inside") {
 			return;
 		}
 

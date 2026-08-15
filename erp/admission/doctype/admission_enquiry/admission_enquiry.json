@@ -1,0 +1,420 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "autoname": "naming_series:",
+ "creation": "2026-08-13 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "enquiry_section",
+  "id",
+  "naming_series",
+  "gate_pass",
+  "enquiry_date",
+  "column_break_enquiry",
+  "status",
+  "counsellor",
+  "next_follow_up",
+  "source_section",
+  "reference",
+  "staff_reference",
+  "consultancy",
+  "column_break_source",
+  "student_reference",
+  "source_details",
+  "personal_section",
+  "student_name",
+  "phone_number",
+  "email",
+  "aadhaar_number",
+  "gender",
+  "date_of_birth",
+  "column_break_personal",
+  "parent_name",
+  "parent_phone",
+  "native_place",
+  "address",
+  "city",
+  "state",
+  "pincode",
+  "choice_section",
+  "college",
+  "institution",
+  "campus",
+  "department",
+  "programme",
+  "programme_level",
+  "column_break_choice",
+  "academic_year",
+  "admission_type",
+  "programme_intake",
+  "education_section",
+  "previous_education",
+  "remarks_section",
+  "remarks"
+ ],
+ "fields": [
+  {
+   "fieldname": "enquiry_section",
+   "fieldtype": "Section Break",
+   "label": "Enquiry"
+  },
+  {
+   "fieldname": "id",
+   "fieldtype": "Data",
+   "label": "ID",
+   "unique": 1,
+   "read_only": 1,
+   "no_copy": 1,
+   "in_standard_filter": 1,
+   "description": "Auto-generated UUID"
+  },
+  {
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "label": "Naming Series",
+   "options": "AENQ-.YYYY.-.#####",
+   "default": "AENQ-.YYYY.-.#####",
+   "reqd": 1,
+   "hidden": 1
+  },
+  {
+   "fieldname": "gate_pass",
+   "fieldtype": "Link",
+   "label": "Gate Pass",
+   "options": "Admission Gate Pass",
+   "no_copy": 1,
+   "in_standard_filter": 1,
+   "description": "The admission gate pass this enquiry was started from, if any"
+  },
+  {
+   "fieldname": "enquiry_date",
+   "fieldtype": "Date",
+   "label": "Enquiry Date",
+   "default": "Today",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "column_break_enquiry",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "New\nContacted\nVisited\nApplication Submitted\nDocuments Verified\nAdmitted\nRejected\nDropped",
+   "default": "New",
+   "reqd": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "description": "Where this enquiry sits in the admission pipeline"
+  },
+  {
+   "fieldname": "counsellor",
+   "fieldtype": "Link",
+   "label": "Counsellor",
+   "options": "Staff",
+   "link_filters": "[[\"Staff\",\"institution\",\"=\",\"eval:doc.institution\"],[\"Staff\",\"status\",\"=\",\"Active\"]]",
+   "in_standard_filter": 1,
+   "description": "Staff member who owns this enquiry"
+  },
+  {
+   "fieldname": "next_follow_up",
+   "fieldtype": "Date",
+   "label": "Next Follow-up",
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "source_section",
+   "fieldtype": "Section Break",
+   "label": "Source",
+   "collapsible": 1
+  },
+  {
+   "fieldname": "reference",
+   "fieldtype": "Select",
+   "label": "Reference",
+   "options": "\nStaff Reference\nConsultancy Reference\nStudent Reference\nDirect Admission\nOther",
+   "in_standard_filter": 1,
+   "read_only_depends_on": "eval:doc.gate_pass",
+   "description": "How this enquiry reached us — fetched from the gate pass and not editable when one is selected"
+  },
+  {
+   "fieldname": "staff_reference",
+   "fieldtype": "Link",
+   "label": "Reference Staff",
+   "options": "Staff",
+   "link_filters": "[[\"Staff\",\"institution\",\"=\",\"eval:doc.institution\"],[\"Staff\",\"status\",\"=\",\"Active\"]]",
+   "depends_on": "eval:doc.reference=='Staff Reference'",
+   "read_only_depends_on": "eval:doc.gate_pass"
+  },
+  {
+   "fieldname": "consultancy",
+   "fieldtype": "Link",
+   "label": "Consultancy",
+   "options": "Consultancy",
+   "link_filters": "[[\"Consultancy\",\"institution\",\"=\",\"eval:doc.institution\"],[\"Consultancy\",\"status\",\"=\",\"Active\"]]",
+   "depends_on": "eval:doc.reference=='Consultancy Reference'",
+   "read_only_depends_on": "eval:doc.gate_pass"
+  },
+  {
+   "fieldname": "column_break_source",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "student_reference",
+   "fieldtype": "Data",
+   "label": "Referring Student",
+   "depends_on": "eval:doc.reference=='Student Reference'",
+   "read_only_depends_on": "eval:doc.gate_pass"
+  },
+  {
+   "fieldname": "source_details",
+   "fieldtype": "Small Text",
+   "label": "Reference Remarks",
+   "depends_on": "eval:['Direct Admission','Other'].includes(doc.reference)",
+   "read_only_depends_on": "eval:doc.gate_pass"
+  },
+  {
+   "fieldname": "personal_section",
+   "fieldtype": "Section Break",
+   "label": "Personal Details"
+  },
+  {
+   "fieldname": "student_name",
+   "fieldtype": "Data",
+   "label": "Student Name",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "phone_number",
+   "fieldtype": "Data",
+   "label": "Phone Number",
+   "reqd": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "email",
+   "fieldtype": "Data",
+   "label": "Email",
+   "options": "Email"
+  },
+  {
+   "fieldname": "aadhaar_number",
+   "fieldtype": "Data",
+   "label": "Aadhaar Number",
+   "no_copy": 1,
+   "read_only_depends_on": "eval:doc.gate_pass",
+   "description": "12 digits — fetched from the gate pass and not editable when one is selected; used to catch a repeat enquiry in the same admission year"
+  },
+  {
+   "fieldname": "gender",
+   "fieldtype": "Select",
+   "label": "Gender",
+   "options": "\nMale\nFemale\nOther"
+  },
+  {
+   "fieldname": "date_of_birth",
+   "fieldtype": "Date",
+   "label": "Date of Birth"
+  },
+  {
+   "fieldname": "column_break_personal",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "parent_name",
+   "fieldtype": "Data",
+   "label": "Parent / Guardian Name"
+  },
+  {
+   "fieldname": "parent_phone",
+   "fieldtype": "Data",
+   "label": "Parent / Guardian Phone"
+  },
+  {
+   "fieldname": "native_place",
+   "fieldtype": "Data",
+   "label": "Native Place"
+  },
+  {
+   "fieldname": "address",
+   "fieldtype": "Small Text",
+   "label": "Address"
+  },
+  {
+   "fieldname": "city",
+   "fieldtype": "Data",
+   "label": "City"
+  },
+  {
+   "fieldname": "state",
+   "fieldtype": "Data",
+   "label": "State"
+  },
+  {
+   "fieldname": "pincode",
+   "fieldtype": "Data",
+   "label": "Pincode"
+  },
+  {
+   "fieldname": "choice_section",
+   "fieldtype": "Section Break",
+   "label": "Admission Choice"
+  },
+  {
+   "fieldname": "college",
+   "fieldtype": "Link",
+   "label": "College",
+   "options": "College",
+   "link_filters": "[[\"College\",\"status\",\"=\",\"Active\"]]",
+   "reqd": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "description": "College the student is seeking admission to"
+  },
+  {
+   "fieldname": "institution",
+   "fieldtype": "Link",
+   "label": "Institution",
+   "options": "Institution",
+   "fetch_from": "college.institution",
+   "read_only": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "campus",
+   "fieldtype": "Link",
+   "label": "Campus",
+   "options": "Campus",
+   "fetch_from": "college.campus",
+   "read_only": 1
+  },
+  {
+   "fieldname": "department",
+   "fieldtype": "Link",
+   "label": "Department",
+   "options": "Department",
+   "link_filters": "[[\"Department\",\"college\",\"=\",\"eval:doc.college\"]]",
+   "reqd": 1,
+   "in_standard_filter": 1,
+   "description": "Department offering the programme"
+  },
+  {
+   "fieldname": "programme",
+   "fieldtype": "Link",
+   "label": "Programme",
+   "options": "Programme",
+   "link_filters": "[[\"Programme\",\"department\",\"=\",\"eval:doc.department\"],[\"Programme\",\"status\",\"=\",\"Active\"]]",
+   "reqd": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "description": "Programme the student wants to join"
+  },
+  {
+   "fieldname": "programme_level",
+   "fieldtype": "Link",
+   "label": "Programme Level",
+   "options": "Programme Level",
+   "fetch_from": "programme.programme_level",
+   "read_only": 1,
+   "description": "Undergraduate / Postgraduate — decides which previous education is required"
+  },
+  {
+   "fieldname": "column_break_choice",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "academic_year",
+   "fieldtype": "Link",
+   "label": "Academic Year",
+   "options": "Academic Year",
+   "read_only": 1,
+   "in_standard_filter": 1,
+   "description": "Admission year — set automatically from the institution's open admission year"
+  },
+  {
+   "fieldname": "admission_type",
+   "fieldtype": "Link",
+   "label": "Admission Type",
+   "options": "Admission Type",
+   "reqd": 1,
+   "in_standard_filter": 1,
+   "description": "Regular / Lateral Entry / Transfer / Readmission"
+  },
+  {
+   "fieldname": "programme_intake",
+   "fieldtype": "Link",
+   "label": "Programme Intake",
+   "options": "Programme Intake",
+   "link_filters": "[[\"Programme Intake\",\"programme\",\"=\",\"eval:doc.programme\"],[\"Programme Intake\",\"academic_year\",\"=\",\"eval:doc.academic_year\"]]",
+   "description": "The published intake (seats, fee, eligibility) for this programme and year, if any"
+  },
+  {
+   "fieldname": "education_section",
+   "fieldtype": "Section Break",
+   "label": "Previous Education"
+  },
+  {
+   "fieldname": "previous_education",
+   "fieldtype": "Table",
+   "label": "Previous Education",
+   "options": "Admission Enquiry Education",
+   "description": "Prior qualifications — a 12th record for UG, an Undergraduate record for PG, a Diploma for lateral entry"
+  },
+  {
+   "fieldname": "remarks_section",
+   "fieldtype": "Section Break",
+   "label": "Remarks"
+  },
+  {
+   "fieldname": "remarks",
+   "fieldtype": "Small Text",
+   "label": "Remarks"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-08-13 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Admission",
+ "name": "Admission Enquiry",
+ "naming_rule": "By \"Naming Series\" field",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Admission Counsellor",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "search_fields": "student_name,phone_number",
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "student_name",
+ "track_changes": 1
+}
