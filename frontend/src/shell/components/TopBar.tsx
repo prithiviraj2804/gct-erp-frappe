@@ -89,7 +89,7 @@ function InstitutionIdentity() {
   if (isPending) {
     return (
       <div className="flex items-center gap-2.5" aria-hidden="true">
-        <div className="size-9 animate-pulse rounded-md bg-muted" />
+        <div className="size-8 animate-pulse rounded-md bg-muted" />
         <div className="h-4 w-44 animate-pulse rounded bg-muted max-md:hidden" />
       </div>
     )
@@ -111,10 +111,12 @@ function InstitutionIdentity() {
 
 export function TopBar({ onOpenCommandPalette }: { onOpenCommandPalette: () => void }) {
   return (
-    // z-30 keeps it above the module flyout (z-20), which slides out beneath it.
-    <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center gap-3 border-b border-border bg-card px-4">
-      {/* No sidebar toggle. The rail is permanent and its menu flies out on hover, so there
-          is nothing for a toggle to open — see AppShell. */}
+    // 52px, not 64px: the topbar carries an identity, a launcher and a user menu, none of
+    // which need 64px of height, and every screen below it pays for the difference. z-30
+    // keeps it above the page's own sticky chrome.
+    <header className="sticky top-0 z-30 flex h-13 shrink-0 items-center gap-3 border-b border-border bg-card px-4">
+      {/* No sidebar toggle. The module nav is permanent and lists every screen by name, so
+          there is nothing for a toggle to open — see AppShell. */}
       <InstitutionIdentity />
 
       <ContextSwitcher />

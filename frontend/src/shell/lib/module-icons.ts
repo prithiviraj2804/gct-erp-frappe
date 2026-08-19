@@ -1,4 +1,4 @@
-import { BoxIcon, DoorOpenIcon, LayersIcon, type LucideIcon } from 'lucide-react'
+import { BoxIcon, DoorOpenIcon, LayersIcon, UserPlusIcon, type LucideIcon } from 'lucide-react'
 
 /**
  * Module Def carries no icon field, so the mapping lives here. Keyed by Module Def `name`
@@ -12,6 +12,7 @@ import { BoxIcon, DoorOpenIcon, LayersIcon, type LucideIcon } from 'lucide-react
  * "Cannot create components during render" rule. A lookup is just data.
  */
 export const MODULE_ICONS: Record<string, LucideIcon> = {
+  Admission: UserPlusIcon,
   Gate: DoorOpenIcon,
   Master: LayersIcon,
 }
