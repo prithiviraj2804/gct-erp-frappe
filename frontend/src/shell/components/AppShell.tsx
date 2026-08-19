@@ -153,11 +153,20 @@ export function AppShell() {
     // the provider itself is still required. Its wrapper is `flex` by default; `flex-col`
     // turns it into the T-shape (full-width topbar above rail+content) that the ui skill's
     // "Top Navbar first" ordering asks for.
-    <SidebarProvider open={false} onOpenChange={() => {}} className="flex-col" style={SHELL_STYLE}>
+    <SidebarProvider
+      open={false}
+      onOpenChange={() => {}}
+      // `h-svh` + `overflow-hidden`: the shell is exactly one viewport tall and the document
+      // itself never scrolls. Everything that scrolls does so inside a pane below — the rail,
+      // the flyout and the page each own theirs, so scrolling a long table cannot move the
+      // navigation and reaching the end of the menu cannot drag the page.
+      className="h-svh flex-col overflow-hidden"
+      style={SHELL_STYLE}
+    >
       <SkipLink />
       <TopBar onOpenCommandPalette={() => setPaletteOpen(true)} />
       <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
-      <div className="flex w-full min-h-0 flex-1">
+      <div className="flex w-full min-h-0 flex-1 overflow-hidden">
         {hasNav && (
           // `relative` anchors the absolutely-positioned flyout, and the panel being a CHILD
           // is what lets the pointer travel from rail to panel without a mouseleave: leaving
@@ -208,7 +217,18 @@ export function AppShell() {
             context of its own, trapping every z-index inside it below the flyout region (lifted
             to `z-20` above). Without this the content bleeds through the flyout on any screen
             with a sticky-header table. */}
-        <SidebarInset id="main-content" tabIndex={-1} className="isolate min-w-0 focus:outline-none">
+        {/* The page's own scroll. `min-h-0` because a flex child will not shrink below its
+            content otherwise and the overflow would escape to the row; `overscroll-contain` so
+            hitting the bottom of a list does not chain the scroll onto anything behind it.
+
+            Sticky things inside a page — a table's header, the record's context rail — now
+            stick to THIS box rather than the window, which is what they were always meant to
+            do. */}
+        <SidebarInset
+          id="main-content"
+          tabIndex={-1}
+          className="isolate min-h-0 min-w-0 overflow-y-auto overscroll-contain focus:outline-none"
+        >
           <Outlet />
         </SidebarInset>
       </div>

@@ -256,6 +256,69 @@ test('keeps the shell usable when the menu fails to load', async ({ page }) => {
   await expect(menu(page).getByText('Menu unavailable')).toBeVisible()
 })
 
+test('scrolls each pane on its own, and never the document', async ({ page }) => {
+  // A menu long enough that both the module overview page and the flyout overflow a short
+  // viewport — the whole point of the test is what happens when something has to scroll.
+  const MENU_LONG = {
+    message: {
+      ...MENU_MASTER.message,
+      groups: [
+        {
+          label: 'Organisation',
+          icon: null,
+          items: Array.from({ length: 12 }, (_, i) => ({
+            label: `Screen ${i + 1}`,
+            icon: null,
+            link_type: 'DocType',
+            link_to: `Screen ${i + 1}`,
+            slug: `screen-${i + 1}`,
+            route: `/master/screen-${i + 1}`,
+            description: null,
+          })),
+        },
+      ],
+    },
+  }
+
+  await page.route(RAIL, (r) => r.fulfill({ json: RAIL_TWO }))
+  await page.route(MENU, (r) => r.fulfill({ json: MENU_LONG }))
+
+  await page.setViewportSize({ width: 1440, height: 320 })
+  await page.goto('/master')
+  await expect(rail(page).getByRole('link', { name: 'Master' })).toBeVisible()
+
+  // Via a locator rather than `page.evaluate(() => document…)`: the e2e tsconfig has no DOM
+  // lib, so a bare `document` does not typecheck. The element comes in typed.
+  const documentScrolls = () =>
+    page.locator('html').evaluate((el) => el.scrollHeight > el.clientHeight)
+  const pageScrollTop = () => page.locator('#main-content').evaluate((el) => el.scrollTop)
+
+  // The shell is exactly one viewport tall, so there is nothing for the document to scroll.
+  expect(await documentScrolls()).toBe(false)
+
+  const topbar = page.getByRole('banner')
+  const topbarBefore = await topbar.boundingBox()
+  const railBefore = await rail(page).boundingBox()
+
+  await page.locator('#main-content').evaluate((el) => el.scrollBy(0, 600))
+
+  // Scrolling the page moves the page and nothing else: the topbar and the rail hold still,
+  // and the document still does not scroll.
+  expect(await pageScrollTop()).toBeGreaterThan(0)
+  expect(await documentScrolls()).toBe(false)
+  expect((await topbar.boundingBox())?.y).toBe(topbarBefore?.y)
+  expect((await rail(page).boundingBox())?.y).toBe(railBefore?.y)
+
+  // And the flyout is its own scroll box — reaching the end of a long menu must not drag the
+  // page behind it.
+  await rail(page).getByRole('link', { name: 'Master' }).hover()
+  await expect(page.locator('#module-menu')).toBeVisible()
+  const pageScroll = await pageScrollTop()
+  await page.locator('#module-menu').evaluate((el) => el.scrollBy(0, 400))
+  expect(await pageScrollTop()).toBe(pageScroll)
+  expect(await documentScrolls()).toBe(false)
+})
+
 test('renders no nav at all when the user has no modules', async ({ page }) => {
   await page.route(RAIL, (r) => r.fulfill({ json: { message: [] } }))
 

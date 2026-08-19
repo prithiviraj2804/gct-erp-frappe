@@ -112,9 +112,12 @@ function InstitutionIdentity() {
 export function TopBar({ onOpenCommandPalette }: { onOpenCommandPalette: () => void }) {
   return (
     // 52px, not 64px: the topbar carries an identity, a launcher and a user menu, none of
-    // which need 64px of height, and every screen below it pays for the difference. z-30
-    // keeps it above the page's own sticky chrome.
-    <header className="sticky top-0 z-30 flex h-13 shrink-0 items-center gap-3 border-b border-border bg-card px-4">
+    // which need 64px of height, and every screen below it pays for the difference.
+    //
+    // Not `sticky` any more, and it does not need to be: the shell is viewport-height and the
+    // page scrolls inside its own pane, so this bar is simply never scrolled past. `z-30` still
+    // keeps it above the module flyout, which slides out beneath it.
+    <header className="z-30 flex h-13 shrink-0 items-center gap-3 border-b border-border bg-card px-4">
       {/* No sidebar toggle. The module nav is permanent and lists every screen by name, so
           there is nothing for a toggle to open — see AppShell. */}
       <InstitutionIdentity />
