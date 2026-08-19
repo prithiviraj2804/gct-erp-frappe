@@ -1,3 +1,4 @@
+import { cn } from '@/shared/lib/utils'
 import { Skeleton } from '@/shared/ui/skeleton'
 
 /**
@@ -11,8 +12,13 @@ import { Skeleton } from '@/shared/ui/skeleton'
  * Shared by the record view, the edit form and the create form so all three sit on the same
  * grid — pressing Edit must not move a single field sideways.
  */
-export function RecordFrame({ children }: { children: React.ReactNode }) {
-  return <div className="mx-auto w-full max-w-5xl px-6 py-8">{children}</div>
+export function RecordFrame({ children, wide }: { children: React.ReactNode; wide?: boolean }) {
+  // `wide` buys back exactly what the context rail spends. Without it, adding a 280px column
+  // to the 5xl measure would narrow the form itself — the rail would be paid for by the thing
+  // it is meant to support.
+  return (
+    <div className={cn('mx-auto w-full px-6 py-8', wide ? 'max-w-7xl' : 'max-w-5xl')}>{children}</div>
+  )
 }
 
 export function RecordSkeleton() {

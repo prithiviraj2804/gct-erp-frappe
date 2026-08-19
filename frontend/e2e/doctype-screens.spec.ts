@@ -571,6 +571,126 @@ test.describe('list screen', () => {
   })
 })
 
+test.describe('record context rail', () => {
+  const COLLEGE_DOC = {
+    name: 'SJC',
+    college_name: 'St Joseph College',
+    college_code: 'SJC',
+    status: 'Active',
+    campus: 'CENTRAL',
+    institution: 'INST-0001',
+    creation: '2026-01-14 10:22:41',
+    modified: '2026-08-19 16:04:03',
+    owner: 'registrar@sjc.edu.in',
+  }
+
+  const rail = (page: Page) => page.getByRole('complementary')
+
+  test.beforeEach(async ({ page }) => {
+    await page.route(SCHEMA, (r) => r.fulfill({ json: { message: SCHEMA_COLLEGE } }))
+    await page.route(RESOURCE, (r) => r.fulfill({ json: { data: COLLEGE_DOC } }))
+  })
+
+  test('says where the record sits, outermost level first', async ({ page }) => {
+    await page.goto('/master/college/SJC')
+
+    const trail = rail(page).getByRole('list').first()
+    // Institution before Campus: the trail is the hierarchy contract, not field order.
+    await expect(trail.getByRole('listitem')).toHaveText([/Institution.*INST-0001/, /Campus.*CENTRAL/])
+  })
+
+  test('says who last touched it, which no field on the form does', async ({ page }) => {
+    await page.goto('/master/college/SJC')
+
+    await expect(rail(page).getByText('registrar@sjc.edu.in')).toBeVisible()
+    // Trimmed to the minute, and NOT re-parsed into the browser's timezone.
+    await expect(rail(page).getByText('2026-08-19 16:04')).toBeVisible()
+  })
+
+  test('draws no progress for a status that is a set, not a sequence', async ({ page }) => {
+    await page.goto('/master/college/SJC')
+
+    // Active/Inactive is a choice, not a lifecycle. Drawing it as steps would claim a
+    // progression the doctype never stated.
+    await expect(rail(page).getByRole('heading', { name: 'Progress' })).toHaveCount(0)
+    await expect(rail(page).getByRole('heading', { name: 'Where it sits' })).toBeVisible()
+  })
+
+  test('draws progress where the module declared the flow', async ({ page }) => {
+    // Admission Enquiry is the one doctype whose statuses are a sequence, declared in
+    // src/modules/admission/screens.ts.
+    await page.route(SCHEMA, (r) =>
+      r.fulfill({
+        json: {
+          message: {
+            ...SCHEMA_COLLEGE,
+            doctype: 'Admission Enquiry',
+            label: 'Admission Enquiry',
+            module: 'Admission',
+            fields: SCHEMA_COLLEGE.fields.map((f) =>
+              f.fieldname === 'status'
+                ? { ...f, options: 'New\nContacted\nVisited\nApplication Submit' }
+                : f,
+            ),
+          },
+        },
+      }),
+    )
+    await page.route(RESOURCE, (r) => r.fulfill({ json: { data: { ...COLLEGE_DOC, status: 'Visited' } } }))
+    await page.route(MENU, (r) =>
+      r.fulfill({
+        json: {
+          message: {
+            module: 'Master',
+            module_slug: 'master',
+            label: 'Master',
+            icon: null,
+            groups: [
+              {
+                label: null,
+                icon: null,
+                items: [
+                  {
+                    label: 'Admission Enquiry',
+                    icon: null,
+                    link_type: 'DocType',
+                    link_to: 'Admission Enquiry',
+                    slug: 'college',
+                    route: '/master/college',
+                    description: null,
+                  },
+                ],
+              },
+            ],
+            doctype_by_slug: { college: 'Admission Enquiry' },
+          },
+        },
+      }),
+    )
+
+    await page.goto('/master/college/SJC')
+
+    const steps = rail(page).getByRole('list').first().getByRole('listitem')
+    await expect(steps).toHaveText([/New/, /Contacted/, /Visited.*Now/, /Application Submit/])
+  })
+
+  test('does not move the form when Edit is pressed', async ({ page }) => {
+    await page.goto('/master/college/SJC')
+    const section = page.getByRole('heading', { name: 'Basic Information' })
+    await expect(section).toBeVisible()
+    const before = await section.boundingBox()
+
+    await page.getByRole('button', { name: 'Edit' }).click()
+    await expect(page).toHaveURL(/edit=1/)
+    const after = await page.getByRole('heading', { name: 'Basic Information' }).boundingBox()
+
+    // The rail decides the frame's width, so both modes have to make that decision the same
+    // way. A field that shifts sideways on Edit is the failure this guards.
+    expect(after?.x).toBe(before?.x)
+    expect(after?.width).toBe(before?.width)
+  })
+})
+
 test.describe('record screen', () => {
   test.beforeEach(async ({ page }) => {
     await page.route(SCHEMA, (r) => r.fulfill({ json: { message: SCHEMA_COLLEGE } }))

@@ -1,5 +1,6 @@
 import type { ComponentType } from 'react'
 
+import { ADMISSION_SCREENS } from '@/modules/admission/screens'
 import { GATE_SCREENS } from '@/modules/gate/screens'
 import { MASTER_SCREENS } from '@/modules/master/screens'
 import type { StatusTone } from '@/screens/doctype/lib/status'
@@ -54,6 +55,18 @@ export interface RecordOverride {
    */
   statusField?: string
   /**
+   * The status words in LIFECYCLE order, for a doctype whose states are a sequence.
+   *
+   * Drawn as a progress list in the record's context rail. Declared rather than read off the
+   * `Select` options because those are a set: `Active`/`Inactive` is not a progression, and
+   * nothing in the schema distinguishes the two cases. Omit it and no progress list appears,
+   * which is the right default for every master.
+   *
+   * Not a history — the app records no transition dates. Each step shows its name and whether
+   * it has been reached.
+   */
+  statusFlow?: string[]
+  /**
    * Up to four fields lifted into the summary strip beneath the record header — the facts
    * someone opened the record to check, above the fold, before any section.
    *
@@ -88,6 +101,7 @@ export type ScreenTable = Readonly<Record<string, ScreenOverride>>
 const MODULE_TABLES: ReadonlyArray<readonly [string, ScreenTable]> = [
   ['master', MASTER_SCREENS],
   ['gate', GATE_SCREENS],
+  ['admission', ADMISSION_SCREENS],
 ]
 
 /**

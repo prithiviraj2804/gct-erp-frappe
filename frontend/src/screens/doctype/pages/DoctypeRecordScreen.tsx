@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 import { CELL_RENDERERS } from '@/screens/doctype/components/cell-renderers'
 import { FallbackCell } from '@/screens/doctype/components/cells'
 import { ChildTable } from '@/screens/doctype/components/ChildTable'
+import { RecordContext } from '@/screens/doctype/components/RecordContext'
 import { RecordFrame, RecordSkeleton } from '@/screens/doctype/components/RecordFrame'
 import { RecordSummary } from '@/screens/doctype/components/RecordSummary'
 import { DeleteRecordDialog } from '@/screens/doctype/form/DeleteRecordDialog'
@@ -16,6 +17,7 @@ import { useDoctypeRoute } from '@/screens/doctype/hooks/use-doctype-route'
 import { DoctypeLinkContext, useDoctypeLinkIndex } from '@/screens/doctype/lib/doctype-links'
 import { evalCondition } from '@/screens/doctype/lib/expressions'
 import { CHILD_TABLE_TYPES, FULL_WIDTH_TYPES, isSummarisable } from '@/screens/doctype/lib/fields'
+import { hasRecordContext } from '@/screens/doctype/lib/record-context'
 import { statusTone, TONE_DOT_CLASS } from '@/screens/doctype/lib/status'
 import { screenOverride, type ScreenOverride } from '@/screens/doctype/registry'
 import { ErrorState } from '@/shared/components/feedback/ErrorState'
@@ -175,6 +177,16 @@ function RecordBody({
   const [activeTab, setActiveTab] = useState(() => tabKey(tabs[0], 0))
   const HeaderActions = override.slots?.recordHeaderActions
 
+  // Decided once and used by every branch, so the frame is the same width in read and edit.
+  const showContext = hasRecordContext(schema, doc)
+  const context = showContext ? (
+    <RecordContext
+      schema={schema}
+      doc={doc}
+      statusValue={typeof statusValue === 'string' ? statusValue : undefined}
+    />
+  ) : null
+
   const header = (
     <>
       <PageHeader
@@ -239,9 +251,9 @@ function RecordBody({
 
   if (editing) {
     return (
-      <RecordFrame>
+      <RecordFrame wide={showContext}>
         {header}
-        <div className="mt-6">
+        <RecordLayout aside={context}>
           <DoctypeEditor
             schema={schema}
             doc={doc}
@@ -249,7 +261,7 @@ function RecordBody({
             label={label}
             onDone={() => setEditing(false)}
           />
-        </div>
+        </RecordLayout>
       </RecordFrame>
     )
   }
@@ -258,28 +270,31 @@ function RecordBody({
   // single tab is chrome that answers no question.
   if (tabs.length <= 1) {
     return (
-      <RecordFrame>
+      <RecordFrame wide={showContext}>
         {header}
-        <div className="mt-6 flex flex-col gap-6">
-          {(tabs[0]?.sections ?? []).map((section, index) => (
-            <RecordSection
-              key={section.label ?? `section-${index}`}
-              section={section}
-              schema={schema}
-              byName={byName}
-              doc={doc}
-            />
-          ))}
-        </div>
+        <RecordLayout aside={context}>
+          <div className="flex flex-col gap-6">
+            {(tabs[0]?.sections ?? []).map((section, index) => (
+              <RecordSection
+                key={section.label ?? `section-${index}`}
+                section={section}
+                schema={schema}
+                byName={byName}
+                doc={doc}
+              />
+            ))}
+          </div>
+        </RecordLayout>
         {deleteDialog}
       </RecordFrame>
     )
   }
 
   return (
-    <RecordFrame>
+    <RecordFrame wide={showContext}>
       {header}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-6 gap-6">
+      <RecordLayout aside={context}>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="gap-6">
         <TabsList>
           {tabs.map((tab, index) => (
             <TabsTrigger key={tabKey(tab, index)} value={tabKey(tab, index)}>
@@ -299,10 +314,34 @@ function RecordBody({
               />
             ))}
           </TabsContent>
-        ))}
-      </Tabs>
+          ))}
+        </Tabs>
+      </RecordLayout>
       {deleteDialog}
     </RecordFrame>
+  )
+}
+
+/**
+ * The record body: the authored form, and the context rail beside it.
+ *
+ * One component for all three branches — read, edit, tabbed — because the rail decides the
+ * frame's width. Splitting the decision would let pressing Edit move every field sideways,
+ * which is the one thing RecordFrame exists to prevent.
+ *
+ * Below `xl` the rail stacks under the form rather than squeezing it: at that width a 280px
+ * column would leave the form narrower than the phone layout it degrades to.
+ */
+function RecordLayout({ aside, children }: { aside: React.ReactNode; children: React.ReactNode }) {
+  if (!aside) return <div className="mt-6">{children}</div>
+
+  return (
+    <div className="mt-6 xl:grid xl:grid-cols-[minmax(0,1fr)_280px] xl:items-start xl:gap-6">
+      <div className="min-w-0">{children}</div>
+      {/* Sticky, so the hierarchy and the record's state stay readable while a long form is
+          scrolled. `top-6` clears the 52px topbar plus the frame's own padding. */}
+      <aside className="mt-6 flex flex-col gap-4 xl:sticky xl:top-6 xl:mt-0">{aside}</aside>
+    </div>
   )
 }
 
