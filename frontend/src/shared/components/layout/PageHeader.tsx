@@ -69,7 +69,11 @@ export function PageHeader({ title, subtitle, count, crumbs, actions }: PageHead
               {title}
             </h1>
             {count !== undefined && (
-              <span className="text-sm text-muted-foreground tabular-nums">{count}</span>
+              // Grouped, not raw: a list of 1284 records reads as a year at a glance. Matches
+              // the counts on the status views, which are formatted the same way.
+              <span className="text-sm text-muted-foreground tabular-nums">
+                {count.toLocaleString()}
+              </span>
             )}
           </div>
           {subtitle && <p className="mt-1.5 text-sm text-muted-foreground">{subtitle}</p>}

@@ -24,6 +24,8 @@
  * meaning. Colour is never the only signal — the word is always printed.
  */
 
+import type { SchemaField } from '@/screens/doctype/types'
+
 export type StatusTone = 'positive' | 'negative' | 'attention' | 'info' | 'neutral'
 
 /** The vocabulary shared across the app. Module-specific words live in `src/modules/`. */
@@ -53,4 +55,36 @@ export const TONE_DOT_CLASS: Readonly<Record<StatusTone, string>> = {
  */
 export function statusTone(value: string, overrides?: Readonly<Record<string, StatusTone>>): StatusTone {
   return overrides?.[value] ?? SHARED_STATUS_TONES[value] ?? 'neutral'
+}
+
+/** The URL parameter a chosen status view writes. Flat and readable, so a link can be pasted. */
+export const STATUS_PARAM = 'status'
+
+/**
+ * A status field's options, trimmed.
+ *
+ * A leading blank line is how Frappe authors "no selection is allowed here"; it is not a view,
+ * because "All" already covers it.
+ */
+export function statusOptions(field: SchemaField): string[] {
+  return (field.options ?? '')
+    .split('\n')
+    .map((option) => option.trim())
+    .filter(Boolean)
+}
+
+/**
+ * The status field a list can offer views for, or null.
+ *
+ * Deliberately narrow: a `Select` literally named `status`. Every doctype in this app with a
+ * lifecycle spells it that way (`Programme`, `Admission Enquiry`, `Admission Gate Pass`), and
+ * widening this to "the first Select in the list view" would put a tab strip above Gender.
+ *
+ * Null when the field has fewer than two real options — one option is not a choice, and a strip
+ * of one tab is furniture.
+ */
+export function statusViewField(fields: SchemaField[]): SchemaField | null {
+  const field = fields.find((f) => f.fieldname === 'status' && f.fieldtype === 'Select')
+  if (!field) return null
+  return statusOptions(field).length > 1 ? field : null
 }

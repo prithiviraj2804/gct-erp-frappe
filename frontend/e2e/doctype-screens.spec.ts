@@ -233,6 +233,126 @@ test.beforeEach(async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 })
 })
 
+test.describe('status views', () => {
+  // Counts differ per view, which is the whole point of the strip: the answer to "how many are
+  // still Inactive?" has to be visible before anyone filters.
+  const COUNTS: Record<string, number> = { '': 2, Active: 1, Inactive: 1 }
+
+  const statusIn = (filters: string | null) => {
+    const parsed = JSON.parse(filters || '[]') as [string, string, string][]
+    return parsed.find(([f]) => f === 'status')?.[2] ?? ''
+  }
+
+  test.beforeEach(async ({ page }) => {
+    await page.route(SCHEMA, (r) => r.fulfill({ json: { message: SCHEMA_COLLEGE } }))
+    await page.route(COUNT, (r) =>
+      r.fulfill({
+        json: { message: COUNTS[statusIn(new URL(r.request().url()).searchParams.get('filters'))] ?? 0 },
+      }),
+    )
+    await page.route(RESOURCE, (r) => {
+      const status = statusIn(new URL(r.request().url()).searchParams.get('filters'))
+      return r.fulfill({ json: { data: status ? ROWS.filter((row) => row.status === status) : ROWS } })
+    })
+  })
+
+  const views = (page: Page) => page.getByRole('navigation', { name: 'Status views' })
+
+  test('offers a view per status word, each carrying its own count', async ({ page }) => {
+    await page.goto('/master/college')
+
+    // `exact`, because "Active 1" is a substring of "Inactive 1".
+    await expect(views(page).getByRole('link', { name: 'All 2', exact: true })).toBeVisible()
+    await expect(views(page).getByRole('link', { name: 'Active 1', exact: true })).toBeVisible()
+    await expect(views(page).getByRole('link', { name: 'Inactive 1', exact: true })).toBeVisible()
+
+    // All is where an unfiltered list rests.
+    await expect(views(page).getByRole('link', { name: 'All 2', exact: true })).toHaveAttribute(
+      'aria-current',
+      'page',
+    )
+  })
+
+  test('a view narrows what the SERVER returns, and is shareable', async ({ page }) => {
+    const requested: string[] = []
+    await page.route(RESOURCE, (r) => {
+      const status = statusIn(new URL(r.request().url()).searchParams.get('filters'))
+      requested.push(status)
+      return r.fulfill({ json: { data: status ? ROWS.filter((row) => row.status === status) : ROWS } })
+    })
+
+    await page.goto('/master/college')
+    await expect(page.getByRole('link', { name: 'SV Polytechnic' })).toBeVisible()
+
+    await views(page).getByRole('link', { name: 'Active 1', exact: true }).click()
+
+    // The filter reaches the query, not just the rendered rows — this is what makes a view
+    // meaningful against the 2000-row cap the screen fetches under.
+    await expect.poll(() => requested).toContain('Active')
+    await expect(page).toHaveURL(/\?status=Active$/)
+    await expect(page.getByRole('link', { name: 'St Joseph College' })).toBeVisible()
+    await expect(page.getByRole('link', { name: 'SV Polytechnic' })).toHaveCount(0)
+  })
+
+  test('restores a view from the URL alone', async ({ page }) => {
+    await page.goto('/master/college?status=Inactive')
+
+    await expect(views(page).getByRole('link', { name: 'Inactive 1', exact: true })).toHaveAttribute(
+      'aria-current',
+      'page',
+    )
+    await expect(page.getByRole('link', { name: 'SV Polytechnic' })).toBeVisible()
+    await expect(page.getByRole('link', { name: 'St Joseph College' })).toHaveCount(0)
+  })
+
+  test('ignores a status the doctype does not have, rather than emptying the list', async ({ page }) => {
+    // A stale or hand-edited link. Sending "Archived" to the server would return nothing and
+    // read as a permission problem; falling back to All is the honest answer.
+    await page.goto('/master/college?status=Archived')
+
+    await expect(views(page).getByRole('link', { name: 'All 2', exact: true })).toHaveAttribute(
+      'aria-current',
+      'page',
+    )
+    await expect(page.getByRole('link', { name: 'St Joseph College' })).toBeVisible()
+    await expect(page.getByRole('link', { name: 'SV Polytechnic' })).toBeVisible()
+  })
+
+  test('an empty view offers the way back, not "add the first one"', async ({ page }) => {
+    await page.route(RESOURCE, (r) => r.fulfill({ json: { data: [] } }))
+
+    await page.goto('/master/college?status=Inactive')
+
+    await expect(page.getByText('No college in Inactive')).toBeVisible()
+    // Exactly one create link — the page header's. The empty state does not add a second,
+    // because creating from inside a status view makes a record that view cannot show.
+    await expect(page.getByRole('link', { name: /^New college/ })).toHaveCount(1)
+    await expect(page.getByRole('link', { name: 'Show all college' })).toHaveAttribute(
+      'href',
+      '/master/college',
+    )
+  })
+
+  test('offers no views for a doctype without a status field', async ({ page }) => {
+    await page.route(SCHEMA, (r) =>
+      r.fulfill({
+        json: {
+          message: {
+            ...SCHEMA_COLLEGE,
+            fields: SCHEMA_COLLEGE.fields.filter((f) => f.fieldname !== 'status'),
+            list_columns: ['college_name', 'college_code', 'campus'],
+          },
+        },
+      }),
+    )
+
+    await page.goto('/master/college')
+
+    await expect(page.getByRole('link', { name: 'St Joseph College' })).toBeVisible()
+    await expect(views(page)).toHaveCount(0)
+  })
+})
+
 test.describe('list screen', () => {
   test.beforeEach(async ({ page }) => {
     await page.route(SCHEMA, (r) => r.fulfill({ json: { message: SCHEMA_COLLEGE } }))

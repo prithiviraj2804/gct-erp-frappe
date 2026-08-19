@@ -1,15 +1,17 @@
 import { PlusIcon } from 'lucide-react'
 import { useMemo, useState } from 'react'
-import { Link } from 'react-router'
+import { Link, useSearchParams } from 'react-router'
 import { toast } from 'sonner'
 
 import { DoctypeTable, LIST_ROW_CAP } from '@/screens/doctype/components/DoctypeTable'
+import { StatusViews } from '@/screens/doctype/components/StatusViews'
 import { DeleteRecordDialog } from '@/screens/doctype/form/DeleteRecordDialog'
 import { useDeleteDoc } from '@/screens/doctype/hooks/use-doctype-mutations'
 import { useDocCount, useDocList, useDoctypeSchema } from '@/screens/doctype/hooks/use-doctype'
 import { useDoctypeRoute } from '@/screens/doctype/hooks/use-doctype-route'
 import { DoctypeLinkContext, useDoctypeLinkIndex } from '@/screens/doctype/lib/doctype-links'
 import { screenOverride } from '@/screens/doctype/registry'
+import { STATUS_PARAM, statusOptions, statusViewField } from '@/screens/doctype/lib/status'
 import { EmptyState } from '@/shared/components/feedback/EmptyState'
 import { ErrorState } from '@/shared/components/feedback/ErrorState'
 import { ScreenNotFound } from '@/shared/components/feedback/ScreenNotFound'
@@ -19,6 +21,8 @@ import { useBrandedDocument, useInstitutionBranding } from '@/shared/hooks/use-b
 import { normalizeFrappeError } from '@/shared/lib/errors'
 import { Button } from '@/shared/ui/button'
 import { Skeleton } from '@/shared/ui/skeleton'
+import type { Filter } from 'frappe-js-sdk/lib/db/types'
+
 import type { DocRow, DoctypeSchema, SchemaField } from '@/screens/doctype/types'
 
 /**
@@ -97,6 +101,25 @@ function ListBody({ schema, route }: { schema: DoctypeSchema; route: ReturnType<
   )
   const linkIndex = useDoctypeLinkIndex()
   const override = screenOverride(schema.doctype)
+  const [searchParams] = useSearchParams()
+
+  // The status views. `null` is "All"; an unknown word in the URL is ignored rather than sent
+  // to the server, so a stale or hand-edited link lands on the full list instead of an empty
+  // one that looks like a permission problem.
+  const statusField = useMemo(() => statusViewField(schema.fields), [schema.fields])
+  const requestedStatus = searchParams.get(STATUS_PARAM)
+  const activeStatus =
+    statusField && requestedStatus && statusOptions(statusField).includes(requestedStatus)
+      ? requestedStatus
+      : null
+
+  // The one filter the app still owns. Everything else in the toolbar narrows rows already
+  // fetched; this narrows what the server selects, which is what makes it meaningful against
+  // the 2000-row cap.
+  const filters = useMemo<Filter[]>(
+    () => (statusField && activeStatus ? [[statusField.fieldname, '=', activeStatus]] : []),
+    [statusField, activeStatus],
+  )
 
   const byName = useMemo(
     () => new Map(schema.fields.map((field) => [field.fieldname, field])),
@@ -119,7 +142,7 @@ function ListBody({ schema, route }: { schema: DoctypeSchema; route: ReturnType<
   // when a doctype overflows the browser.
   const query = {
     fields: schema.list_columns,
-    filters: [],
+    filters,
     search: '',
     searchFields: [],
     sort: [defaultSort],
@@ -128,7 +151,7 @@ function ListBody({ schema, route }: { schema: DoctypeSchema; route: ReturnType<
   }
 
   const list = useDocList(schema.doctype, query)
-  const count = useDocCount(schema.doctype, [])
+  const count = useDocCount(schema.doctype, filters)
 
   const rows = list.data
   const label = route.screenLabel ?? schema.label
@@ -176,30 +199,51 @@ function ListBody({ schema, route }: { schema: DoctypeSchema; route: ReturnType<
           }
         />
 
-        <div className="mt-6">
+        {statusField && (
+          <div className="mt-5 border-b border-border">
+            <StatusViews doctype={schema.doctype} field={statusField} active={activeStatus} />
+          </div>
+        )}
+
+        <div className={statusField ? 'mt-4' : 'mt-6'}>
           {list.isError ? (
             <ErrorState error={list.error} title="Records unavailable" onRetry={() => void list.refetch()} />
           ) : list.isPending || !rows ? (
             <TableSkeleton />
           ) : rows.length === 0 ? (
-            <EmptyState
-              title={`No ${label.toLowerCase()} yet`}
-              body={
-                schema.permissions.can_create
-                  ? `Nothing has been recorded here yet. Add the first one to get started.`
-                  : `Nothing has been recorded here yet, and your account cannot add one.`
-              }
-              action={
-                schema.permissions.can_create ? (
-                  <Button asChild className="h-10">
-                    <Link to={`${route.listPath}/new`}>
-                      <PlusIcon aria-hidden="true" />
-                      New {label.toLowerCase()}
-                    </Link>
+            // "Nothing matches this view" and "nothing exists yet" are different answers, and
+            // offering "add the first one" under a status filter invites a record that would
+            // not appear in the view that just invited it.
+            activeStatus ? (
+              <EmptyState
+                title={`No ${label.toLowerCase()} in ${activeStatus}`}
+                body={`Nothing currently has this status. Other ${label.toLowerCase()} may be in another view.`}
+                action={
+                  <Button asChild variant="outline" className="h-10">
+                    <Link to={route.listPath}>Show all {label.toLowerCase()}</Link>
                   </Button>
-                ) : undefined
-              }
-            />
+                }
+              />
+            ) : (
+              <EmptyState
+                title={`No ${label.toLowerCase()} yet`}
+                body={
+                  schema.permissions.can_create
+                    ? `Nothing has been recorded here yet. Add the first one to get started.`
+                    : `Nothing has been recorded here yet, and your account cannot add one.`
+                }
+                action={
+                  schema.permissions.can_create ? (
+                    <Button asChild className="h-10">
+                      <Link to={`${route.listPath}/new`}>
+                        <PlusIcon aria-hidden="true" />
+                        New {label.toLowerCase()}
+                      </Link>
+                    </Button>
+                  ) : undefined
+                }
+              />
+            )
           ) : (
             <>
               {truncated && (
