@@ -64,9 +64,9 @@ interface ModuleRailProps {
  * items the flyout does. That is what makes the shell usable without a pointer — hover is an
  * accelerator here, never the only route to a screen.
  *
- * There is no Home item. `/home` exists, but it only redirects to the first allocated module,
- * so a rail button for it would be a second, differently-labelled way to press the module
- * directly above it. The topbar's institution mark keeps the link for anyone who wants it.
+ * There is no Home item. The topbar's institution mark links to `/home` — the convention a logo
+ * in that position always carries — so a rail button for the dashboard would only duplicate it.
+ * The rail stays what it is: the list of modules, nothing else.
  *
  * Items are hand-built rather than `SidebarMenuButton`, whose cva carries
  * `group-data-[collapsible=icon]:size-8!` — that would silently shrink them 48→32px inside a

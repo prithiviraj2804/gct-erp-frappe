@@ -94,20 +94,21 @@ test.beforeEach(async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 })
 })
 
-test('sign-in lands on the first allocated module, not a generic home', async ({ page }) => {
+test('home is the landing dashboard, launching every workspace', async ({ page }) => {
   await page.route(RAIL, (r) => r.fulfill({ json: RAIL_TWO }))
   await page.route(MENU, (r) => r.fulfill({ json: MENU_MASTER }))
 
   await page.goto('/home')
 
-  // /home only redirects — the first module in rail order is the landing screen.
-  await expect(page).toHaveURL(/\/master$/)
-  await expect(page.getByRole('heading', { level: 1, name: 'Master' })).toBeVisible()
-  // The module's screens are listed in the CENTRE of the page, reachable without hovering.
-  await expect(page.getByRole('main').getByRole('link', { name: 'Institution' })).toHaveAttribute(
-    'href',
-    '/master/institution',
-  )
+  // /home no longer redirects — it renders the dashboard in place.
+  await expect(page).toHaveURL(/\/home$/)
+  await expect(page.getByRole('heading', { level: 2, name: 'Your workspaces' })).toBeVisible()
+
+  // Every module the user has is a launch tile linking to that module's overview — the same page
+  // the rail reaches, so home is a faster way in, not a competing one.
+  const workspaces = page.getByRole('region', { name: 'Your workspaces' })
+  await expect(workspaces.getByRole('link', { name: /^Master/ })).toHaveAttribute('href', '/master')
+  await expect(workspaces.getByRole('link', { name: /^Gate/ })).toHaveAttribute('href', '/gate')
 })
 
 test('rests with the rail only — no toggle, no menu on screen', async ({ page }) => {

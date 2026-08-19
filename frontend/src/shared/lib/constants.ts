@@ -2,8 +2,8 @@ export const ROUTES = {
   ROOT: '/',
   LOGIN: '/login',
   /**
-   * The landing screen. Named Home, not Dashboard, because it is not one: it establishes
-   * context and launches work, and carries no KPIs, charts or queues — see `pages/home.tsx`.
+   * The landing screen after sign-in: a dashboard that orients (greeting, the institution's
+   * identity and scale) and launches work across every module. See `shell/pages/HomeScreen.tsx`.
    */
   HOME: '/home',
 } as const

@@ -29,7 +29,8 @@ export function AppRoutes() {
           the user is never on a page without navigation context. */}
       <Route element={<RequireAuth />}>
         <Route element={<AppShell />}>
-          {/* Redirects to the first allocated module — see pages/home.tsx. */}
+          {/* The landing dashboard: greeting, institution scale, and a launcher for every
+              module — see shell/pages/HomeScreen.tsx. */}
           <Route path={ROUTES.HOME} element={<HomePage />} />
           {/* A module's overview: its screens, listed in the content area. Dynamic, so it
               also swallows any other single-segment path — ModulePage resolves the slug

@@ -29,21 +29,20 @@ test.describe('authentication', () => {
     await expect(page).toHaveURL(/\/login$/)
   })
 
-  test('signs in, lands on home, and signs out', async ({ page, context }) => {
+  test('signs in, lands on the home dashboard, and signs out', async ({ page, context }) => {
     await page.goto('/login')
 
     await page.getByRole('textbox', { name: 'Email or username' }).fill(USER)
     await page.getByRole('textbox', { name: 'Password' }).fill(PASSWORD!)
     await page.getByRole('button', { name: 'Sign in' }).click()
 
-    // /home only redirects — sign-in lands on the first module the user is allocated, which
-    // on this bench is Gate. Asserting the pattern rather than the literal keeps the test
-    // honest if a Master workspace is given a lower sequence_id later.
-    await expect(page).toHaveURL(/\/(gate|master)$/)
+    // Sign-in lands on /home, which is the dashboard itself now, not a redirect to the first
+    // module.
+    await expect(page).toHaveURL(/\/home$/)
     await expect(page.getByTestId('session-user')).toHaveText(USER)
-    // The module overview lists the module's screens in the content area, so the proof the
-    // shell mounted is a record link the user's real permissions actually grant.
-    await expect(page.getByRole('main').getByRole('link', { name: 'Gate Entry' })).toBeVisible()
+    // Proof the shell mounted and the account has real, permitted work to launch: the workspace
+    // launcher, drawn from the modules this user can actually see.
+    await expect(page.getByRole('heading', { name: 'Your workspaces' })).toBeVisible()
 
     // The only direct proof the session actually stuck: `sid` is httponly, so JS cannot see
     // it — but Playwright can. If the cookie were lost (e.g. a cross-origin VITE_API_URL),

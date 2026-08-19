@@ -27,7 +27,7 @@ import type { DocRecord } from '@/screens/doctype/types'
  * `cell-editors.tsx` and `cells.tsx`, which keeps `react-refresh/only-export-components` happy
  * and keeps the React Compiler from seeing a component built during render.
  *
- * Why the app registers its own at all is in `lib/child-grid.ts`: the engine's eleven neutral
+ * Why the app registers its own at all is in `lib/child-grid.ts`: the engine's neutral cell
  * types cannot express a Frappe `Link` or a naive site-timezone `Datetime`, and this app has
  * already answered both. Everything the app does *not* override — the shadcn preset's chrome,
  * its long-text and file dialogs, the neutral `action` column that draws the row buttons — is

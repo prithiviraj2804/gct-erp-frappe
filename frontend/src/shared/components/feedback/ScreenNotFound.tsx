@@ -8,7 +8,7 @@ interface ScreenNotFoundProps {
   thing?: string
   /** Overrides the default two-causes explanation. */
   body?: string
-  /** Where "Go back" points. Defaults to /home, which redirects to the first module. */
+  /** Where "Go back" points. Defaults to /home, the landing dashboard. */
   backTo?: string
   backLabel?: string
 }

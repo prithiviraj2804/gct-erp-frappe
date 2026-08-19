@@ -6,6 +6,7 @@ import { InstitutionMark } from '@/shared/components/brand/InstitutionMark'
 import { UserMenu } from '@/shell/components/UserMenu'
 import { useInstitutionBranding } from '@/shared/hooks/use-branding'
 import { APP_NAME, ROUTES } from '@/shared/lib/constants'
+import { commandPaletteHint } from '@/shared/lib/platform'
 
 /**
  * Reserved slot: Institution / Campus / College context switcher.
@@ -58,21 +59,10 @@ function CommandPaletteLauncher({ onOpen }: { onOpen: () => void }) {
       <span className="max-md:hidden">Jump to…</span>
       <kbd className="ml-6 hidden rounded border border-border px-1.5 font-sans text-xs md:inline">
         {/* Rendered from the platform so a Windows user is not told to press ⌘. */}
-        {isApplePlatform() ? '⌘K' : 'Ctrl K'}
+        {commandPaletteHint()}
       </kbd>
     </button>
   )
-}
-
-/**
- * `navigator.platform` is deprecated and `userAgentData` is Chromium-only, so this reads
- * whichever exists and falls back to the non-Apple label. Getting it wrong costs a wrong glyph
- * on a hint, which is why it is not worth a heavier detection than this.
- */
-function isApplePlatform(): boolean {
-  const data = (navigator as { userAgentData?: { platform?: string } }).userAgentData
-  const platform = data?.platform ?? navigator.platform ?? ''
-  return /mac|iphone|ipad|ipod/i.test(platform)
 }
 
 /**

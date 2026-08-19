@@ -6,8 +6,8 @@ import type { DocRecord, SchemaField } from '@/screens/doctype/types'
 /**
  * What a Frappe field becomes inside a Bst-Table.
  *
- * The engine's 0.2.0 cell-type registry picks a renderer *and an editor* per column from
- * `columnDef.meta.type`, against a registry of eleven neutral types — `text`, `number`,
+ * The engine's cell-type registry picks a renderer *and an editor* per column from
+ * `columnDef.meta.type`, against a registry of neutral types — `text`, `number`,
  * `dateTime`, `singleSelect`, and so on. Mapping Frappe's fieldtypes onto those would be the
  * obvious move and is the wrong one: this app already owns a control per fieldtype
  * (`form/control-registry.ts`) and a renderer per fieldtype (`components/cell-renderers.ts`),
@@ -17,7 +17,7 @@ import type { DocRecord, SchemaField } from '@/screens/doctype/types'
  * `toISOString()` and therefore shifts a naive site-timezone timestamp by the viewer's offset —
  * the exact bug `DateControl` and `DateCell` both exist to avoid.
  *
- * So the app registers **three** cell types rather than eleven, and each of them delegates to
+ * So the app registers **three** cell types rather than mapping onto the neutral ones, and each of them delegates to
  * the per-fieldtype component the app already has. They differ only in how the edit ends —
  * inline, inline-but-Enter-is-a-newline, or in a dialog. The registry is used as the seam it
  * is, not as a second widget library, and there is still one editor per fieldtype in this
@@ -99,7 +99,7 @@ export function childColumnMeta(
   return {
     type: cellTypeFor(field),
     editable: writable && isWritableField(field),
-    // 0.2.0 put an alignment hook on the `td`, which is what this column wanted and had to
+    // The engine puts an alignment hook on the `td`, which is what this column wanted and had to
     // fake with a wrapper span until now. The *heading* still sits left: the adapter's
     // Columns menu falls back to the column id the moment a header stops being a string, so
     // aligning the heading would relabel that menu `fee` instead of `Fee`.

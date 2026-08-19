@@ -13,8 +13,7 @@ import type { MenuItem, ModuleMenu } from '@/shared/types/navigation'
 /**
  * A module's overview: every screen inside it, as a directory in the content area.
  *
- * This is the shell's real landing surface — signing in redirects to the first allocated
- * module, so this is the first page most users see. It exists because the flyout menu is a
+ * It is where a rail click or a home launch tile lands. It exists because the flyout menu is a
  * hover accelerator: without a clickable equivalent, a module's screens would be unreachable
  * on touch, and there would be nowhere for the rail's own links to go.
  *

@@ -135,8 +135,9 @@ export function AppShell() {
   const slug = pathname.split('/')[1] ?? ''
   const active = modules?.find((m) => m.slug === slug) ?? null
 
-  // At rest the panel shows where you are; with no module in the URL (on /home, mid-redirect)
-  // it falls back to the first allocated module, which is where /home is about to send you.
+  // At rest the panel shows where you are; with no module in the URL (e.g. on /home, the
+  // dashboard) it falls back to the first allocated module, so the flyout still has something to
+  // preview rather than opening blank.
   const resting = active ?? modules?.[0] ?? null
   const shown = modules?.find((m) => m.module === live?.module) ?? resting
 

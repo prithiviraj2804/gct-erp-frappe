@@ -94,8 +94,8 @@
 	gap: 4px;
 }
 
-/* ---------------------------------------------------------------- editing (0.2.0)
-   Everything below covers what the packages added in 0.2.0. The engine and the adapter
+/* ---------------------------------------------------------------- editing
+   Everything below covers the packages' editing states. The engine and the adapter
    both fell back to literal hex for the editing states — `#dc2626`, `#f59e0b`, `#16a34a` —
    which is fine for a package with no host theme and wrong here twice over: it ignores the
    institution's palette, and it does not lift on dark, where the app's own `--destructive`

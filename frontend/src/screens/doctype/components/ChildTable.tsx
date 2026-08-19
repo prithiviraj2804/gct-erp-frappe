@@ -1,3 +1,4 @@
+import { BstTableShadcn } from '@bloomskill/table-shadcn'
 import { useMemo } from 'react'
 
 import { CELL_RENDERERS } from '@/screens/doctype/components/cell-renderers'
@@ -5,7 +6,8 @@ import { createFrappeCellTypes } from '@/screens/doctype/components/cell-types'
 import { FallbackCell } from '@/screens/doctype/components/cells'
 import { blankChildRow, childColumnMeta, childRowId } from '@/screens/doctype/lib/child-grid'
 import { TEMP_ROW_PREFIX } from '@/screens/doctype/lib/form'
-import { BstTable, type BstTableColumn } from '@/shared/components/table/BstTable'
+import type { BstTableColumn } from '@/shared/components/table/registry'
+import '@/shared/components/table/styles'
 import type { ChildSchema, DocRecord, SchemaField } from '@/screens/doctype/types'
 
 interface ChildTableProps {
@@ -125,33 +127,61 @@ export function ChildTable({ schema, value, label, onChange, disabled }: ChildTa
   const interactive = rows.length > CHROME_THRESHOLD
 
   return (
-    <BstTable
-      label={label}
-      data={rows}
-      columns={columns}
-      getRowId={childRowId}
-      showToolbar={interactive || writable}
-      showSearch={interactive}
-      showColumnsMenu={interactive}
-      // `false` renders every row and drops the footer — the short case.
-      pagination={interactive ? { pageSize: CHROME_THRESHOLD } : false}
-      pageSizeOptions={[10, 25, 50]}
-      // Editing, and everything that hangs off it. `onDataChange` is the whole contract: the
-      // engine never mutates `rows`, it hands back the next array and the parent form owns it.
-      enableEditing={writable}
-      enableValidation={writable}
-      enableRowActions={writable}
-      cellTypes={cellTypes}
-      onDataChange={onChange}
-      createRow={createRow}
-      tempIdPrefix={TEMP_ROW_PREFIX}
-      disabled={disabled}
-      // The Save/Discard bar is the engine's bulk-commit of pending drafts. In cell mode there
-      // are none — every commit lands immediately — so the bar would be a permanently empty
-      // second save control next to the form's real one.
-      showSaveBar={false}
-    />
+    // `section` carries the screen-reader name (the adapter renders no `<caption>`). The
+    // capture-phase handlers keep the grid's own toolbar/pagination buttons — which the adapter
+    // renders without a `type`, so they default to `submit` — from saving the parent form the
+    // editable grid sits inside.
+    <section aria-label={label} {...FORM_SAFE}>
+      <BstTableShadcn
+        data={rows}
+        columns={columns}
+        getRowId={childRowId}
+        showToolbar={interactive || writable}
+        showSearch={interactive}
+        showColumnsMenu={interactive}
+        // `false` renders every row and drops the footer — the short case.
+        pagination={interactive ? { pageSize: CHROME_THRESHOLD } : false}
+        pageSizeOptions={[10, 25, 50]}
+        // Editing, and everything that hangs off it. `onDataChange` is the whole contract: the
+        // engine never mutates `rows`, it hands back the next array and the parent form owns it.
+        enableEditing={writable}
+        enableValidation={writable}
+        enableRowActions={writable}
+        cellTypes={cellTypes}
+        onDataChange={onChange}
+        createRow={createRow}
+        tempIdPrefix={TEMP_ROW_PREFIX}
+        disabled={disabled}
+        // The Save/Discard bar is the engine's bulk-commit of pending drafts. In cell mode there
+        // are none — every commit lands immediately — so the bar would be a permanently empty
+        // second save control next to the form's real one.
+        showSaveBar={false}
+      />
+    </section>
   )
+}
+
+/**
+ * Keeping the editable child grid from submitting the form it sits in.
+ *
+ * The adapter renders its toolbar and pagination chrome as bare `<button>`s with no `type`, and
+ * HTML's default for that is `submit`. Inside `DoctypeEditor`'s `<form>`, pressing "+ Add row",
+ * a page arrow, or Enter in the grid's search box would save the whole document. Capture phase
+ * + `preventDefault` only: the click's default action *is* the submission, so cancelling it is
+ * enough — propagation continues, so the button's own `onClick` still runs.
+ */
+const FORM_SAFE = {
+  onClickCapture(event: React.MouseEvent) {
+    const button = (event.target as HTMLElement).closest?.('button')
+    if (button && !button.hasAttribute('type')) event.preventDefault()
+  },
+  onKeyDownCapture(event: React.KeyboardEvent) {
+    if (event.key !== 'Enter') return
+    const target = event.target as HTMLElement
+    if (target.tagName === 'INPUT' && (target as HTMLInputElement).type !== 'submit') {
+      event.preventDefault()
+    }
+  },
 }
 
 /**
