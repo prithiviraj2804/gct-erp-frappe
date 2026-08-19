@@ -12,39 +12,42 @@ import type { RailModule } from '@/shared/types/navigation'
 //   - The module the flyout is currently PREVIEWING, because the pointer is on its icon or
 //     focus has landed there. That is a look-ahead, not a location — you have not moved.
 //
-// The palette's rule: a sapphire FILL means "you are here", a sapphire BAR means "this is
-// marked". The current module gets the fill; a previewed one gets a neutral lift and the bar.
-// AppShell makes the two mutually exclusive, so a previewed current module keeps its fill.
+// One device per state, not three. The current module used to be a 48px block of saturated
+// sapphire carrying an inset highlight AND a white bar, while a previewed one carried a second
+// bar in a different colour — four decorations for two states, on the narrowest surface in the
+// app. Now: where you ARE is a sapphire tint plus one indicator bar; what you are LOOKING AT is
+// a neutral lift and nothing else. The tint is what DESIGN.md prescribes for a current row
+// anyway, so the rail and the flyout's current item finally read the same.
 const BASE_CLASS = cn(
-  'relative grid size-12 place-items-center rounded-lg text-sidebar-foreground/70',
+  'relative grid size-9 place-items-center rounded-md text-sidebar-foreground/70',
   'transition-colors duration-150 ease-out',
   'hover:bg-sidebar-accent hover:text-sidebar-foreground',
   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring',
   // ring-offset against --sidebar: without it the ring blurs into the dark surface.
   'focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar',
   'active:bg-sidebar-accent',
-  // A 2px bar, not colour alone — "never use colour as the only way to convey meaning".
-  'data-[marked=true]:before:absolute data-[marked=true]:before:-left-2.5',
-  'data-[marked=true]:before:h-6 data-[marked=true]:before:w-0.5',
-  'data-[marked=true]:before:rounded-full',
 )
 
-/** The module you are in. Solid sapphire — the rail's one anchor. */
+/**
+ * The module you are in.
+ *
+ * A tint, not a fill, and the one bar in the rail. --sidebar-indicator rather than
+ * --sidebar-primary: the primary sapphire is only 2.21:1 against the tint and would vanish
+ * into the row it is marking, where the indicator holds 4.66:1.
+ *
+ * The bar is why the tint is enough — "never use colour as the only way to convey meaning".
+ */
 const CURRENT_CLASS = cn(
-  'data-[current=true]:bg-sidebar-primary data-[current=true]:text-sidebar-primary-foreground',
-  // A 1px inset top highlight catches the "light" the hairline borders imply, so a 48px
-  // block of flat colour doesn't read as a sticker.
-  'data-[current=true]:shadow-[inset_0_1px_0_rgb(255_255_255/0.2)]',
-  // White, not --sidebar-indicator: the square is already sapphire, so a sapphire bar
-  // beside it would be the same colour twice instead of a marker.
-  'data-[current=true]:before:bg-sidebar-primary-foreground',
+  'data-[current=true]:bg-sidebar-active data-[current=true]:text-sidebar-foreground',
+  // -left-2.5 is 10px, exactly the gutter beside a 36px icon in a 56px rail, so the bar sits
+  // flush against the rail's edge rather than floating in the gap.
+  'data-[current=true]:before:absolute data-[current=true]:before:-left-2.5',
+  'data-[current=true]:before:h-5 data-[current=true]:before:w-0.5',
+  'data-[current=true]:before:rounded-full data-[current=true]:before:bg-sidebar-indicator',
 )
 
-/** Previewed in the flyout. Neutral lift plus the sapphire bar — a relation, not a location. */
-const DISCLOSED_CLASS = cn(
-  'data-[disclosed=true]:bg-sidebar-accent data-[disclosed=true]:text-sidebar-foreground',
-  'data-[disclosed=true]:before:bg-sidebar-indicator',
-)
+/** Previewed in the flyout. A neutral lift — a look, not a location, so it gets no marker. */
+const DISCLOSED_CLASS = 'data-[disclosed=true]:bg-sidebar-accent data-[disclosed=true]:text-sidebar-foreground'
 
 interface ModuleRailProps {
   modules: RailModule[]
@@ -58,7 +61,7 @@ interface ModuleRailProps {
 }
 
 /**
- * The 72px module rail — the only navigation chrome that is always on screen.
+ * The 56px module rail — the only navigation chrome that is always on screen.
  *
  * Every item is a Link: clicking a module goes to its overview page, which lists the same
  * items the flyout does. That is what makes the shell usable without a pointer — hover is an
@@ -69,7 +72,7 @@ interface ModuleRailProps {
  * The rail stays what it is: the list of modules, nothing else.
  *
  * Items are hand-built rather than `SidebarMenuButton`, whose cva carries
- * `group-data-[collapsible=icon]:size-8!` — that would silently shrink them 48→32px inside a
+ * `group-data-[collapsible=icon]:size-8!` — that would silently resize them inside a
  * collapsible group. The rail must look identical in every state.
  */
 export function ModuleRail({
@@ -92,7 +95,7 @@ export function ModuleRail({
             ? Array.from({ length: 3 }).map((_, i) => (
                 // bg-sidebar-accent, not Skeleton's default bg-accent — that's a LIGHT
                 // token and would glow on the dark rail.
-                <Skeleton key={i} className="size-12 rounded-lg bg-sidebar-accent" />
+                <Skeleton key={i} className="size-9 rounded-md bg-sidebar-accent" />
               ))
             : modules.map((m) => {
                 const Icon = MODULE_ICONS[m.module] ?? FALLBACK_MODULE_ICON
@@ -107,7 +110,6 @@ export function ModuleRail({
                     aria-current={current ? 'page' : undefined}
                     data-current={current}
                     data-disclosed={disclosed}
-                    data-marked={current || disclosed}
                     // Pointer only, deliberately. The flyout sits AFTER the rail in DOM
                     // order, so previewing on focus too would be a dead end: tabbing off
                     // one module lands on the next, which would swap the panel before you
@@ -121,7 +123,7 @@ export function ModuleRail({
                     onMouseEnter={() => onPreview(m.module)}
                     className={cn(BASE_CLASS, CURRENT_CLASS, DISCLOSED_CLASS)}
                   >
-                    <Icon className="size-5" aria-hidden="true" />
+                    <Icon className="size-4" aria-hidden="true" />
                   </Link>
                 )
               })}

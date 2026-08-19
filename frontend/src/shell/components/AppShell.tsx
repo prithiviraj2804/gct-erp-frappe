@@ -8,11 +8,12 @@ import { TopBar } from '@/shell/components/TopBar'
 import { SidebarInset, SidebarProvider } from '@/shared/ui/sidebar'
 import { useModuleRail, usePrefetchModuleMenus } from '@/shared/hooks/use-navigation'
 
-// The rail is always on screen at 72px; the flyout overlays the content at 260px and costs
-// the layout nothing. Both land on DESIGN.md's collapsedSidebarWidth / sidebarWidth.
+// The rail is always on screen at 56px; the flyout overlays the content at 260px and costs
+// the layout nothing. 56px is a 36px icon tile in a 10px gutter — the rail carries icons and
+// nothing else, so the width is whatever the tile needs and not a round number above it.
 const SHELL_STYLE = {
   '--sidebar-width': '260px',
-  '--sidebar-width-icon': '72px',
+  '--sidebar-width-icon': '56px',
 } as React.CSSProperties
 
 // Long enough to cross the gap from a rail icon to the panel, or to slip diagonally past an

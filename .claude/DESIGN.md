@@ -142,8 +142,11 @@ shadow:
 layout:
 
   sidebarWidth: 260px
-  collapsedSidebarWidth: 72px
-  topbarHeight: 64px
+  collapsedSidebarWidth: 56px   # a 36px icon tile in a 10px gutter. The rail carries icons and
+                                # nothing else, so its width is what the tile needs rather than
+                                # a round number above it. Was 72px, around a 48px tile.
+  topbarHeight: 52px            # was 64px. The bar holds an identity, a launcher and a user
+                                # menu; none of them needed 64px, and every screen paid for it.
   contentMaxWidth: "100%"
   gridColumns: 12
 
