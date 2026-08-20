@@ -9,7 +9,7 @@ export default defineConfig(({ command, mode }) => {
   // The config runs in Node, so import.meta.env isn't available here — read .env directly.
   const env = loadEnv(mode, __dirname, '')
 
-  const site = env.VITE_FRAPPE_SITE || 'dev.gct.vpn.local'
+  const site = env.VITE_FRAPPE_SITE || 'erp.localhost'
   const target = env.VITE_FRAPPE_TARGET || 'http://127.0.0.1:8000'
 
   return {
@@ -36,7 +36,9 @@ export default defineConfig(({ command, mode }) => {
     },
 
     server: {
-      allowedHosts: ['dev.gct.vpn.local'],
+      watch: {
+        ignored: ['**/node_modules/**', '**/.git/**'],
+      },
       proxy: {
         // Everything Frappe owns: REST calls, its own bundled assets, and uploads.
         '^/(api|assets|files|private)': {

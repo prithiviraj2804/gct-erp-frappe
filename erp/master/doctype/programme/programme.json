@@ -18,6 +18,7 @@
   "column_break_basic",
   "degree",
   "programme_level",
+  "required_prior_qualification",
   "specialization",
   "status",
   "academic_structure_section",
@@ -73,11 +74,10 @@
    "fieldtype": "Link",
    "label": "Department",
    "options": "Department",
-   "reqd": 1,
    "in_list_view": 1,
    "in_standard_filter": 1,
    "link_filters": "[[\"Department\",\"college\",\"=\",\"eval:doc.college\"]]",
-   "description": "Parent Department — must belong to the College above"
+   "description": "Parent Department — must belong to the College above. Optional for schools, which may have no department."
   },
   {
    "fieldname": "campus",
@@ -124,10 +124,9 @@
    "fieldtype": "Link",
    "label": "Degree",
    "options": "Degree",
-   "reqd": 1,
    "in_list_view": 1,
    "in_standard_filter": 1,
-   "description": "B.E., B.Tech., MBA, MBBS"
+   "description": "B.E., B.Tech., MBA, MBBS. Leave blank for schools, which award no degree."
   },
   {
    "fieldname": "programme_level",
@@ -135,10 +134,17 @@
    "label": "Programme Level",
    "options": "Programme Level",
    "reqd": 1,
-   "read_only": 1,
    "fetch_from": "degree.programme_level",
    "in_standard_filter": 1,
-   "description": "Auto-filled from Degree"
+   "description": "Auto-filled from Degree; set by hand for a school programme that has no degree."
+  },
+  {
+   "fieldname": "required_prior_qualification",
+   "fieldtype": "Select",
+   "label": "Required Prior Qualification",
+   "options": "\n10th\n12th\nDiploma\nITI\nUndergraduate\nPostgraduate\nOther",
+   "in_standard_filter": 1,
+   "description": "Prior qualification an applicant must show in Previous Education. Blank = none required (e.g. entry-level school classes)."
   },
   {
    "fieldname": "specialization",

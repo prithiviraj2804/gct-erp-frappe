@@ -223,6 +223,17 @@ The system prioritizes productivity, clarity, accessibility, and scalability ove
 ## Navigation
 
 - Fixed top navigation
+- **The topbar carries three things and no fourth**: the institution's mark and name at the
+  leading edge, the palette launcher and the account at the trailing edge. Everything else that
+  wants to live up there belongs to a page, and pages have their own header.
+- **The account is an avatar, not a name.** A 28px disc in `sidebar-active` — the chrome's ink
+  tint, so the user menu is drawn from the same scale as the rail and the flyout rather than
+  introducing a light plate of its own. The full name and the username are the first thing in
+  the menu it opens. Who *you* are is the least-changing fact on the screen; whose data you are
+  editing is not, which is why the institution keeps the wide slot and you keep the disc.
+- **Layering: topbar (z-30) over nav plane (rail + flyout, z-20) over page (z-0).** The menu
+  flies out *beneath* the bar. The institution's name is the one thing on screen that may never
+  be covered — it is the answer to "whose records am I about to change?".
 - Permanent 72px module rail; its menu panel flies out on hover/focus over the content rather
   than collapsing the layout. No toggle control — every rail item also links to a module page
   listing the same screens, so nothing is hover-only.

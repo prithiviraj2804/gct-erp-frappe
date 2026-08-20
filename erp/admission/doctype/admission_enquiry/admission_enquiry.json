@@ -299,9 +299,8 @@
    "label": "Department",
    "options": "Department",
    "link_filters": "[[\"Department\",\"college\",\"=\",\"eval:doc.college\"]]",
-   "reqd": 1,
    "in_standard_filter": 1,
-   "description": "Department offering the programme"
+   "description": "Department offering the programme. Optional for schools, which may have no department."
   },
   {
    "fieldname": "programme",
@@ -321,7 +320,7 @@
    "options": "Programme Level",
    "fetch_from": "programme.programme_level",
    "read_only": 1,
-   "description": "Undergraduate / Postgraduate — decides which previous education is required"
+   "description": "Programme level, derived from the chosen programme (UG / PG for a college, Primary / Secondary for a school)"
   },
   {
    "fieldname": "column_break_choice",
@@ -363,7 +362,7 @@
    "fieldtype": "Table",
    "label": "Previous Education",
    "options": "Admission Enquiry Education",
-   "description": "Prior qualifications — a 12th record for UG, an Undergraduate record for PG, a Diploma for lateral entry"
+   "description": "Prior qualifications. The programme's Required Prior Qualification decides which record must appear (blank = none required, e.g. entry-level school classes); a lateral entry needs a Diploma."
   },
   {
    "fieldname": "remarks_section",

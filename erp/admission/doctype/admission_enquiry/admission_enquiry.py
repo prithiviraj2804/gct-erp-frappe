@@ -10,15 +10,11 @@ from frappe.model.document import Document
 from erp.master.hierarchy import validate_same_parent
 from erp.utils import normalize_aadhaar, normalize_phone
 
-# The prior qualification a straight-through entrant must show: a school leaver joining an
-# undergraduate programme needs a 12th record; a graduate joining a postgraduate one needs an
-# undergraduate record. Keyed on the Programme Level name, which is the level's own code
-# (`UG`/`PG`) because Programme Level autonames by `level_code`. A lateral entrant is handled
-# separately — they skip this and show a diploma instead.
-REQUIRED_QUALIFICATION_BY_LEVEL = {
-	"UG": "12th",
-	"PG": "Undergraduate",
-}
+# A lateral entrant joins a programme already in progress on the strength of a diploma, whatever
+# the programme's own entry requirement — so lateral entry overrides it with this. Every other
+# entry requirement now lives on the Programme itself (`required_prior_qualification`), so a school
+# class and a degree state their prerequisite in the same place rather than in a hardcoded map.
+LATERAL_ENTRY_QUALIFICATION = "Diploma"
 
 # The gate desk's record, held read-only on an enquiry started from a pass: the Aadhaar the
 # duplicate check keys on, and the reference block that decides who is credited with the walk-in.
@@ -41,6 +37,7 @@ class AdmissionEnquiry(Document):
 		self.sync_from_gate_pass()
 		self.set_academic_year()
 		self.normalize_contact()
+		self.validate_department()
 		self.validate_hierarchy()
 		self.validate_unique_aadhaar()
 		self.validate_previous_education()
@@ -114,6 +111,27 @@ class AdmissionEnquiry(Document):
 		if self.aadhaar_number:
 			self.aadhaar_number = normalize_aadhaar(self.aadhaar_number)
 
+	def validate_department(self):
+		"""Require a Department for every college that is not a School.
+
+		`department` is optional on the schema because a school may admit into a class that sits
+		under no department (PRODUCT.md). A degree-awarding college always names one, so the rule
+		is enforced here, turning on the college's type, rather than with a static `reqd`.
+
+		Mirrors a real `reqd` field: skipped under `ignore_mandatory`, so the `New` stub
+		`start_from_gate_pass` inserts (college known, department not yet chosen) is not blocked —
+		the counsellor supplies it when they complete the enquiry.
+		"""
+		if self.department or self.flags.ignore_mandatory:
+			return
+
+		college_type = frappe.db.get_value("College", self.college, "college_type") if self.college else None
+		if college_type != "School":
+			frappe.throw(
+				_("Department is required for this college."),
+				title=_("Department Required"),
+			)
+
 	def validate_hierarchy(self):
 		"""Keep the whole choice — and every named referrer — inside one institution.
 
@@ -166,40 +184,34 @@ class AdmissionEnquiry(Document):
 		"""Require the prior qualification the chosen course actually rests on.
 
 		`mandatory_depends_on` and `link_filters` are Desk-form conveniences the server never
-		enforces, so the requirement lives here. A lateral entrant joins a programme already in
-		progress (`default_entry_semester` past the first) on the strength of a diploma, and shows
-		that instead of the school-leaving record a straight-through entrant would.
+		enforces, so the requirement lives here. The requirement is data, not a hardcoded map: a
+		lateral entrant joins a programme already in progress (`default_entry_semester` past the
+		first) on the strength of a diploma; otherwise the Programme's own
+		`required_prior_qualification` decides. A blank requirement means none is needed — the
+		case for an entry-level school class (LKG, Class 1), which no straight-through college
+		programme hit — so the enquiry saves with an empty Previous Education table.
 		"""
 		if not self.programme:
 			return
 
-		if not self.previous_education:
-			frappe.throw(
-				_("Add at least one previous education record before saving this enquiry."),
-				title=_("Previous Education Required"),
-			)
-
-		levels_present = {row.qualification_level for row in self.previous_education}
-		required = set()
-
-		lateral = False
+		required = None
 		if self.admission_type:
 			entry_semester = frappe.db.get_value(
 				"Admission Type", self.admission_type, "default_entry_semester"
 			)
-			lateral = bool(entry_semester and entry_semester > 1)
+			if entry_semester and entry_semester > 1:
+				required = LATERAL_ENTRY_QUALIFICATION
 
-		if lateral:
-			required.add("Diploma")
-		elif self.programme_level in REQUIRED_QUALIFICATION_BY_LEVEL:
-			required.add(REQUIRED_QUALIFICATION_BY_LEVEL[self.programme_level])
+		if not required:
+			required = frappe.db.get_value("Programme", self.programme, "required_prior_qualification")
 
-		missing = required - levels_present
-		if missing:
+		if not required:
+			return
+
+		levels_present = {row.qualification_level for row in self.previous_education}
+		if required not in levels_present:
 			frappe.throw(
-				_("This programme needs a {0} record in Previous Education.").format(
-					frappe.bold(", ".join(sorted(missing)))
-				),
+				_("This programme needs a {0} record in Previous Education.").format(frappe.bold(required)),
 				title=_("Previous Education Required"),
 			)
 

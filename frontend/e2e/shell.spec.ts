@@ -465,3 +465,40 @@ test.describe('command palette', () => {
     await expect(page.getByRole('combobox', { name: 'Jump to a screen' })).toHaveValue('')
   })
 })
+
+test.describe('topbar', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.route(RAIL, (r) => r.fulfill({ json: RAIL_TWO }))
+    await page.route(MENU, (r) => r.fulfill({ json: MENU_MASTER }))
+  })
+
+  test('never lets the flyout cover the bar', async ({ page }) => {
+    await page.goto('/master')
+    await rail(page).getByRole('link', { name: 'Master' }).hover()
+    await expect(menu(page)).toBeVisible()
+
+    // The institution's name answers "whose records am I about to change?", so the plane it
+    // sits on outranks the navigation. Geometry rather than a z-index assertion: a computed
+    // z-index says nothing about what actually paints on top, and this is the property that
+    // would break if the flyout were ever promoted to a full-height overlay.
+    const bar = await page.getByRole('banner').boundingBox()
+    const panel = await menu(page).boundingBox()
+    expect(bar).not.toBeNull()
+    expect(panel).not.toBeNull()
+    expect(panel!.y).toBeGreaterThanOrEqual(bar!.y + bar!.height)
+  })
+
+  test('carries the account as an avatar, and spells it out only in the menu', async ({ page }) => {
+    await page.goto('/master')
+
+    // The trigger names the account for assistive tech even though the bar no longer prints
+    // it — the label is the whole point of dropping the visible one.
+    const account = page.getByTestId('session-user')
+    await expect(account).toBeVisible()
+    await expect(account).toHaveAccessibleName(/Test User/)
+    await expect(page.getByRole('banner')).not.toContainText('Test User')
+
+    await account.click()
+    await expect(page.getByTestId('session-account')).toContainText('test@example.com')
+  })
+})

@@ -28,6 +28,7 @@ INSTITUTION_A = "ZEA"
 INSTITUTION_B = "ZEB"
 COLLEGE_A = "ZEACOL"
 COLLEGE_B = "ZEBCOL"
+COLLEGE_SCHOOL = "ZESCH"
 
 
 class IntegrationTestAdmissionEnquiry(IntegrationTestCase):
@@ -80,8 +81,35 @@ class IntegrationTestAdmissionEnquiry(IntegrationTestCase):
 		cls.dept_a = cls.make_department(INSTITUTION_A, COLLEGE_A, "ZEACSE")
 		cls.dept_b = cls.make_department(INSTITUTION_B, COLLEGE_B, "ZEBCSE")
 
-		cls.programme_a_ug = cls.make_programme(COLLEGE_A, cls.dept_a, cls.ug_degree, "ZEAUG")
-		cls.programme_a_pg = cls.make_programme(COLLEGE_A, cls.dept_a, cls.pg_degree, "ZEAPG")
+		cls.programme_a_ug = cls.make_programme(
+			COLLEGE_A, cls.dept_a, cls.ug_degree, "ZEAUG", required_prior_qualification="12th"
+		)
+		cls.programme_a_pg = cls.make_programme(
+			COLLEGE_A, cls.dept_a, cls.pg_degree, "ZEAPG", required_prior_qualification="Undergraduate"
+		)
+
+		# --- A school under A: no degree, no department, a school-flavoured level ---
+		cls.ensure(
+			"Programme Level", "SEC", {"level_code": "SEC", "level_name": "Secondary", "level_order": 3}
+		)
+		frappe.get_doc(
+			{
+				"doctype": "College",
+				"institution": INSTITUTION_A,
+				"college_code": COLLEGE_SCHOOL,
+				"college_name": f"{COLLEGE_SCHOOL} School",
+				"college_type": "School",
+			}
+		).insert()
+		# Class 10 — an entry-level class here: no prior qualification is required, so it may be
+		# admitted with an empty Previous Education table.
+		cls.programme_class_10 = cls.make_programme(
+			COLLEGE_SCHOOL, None, None, "ZECL10", programme_level="SEC"
+		)
+		# Class 11 — asks for the Class-10 board result, expressed as a "10th" requirement.
+		cls.programme_class_11 = cls.make_programme(
+			COLLEGE_SCHOOL, None, None, "ZECL11", programme_level="SEC", required_prior_qualification="10th"
+		)
 
 		year_a = frappe.get_doc(
 			{
@@ -118,20 +146,26 @@ class IntegrationTestAdmissionEnquiry(IntegrationTestCase):
 		).insert().name
 
 	@classmethod
-	def make_programme(cls, college, department, degree, code):
-		return frappe.get_doc(
-			{
-				"doctype": "Programme",
-				"college": college,
-				"department": department,
-				"degree": degree,
-				"academic_structure": cls.structure,
-				"programme_code": code,
-				"programme_name": f"{code} Programme",
-				"duration_years": 4,
-				"total_terms": 8,
-			}
-		).insert().name
+	def make_programme(
+		cls, college, department, degree, code, programme_level=None, required_prior_qualification=None
+	):
+		# The previous-education requirement now rides on the Programme, and the migrate-time backfill
+		# never touches a row a test mints in a rolled-back transaction — so the fixture states it.
+		values = {
+			"doctype": "Programme",
+			"college": college,
+			"department": department,
+			"degree": degree,
+			"academic_structure": cls.structure,
+			"programme_code": code,
+			"programme_name": f"{code} Programme",
+			"duration_years": 4,
+			"total_terms": 8,
+			"required_prior_qualification": required_prior_qualification,
+		}
+		if programme_level:
+			values["programme_level"] = programme_level
+		return frappe.get_doc(values).insert().name
 
 	@classmethod
 	def make_enquiry(cls, **overrides):
@@ -212,6 +246,49 @@ class IntegrationTestAdmissionEnquiry(IntegrationTestCase):
 			admission_type=self.lateral_type,
 			previous_education=[{"qualification_level": "Diploma", "board_university": "DOTE"}],
 		).insert()
+
+	# --- School admission (same doctype, different words) ----------------------------
+
+	def test_school_entry_class_admits_with_no_department_or_previous_education(self):
+		# A Class 10 admission at a School college: no department, and no prior qualification is
+		# required, so an empty Previous Education table is fine — the college rule does not apply.
+		enquiry = self.make_enquiry(
+			college=COLLEGE_SCHOOL,
+			department=None,
+			programme=self.programme_class_10,
+			previous_education=[],
+			aadhaar_number=f"{next(self._aadhaar_counter):012d}",
+		)
+		enquiry.insert()
+
+		self.assertEqual(enquiry.institution, INSTITUTION_A)
+		self.assertFalse(enquiry.department)
+		self.assertEqual(enquiry.programme_level, "SEC")
+
+	def test_school_class_requiring_a_prior_result_is_enforced(self):
+		# Class 11 asks for the Class-10 board result ("10th"); without it the enquiry is refused,
+		# with it it saves — the requirement read straight off the Programme.
+		with self.assertRaises(frappe.ValidationError):
+			self.make_enquiry(
+				college=COLLEGE_SCHOOL,
+				department=None,
+				programme=self.programme_class_11,
+				previous_education=[],
+			).insert()
+
+		ok = self.make_enquiry(
+			college=COLLEGE_SCHOOL,
+			department=None,
+			programme=self.programme_class_11,
+			previous_education=[{"qualification_level": "10th", "board_university": "State Board"}],
+			aadhaar_number=f"{next(self._aadhaar_counter):012d}",
+		)
+		ok.insert()
+
+	def test_department_is_still_required_for_a_non_school_college(self):
+		# The department is optional only for schools; a degree-awarding college without one is refused.
+		with self.assertRaises(frappe.ValidationError):
+			self.make_enquiry(department=None).insert()
 
 	# --- Tenant boundaries -----------------------------------------------------------
 

@@ -39,7 +39,10 @@ test.describe('authentication', () => {
     // Sign-in lands on /home, which is the dashboard itself now, not a redirect to the first
     // module.
     await expect(page).toHaveURL(/\/home$/)
-    await expect(page.getByTestId('session-user')).toHaveText(USER)
+    // The topbar shows the account as an avatar, not as text — the name and the username it
+    // belongs to are in the menu it opens (asserted below, where the menu is already open for
+    // sign-out). Here the trigger's accessible name is the visible proof of who signed in.
+    await expect(page.getByTestId('session-user')).toHaveAccessibleName(new RegExp(USER))
     // Proof the shell mounted and the account has real, permitted work to launch: the workspace
     // launcher, drawn from the modules this user can actually see.
     await expect(page.getByRole('heading', { name: 'Your workspaces' })).toBeVisible()
@@ -54,6 +57,8 @@ test.describe('authentication', () => {
     // Sign out now lives in the user dropdown, so it is a menuitem and is not in the DOM
     // until the menu opens.
     await page.getByTestId('session-user').click()
+    // The menu is where the account is spelled out, so this is where that gets proven.
+    await expect(page.getByTestId('session-account')).toContainText(USER)
     await page.getByRole('menuitem', { name: 'Sign out' }).click()
     await expect(page).toHaveURL(/\/login$/)
   })

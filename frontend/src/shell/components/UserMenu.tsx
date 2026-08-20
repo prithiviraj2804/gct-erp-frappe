@@ -33,20 +33,47 @@ export function UserMenu() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="h-10 gap-2 px-2">
-          <Avatar className="size-7 rounded-lg">
-            <AvatarFallback className="rounded-lg bg-primary-subtle text-xs font-medium text-primary">
+        {/*
+          The avatar alone, and the name only inside the menu it opens.
+          ------------------------------------------------------------
+          The bar used to spell the signed-in name out in full beside the avatar. That is the
+          least-changing fact on the screen — you do not forget who you are between clicks —
+          and it was spending up to 160px of the topbar to repeat it, on the same bar that has
+          to hold the institution's name, which genuinely can be forgotten and genuinely does
+          decide what a click writes to.
+
+          Nothing is lost: the name and the username it belongs to are the first thing in the
+          menu, one click away, and the trigger's own `aria-label` still names the account — so
+          a screen reader gets MORE here than the visual label gave, which was a bare name that
+          never said what it was a name FOR.
+
+          `data-testid` stays on this element, still visible, so the e2e assertions that use it
+          to prove a session mounted keep meaning what they meant.
+        */}
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label={`Account: ${name}`}
+          data-testid="session-user"
+          className="size-8 rounded-full p-0 hover:bg-muted"
+        >
+          <Avatar className="size-7 rounded-full">
+            {/*
+              The chrome's own ink tint, not the light `primary-subtle` plate this used to
+              carry. The user menu is chrome, and every other piece of chrome in the shell —
+              rail, flyout, sign-in panel — is drawn from the ink scale; a pale blue square
+              here read as a fifth surface colour in a bar that already has three. Tint over
+              fill for the same reason the rail uses it: `sidebar-active` holds 11.22:1 for
+              its foreground, so the initials stay legible while the disc stays quiet.
+            */}
+            <AvatarFallback className="rounded-full bg-sidebar-active text-[11px] font-semibold text-sidebar-active-foreground">
               {initials(name)}
             </AvatarFallback>
           </Avatar>
-          {/* Stays on a visible element so the existing e2e assertion keeps its meaning. */}
-          <span className="max-w-40 truncate text-sm max-md:hidden" data-testid="session-user">
-            {name}
-          </span>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56">
-        <DropdownMenuLabel className="font-normal">
+        <DropdownMenuLabel className="font-normal" data-testid="session-account">
           <p className="truncate text-sm font-medium text-foreground">{name}</p>
           <p className="truncate font-mono text-xs text-muted-foreground">{user?.user ?? '—'}</p>
         </DropdownMenuLabel>

@@ -53,11 +53,17 @@ function CommandPaletteLauncher({ onOpen }: { onOpen: () => void }) {
       type="button"
       onClick={onOpen}
       aria-label="Jump to a screen"
-      className="flex h-8 items-center gap-2 rounded-lg border border-border bg-background px-2.5 text-sm text-muted-foreground transition-colors duration-150 ease-out hover:border-input hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none motion-reduce:transition-none"
+      // A hairline chip, not a filled field: this is a launcher, and drawing it as a search
+      // input would promise the record search that does not exist yet (see above). `bg-card`
+      // rather than `bg-background` so it sits ON the bar rather than cutting a hole in it —
+      // the topbar is the card surface and the page below is the darker ground.
+      className="flex h-8 items-center gap-2 rounded-md border border-border bg-card px-2.5 text-xs text-muted-foreground transition-colors duration-150 ease-out hover:border-input hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none motion-reduce:transition-none"
     >
       <SearchIcon className="size-4 shrink-0" aria-hidden="true" />
       <span className="max-md:hidden">Jump to…</span>
-      <kbd className="ml-6 hidden rounded border border-border px-1.5 font-sans text-xs md:inline">
+      {/* The hint is a hint, not a second label: it sits apart from "Jump to…" but does not
+          push the chip wide enough to read as a text field. */}
+      <kbd className="ml-3 hidden rounded-xs border border-border px-1.5 py-px font-sans text-[11px] leading-4 md:inline">
         {/* Rendered from the platform so a Windows user is not told to press ⌘. */}
         {commandPaletteHint()}
       </kbd>
@@ -72,7 +78,7 @@ function CommandPaletteLauncher({ onOpen }: { onOpen: () => void }) {
  * institution. That was backwards for a multi-tenant ERP: the answer to "whose data am I
  * about to edit?" has to be true on every screen, not just the landing one, and the app has
  * no brand of its own to spend the slot on. The home page's identity card is gone; this
- * replaces it, and it costs no vertical space because the topbar was already 64px.
+ * replaces it, and it costs no vertical space: the bar was already on every screen.
  *
  * `APP_NAME` shows only on a bench with no Institution record yet.
  *
@@ -89,7 +95,7 @@ function InstitutionIdentity() {
   if (isPending) {
     return (
       <div className="flex items-center gap-2.5" aria-hidden="true">
-        <div className="size-8 animate-pulse rounded-md bg-muted" />
+        <div className="size-7 animate-pulse rounded-md bg-muted" />
         <div className="h-4 w-44 animate-pulse rounded bg-muted max-md:hidden" />
       </div>
     )
@@ -99,9 +105,9 @@ function InstitutionIdentity() {
     <Link
       to={ROUTES.HOME}
       aria-label={name}
-      className="-mx-1.5 flex min-w-0 items-center gap-2.5 rounded-lg px-1.5 py-1 transition-colors duration-150 ease-out hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none motion-reduce:transition-none"
+      className="-mx-1.5 flex min-w-0 items-center gap-2.5 rounded-md px-1.5 py-1 transition-colors duration-150 ease-out hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none motion-reduce:transition-none"
     >
-      <InstitutionMark brand={brand} size="sm" className="shrink-0" />
+      <InstitutionMark brand={brand} size="xs" className="shrink-0" />
       <span className="max-w-[22rem] truncate font-heading text-sm font-semibold tracking-tight text-foreground max-md:hidden">
         {name}
       </span>
@@ -115,9 +121,15 @@ export function TopBar({ onOpenCommandPalette }: { onOpenCommandPalette: () => v
     // which need 64px of height, and every screen below it pays for the difference.
     //
     // Not `sticky` any more, and it does not need to be: the shell is viewport-height and the
-    // page scrolls inside its own pane, so this bar is simply never scrolled past. `z-30` still
-    // keeps it above the module flyout, which slides out beneath it.
-    <header className="z-30 flex h-13 shrink-0 items-center gap-3 border-b border-border bg-card px-4">
+    // page scrolls inside its own pane, so this bar is simply never scrolled past.
+    //
+    // `relative z-30` is the shell's top plane, and it is stated rather than inherited: a flex
+    // item does take a z-index without being positioned, but that is a rule two people have to
+    // know before they can read this line. Below it sit the nav plane (rail + flyout, z-20)
+    // and the page (z-0). The flyout therefore slides out UNDER this bar, which is what makes
+    // the institution stay legible while the menu is open — the one thing on screen that must
+    // never be covered is whose data you are about to edit.
+    <header className="relative z-30 flex h-13 shrink-0 items-center gap-3.5 border-b border-border bg-card px-4">
       {/* No sidebar toggle. The module nav is permanent and lists every screen by name, so
           there is nothing for a toggle to open — see AppShell. */}
       <InstitutionIdentity />

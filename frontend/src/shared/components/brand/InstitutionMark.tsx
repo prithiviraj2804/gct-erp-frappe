@@ -5,20 +5,36 @@ import { cn } from '@/shared/lib/utils'
 import type { InstitutionBrand } from '@/shared/types/branding'
 
 const SIZES = {
+  // Topbar size. 28px in a 52px bar — the mark identifies the tenant, it is not the loudest
+  // thing in the chrome, and at `sm` it crowded a bar that also carries a launcher and a menu.
+  xs: {
+    box: 'h-7 min-w-7 px-1.5',
+    text: 'text-xs tracking-tight',
+    radius: 'rounded-md',
+    // Tighter than the rest so the logo plate still totals 28px: 20px of image inside 2×4px.
+    plate: 'p-1',
+    logo: 'h-5',
+  },
   sm: {
     box: 'h-9 min-w-9 px-2',
     text: 'text-sm tracking-tight',
     radius: 'rounded-md',
+    plate: 'p-1.5',
+    logo: 'h-6',
   },
   md: {
     box: 'h-12 min-w-12 px-2.5',
     text: 'text-lg tracking-tight',
     radius: 'rounded-lg',
+    plate: 'p-1.5',
+    logo: 'h-9',
   },
   lg: {
     box: 'h-16 min-w-16 px-3',
     text: 'text-2xl tracking-tight',
     radius: 'rounded-xl',
+    plate: 'p-1.5',
+    logo: 'h-13',
   },
 } as const
 
@@ -47,13 +63,14 @@ export function InstitutionMark({
   // A logo URL that 404s (file deleted, attachment moved) would otherwise render as a broken
   // image icon. Falling through to the monogram keeps the screen intact.
   const [logoFailed, setLogoFailed] = useState(false)
-  const { box, text, radius } = SIZES[size]
+  const { box, text, radius, plate, logo } = SIZES[size]
 
   if (brand?.logo && !logoFailed) {
     return (
       <div
         className={cn(
-          'inline-flex items-center justify-center bg-white p-1.5 ring-1 ring-black/10',
+          'inline-flex items-center justify-center bg-white ring-1 ring-black/10',
+          plate,
           radius,
           className,
         )}
@@ -62,14 +79,7 @@ export function InstitutionMark({
           src={brand.logo}
           alt={brand.name}
           onError={() => setLogoFailed(true)}
-          className={cn(
-            'w-auto max-w-40 object-contain',
-            {
-              sm: 'h-6',
-              md: 'h-9',
-              lg: 'h-13',
-            }[size],
-          )}
+          className={cn('w-auto max-w-40 object-contain', logo)}
         />
       </div>
     )
