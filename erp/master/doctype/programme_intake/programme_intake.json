@@ -72,7 +72,8 @@
    "options": "Trust",
    "fetch_from": "programme.trust",
    "read_only": 1,
-   "in_standard_filter": 1
+   "in_standard_filter": 1,
+   "reqd": 1
   },
   {
    "fieldname": "institution",
@@ -81,7 +82,8 @@
    "options": "Institution",
    "fetch_from": "programme.institution",
    "read_only": 1,
-   "in_standard_filter": 1
+   "in_standard_filter": 1,
+   "reqd": 1
   },
   {
    "fieldname": "column_break_offering",

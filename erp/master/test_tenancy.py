@@ -200,3 +200,54 @@ class IntegrationTestInstitutionTenancy(IntegrationTestCase):
 		staff.user = None
 		staff.save(ignore_permissions=True)
 		self.assertEqual(self._permissions_for(email), set())
+
+	# --- The empty-value hole (slice 2) ----------------------------------------------
+
+	def test_strict_user_permissions_is_enabled(self):
+		"""A guard, not a behaviour test.
+
+		Everything below depends on this flag. Without it Frappe ANDs
+		`IfNull(institution,'') = '' OR institution IN (...)` into every scoped query
+		(`frappe/database/query.py:1501-1506`) and the left half hands every blank row to
+		everybody. If someone turns this off in System Settings, this test is what says so.
+		"""
+		self.assertTrue(frappe.db.get_single_value("System Settings", "apply_strict_user_permissions"))
+
+	def test_a_blank_institution_row_is_invisible_to_a_scoped_login(self):
+		"""The hole slice 2 closes.
+
+		Written with raw SQL precisely because the ORM can no longer produce this row — the column
+		is `reqd: 1` now. What is being tested is the rows that predate that rule, and any that a
+		future direct write might leave behind.
+		"""
+		orphan = self.make_staff("ZTSORPHAN", self.INST_A)
+		frappe.db.sql("UPDATE `tabStaff` SET institution = '' WHERE name = %s", orphan)
+
+		self.assertNotIn(orphan, self.visible_staff(self.SCOPED))
+		# ... and it is not merely hidden from everyone: a trust-wide login still sees it, which is
+		# what makes it fixable rather than lost.
+		self.assertIn(orphan, self.visible_staff(self.TRUST_ADMIN))
+
+	def test_a_blank_institution_document_is_denied_to_a_scoped_login(self):
+		"""The single-document mirror. A list filter that hides a row is worth little if
+		`/api/resource/Staff/<name>` still returns it."""
+		orphan = self.make_staff("ZTSORPHANDOC", self.INST_A)
+		frappe.db.sql("UPDATE `tabStaff` SET institution = '' WHERE name = %s", orphan)
+
+		frappe.set_user(self.SCOPED)
+		try:
+			self.assertFalse(frappe.has_permission("Staff", doc=orphan, ptype="read"))
+		finally:
+			frappe.set_user("Administrator")
+
+	def test_every_institution_scoped_doctype_requires_its_tenant(self):
+		"""No new holes. A nullable tenancy column is not "not filled in yet" — it is a row every
+		institution can read, so the schema has to refuse one."""
+		from erp.patches.v1_0.enable_strict_user_permissions import INSTITUTION_SCOPED
+
+		nullable = [
+			doctype
+			for doctype in INSTITUTION_SCOPED
+			if not frappe.get_meta(doctype).get_field("institution").reqd
+		]
+		self.assertEqual(nullable, [])

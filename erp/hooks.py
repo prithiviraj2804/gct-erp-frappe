@@ -26,6 +26,12 @@ app_license = "mit"
 # same migrate that imported them. See erp.utils.ensure_module_defs.
 before_migrate = "erp.utils.ensure_module_defs"
 
+# The vocabulary the app owns is re-asserted on every migrate rather than seeded once by a patch.
+# A logged patch never runs again, so rows removed after it ran are gone for good — which is
+# exactly what happened to Programme Level and Academic Structure on this bench, twice.
+# See erp/seed.py.
+after_migrate = "erp.seed.ensure_shared_vocabulary"
+
 website_route_rules = [
 	{"from_route": "/erp/<path:app_path>", "to_route": "erp"},
 	{"from_route": "/erp", "to_route": "erp"},
@@ -179,7 +185,11 @@ has_permission = {
 # Auto-generate a UUID `id` column on every doctype that defines the field.
 doc_events = {
 	"*": {
+		# Both, deliberately: `before_insert` is the only one that runs under `ignore_validate`,
+		# and `before_save` is the only one that sees a child row appended to an existing parent.
+		# See erp.utils.set_uuid_id — child rows get no hooks of their own at all.
 		"before_insert": "erp.utils.set_uuid_id",
+		"before_save": "erp.utils.set_uuid_id",
 	},
 	# The sign-in screen is branded from the Trust record, and that payload is cached in
 	# redis for anonymous callers. Without this, an admin who uploads a logo would keep seeing

@@ -164,7 +164,8 @@
    "fetch_from": "admission_enquiry.trust",
    "read_only": 1,
    "in_standard_filter": 1,
-   "description": "Tenant the receipt belongs to; scoping keys on this field"
+   "description": "Tenant the receipt belongs to; scoping keys on this field",
+   "reqd": 1
   },
   {
    "fieldname": "institution",
@@ -172,7 +173,8 @@
    "label": "Institution",
    "options": "Institution",
    "fetch_from": "admission_enquiry.institution",
-   "read_only": 1
+   "read_only": 1,
+   "reqd": 1
   },
   {
    "fieldname": "remarks_section",

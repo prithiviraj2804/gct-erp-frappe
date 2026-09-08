@@ -151,7 +151,8 @@
    "options": "Trust",
    "fetch_from": "enquiry.trust",
    "read_only": 1,
-   "in_standard_filter": 1
+   "in_standard_filter": 1,
+   "reqd": 1
   },
   {
    "fieldname": "column_break_lead",
@@ -163,7 +164,8 @@
    "label": "Institution",
    "options": "Institution",
    "fetch_from": "enquiry.institution",
-   "read_only": 1
+   "read_only": 1,
+   "reqd": 1
   }
  ],
  "grid_page_length": 50,

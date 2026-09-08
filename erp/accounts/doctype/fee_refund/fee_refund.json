@@ -174,7 +174,8 @@
    "options": "Trust",
    "read_only": 1,
    "in_standard_filter": 1,
-   "description": "Tenant the refund belongs to; scoping keys on this field"
+   "description": "Tenant the refund belongs to; scoping keys on this field",
+   "reqd": 1
   },
   {
    "fieldname": "institution",
@@ -182,7 +183,8 @@
    "label": "Institution",
    "options": "Institution",
    "read_only": 1,
-   "in_standard_filter": 1
+   "in_standard_filter": 1,
+   "reqd": 1
   },
   {
    "fieldname": "remarks_section",

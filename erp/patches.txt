@@ -19,3 +19,6 @@ erp.patches.v1_0.seed_chart_of_accounts
 erp.patches.v1_0.seed_modes_of_payment
 erp.patches.v1_0.seed_admission_document_types
 erp.patches.v1_0.reseed_school_vocabulary
+erp.patches.v1_0.backfill_child_row_uuids
+erp.patches.v1_0.backfill_tenancy_columns
+erp.patches.v1_0.enable_strict_user_permissions

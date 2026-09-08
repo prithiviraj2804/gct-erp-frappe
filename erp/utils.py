@@ -20,15 +20,38 @@ def slugify(text: str) -> str:
 
 
 def set_uuid_id(doc, method=None):
-	"""Auto-populate the standard `id` column with a UUID4.
+	"""Auto-populate the standard `id` column with a UUID4, on the document and its child rows.
 
-	Project convention: every doctype carries a separate `id` field (distinct
-	from the primary key `name`) that holds an auto-generated UUID. Wired as a
-	global ``before_insert`` doc event in ``hooks.py``, so it runs for every
-	doctype but only acts on those that actually define the `id` field.
+	Project convention: every doctype carries a separate `id` field (distinct from the primary key
+	`name`) holding an auto-generated UUID, as a stable handle for external systems.
+
+	**Child rows have to be filled here, by the parent.** Frappe runs `before_insert` for the
+	parent only — `frappe/model/document.py:478` — and then writes children at `:498-500` with
+	`d.db_insert()`, a `BaseDocument` method. `doc_events` are composed in `Document.hook`, which
+	is reached only from `run_method`, so no hook of any kind fires for a child row. Left to the
+	global hook alone, every child `id` stayed NULL; and because MariaDB permits unlimited NULLs
+	in a unique index, the `unique: 1` on those columns raised nothing and the convention failed
+	in silence.
+
+	Wired to `before_insert` *and* `before_save` in hooks.py. `before_insert` alone would miss the
+	row appended to an existing parent, which is most of them; `before_save` alone would miss the
+	insert that passes `ignore_validate`, since `run_before_save_methods` returns early on that
+	flag while `before_insert` is called unconditionally. Running both is safe because the
+	function only ever fills a blank.
+	"""
+	_set_uuid(doc)
+
+	for row in doc.get_all_children():
+		_set_uuid(row)
+
+
+def _set_uuid(doc):
+	"""Give `doc` a UUID `id` if it declares the field and has not already been given one.
+
+	An explicitly provided id is respected, so a data import or a migration can carry the
+	identifier the external system already knows this record by.
 	"""
 	if doc.get("id"):
-		# Respect an explicitly provided id (e.g. data import / migration).
 		return
 
 	if doc.meta.has_field("id"):
