@@ -12,7 +12,8 @@ consumes it.** Every slice below names the journey that justifies it and the ste
 |---|---|---|
 | **0** | `Institution → Trust`, `College → Institution`. Behaviour-preserving; two ordered patches; 168 tests green | `3148e28` |
 | **1** | Tenancy repair A — `Trust Admin` / `Institution Admin` roles, a `"*"` scoping hook over every doctype carrying `institution`, fail-closed `assert_institution_in_scope`, Staff→User Permission provisioning, `share` dropped where it crossed the boundary. 176 tests green | `798f65b` |
-| **2** | Tenancy repair B — `institution`/`trust` `reqd: 1`, backfill, `apply_strict_user_permissions` on. Plus the child-row UUID fix and vocabulary replayed on every migrate. 184 tests green | — |
+| **2** | Tenancy repair B — `institution`/`trust` `reqd: 1`, backfill, `apply_strict_user_permissions` on. Plus the child-row UUID fix and vocabulary replayed on every migrate. 184 tests green | `fd27e22` |
+| **3** | `Institution Type` as a NestedSet tree; both `!= "School"` branches deleted; DocPerms so the two tenancy roles stand alone. 199 tests green | — |
 
 ## Next — in this order
 
@@ -37,7 +38,7 @@ consumes it.** Every slice below names the journey that justifies it and the ste
 | ~~Child tables never receive their UUID `id`~~ — fixed in slice 2 | `erp/utils.py:set_uuid_id` | ✅ |
 | ~~`Programme Level` / `Academic Structure` empty despite both seed patches logged~~ — fixed in slice 2 by replaying vocabulary on every migrate | `erp/seed.py` | ✅ |
 | A `Staff` row grants exactly one Institution permission, so one person cannot serve two institutions. A real case for shared trust-level staff; needs a modelling change, not a flag | `staff.py:sync_institution_permission` | backlog |
-| `Trust Admin` and `Institution Admin` hold no DocPerms yet, so each must be paired with a functional role | doctype JSONs | 3 |
+| ~~`Trust Admin` / `Institution Admin` hold no DocPerms~~ — fixed in slice 3 | doctype JSONs | ✅ |
 | A K-12 application deadlocks in *Awaiting Counselling* out of the box | `pipeline.py:142` | 5 |
 
 ## Reserved, not built

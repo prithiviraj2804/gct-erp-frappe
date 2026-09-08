@@ -5,6 +5,7 @@ import frappe
 from frappe import _
 from frappe.model.document import Document
 
+from erp.master.doctype.institution_type.institution_type import institution_requires_department
 from erp.master.hierarchy import validate_same_parent
 
 
@@ -29,20 +30,19 @@ class Programme(Document):
 	def validate_department(self):
 		"""Require a Department for every institution that is not a School.
 
-		`department` is optional on the schema because a school may have none (PRODUCT.md), but
-		a degree-awarding institution always sits under one. The rule is enforced here rather than
-		with a static `reqd` so it can turn on the institution's type, and — like a real `reqd`
-		field — is skipped under `ignore_mandatory`.
+		`department` is optional on the schema because a school may have none, but a degree-awarding
+		institution always sits under one. The rule is enforced here rather than with a static
+		`reqd` so it can turn on the institution's type, and — like a real `reqd` field — is
+		skipped under `ignore_mandatory`.
+
+		Which types require one is a row on `Institution Type`, not a literal here. This used to
+		read `!= "School"`, in this file and byte-identically in `admission_enquiry.py`: two copies
+		of one rule that had to agree, and that no trust could change without a deploy.
 		"""
 		if self.department or self.flags.ignore_mandatory:
 			return
 
-		institution_type = (
-			frappe.db.get_value("Institution", self.institution, "institution_type")
-			if self.institution
-			else None
-		)
-		if institution_type != "School":
+		if institution_requires_department(self.institution):
 			frappe.throw(
 				_("Department is required for this institution."),
 				title=_("Department Required"),

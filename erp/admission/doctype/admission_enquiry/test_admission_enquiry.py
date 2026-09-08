@@ -88,6 +88,7 @@ class IntegrationTestAdmissionEnquiry(IntegrationTestCase):
 					"trust": trust,
 					"institution_code": code,
 					"institution_name": f"{code} Institution",
+					"institution_type": "Engineering",
 				}
 			).insert()
 
@@ -471,7 +472,12 @@ class IntegrationTestAdmissionEnquiryScoping(IntegrationTestCase):
 		cls.ensure(
 			"Institution",
 			cls.COL_1,
-			{"trust": cls.INST_1, "institution_code": cls.COL_1, "institution_name": "Scope Institution"},
+			{
+				"trust": cls.INST_1,
+				"institution_code": cls.COL_1,
+				"institution_name": "Scope Institution",
+				"institution_type": "Engineering",
+			},
 		)
 		cls.dept = (
 			frappe.get_doc(

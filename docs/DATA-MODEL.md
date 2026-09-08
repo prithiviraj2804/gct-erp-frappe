@@ -24,8 +24,10 @@ Trust                        one row per site (Trust.assert_only_one)
             └── Programme Intake Document   the checklist this intake publishes
 ```
 
-`Trust` is the tenant root; `Institution` is the operating unit and carries the type
-(Engineering, Medical, School, Arts & Science, Polytechnic, Law, MBA, Nursing, …).
+`Trust` is the tenant root; `Institution` is the operating unit and carries the type as a **Link to
+`Institution Type`**, a NestedSet tree (Engineering, Medical, School, Arts & Science, Polytechnic,
+Law, MBA, Nursing, Pharmacy, …). The type is where configuration hangs, so every institution of a
+kind inherits its rules — see [CONFIGURATION.md](CONFIGURATION.md).
 
 Renamed from `Institution → Trust` and `College → Institution` in `3148e28`. The structure was
 always this; only the names were wrong, and "College" could never honestly name a K-12 school or a

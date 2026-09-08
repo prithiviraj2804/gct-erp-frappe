@@ -251,3 +251,50 @@ class IntegrationTestInstitutionTenancy(IntegrationTestCase):
 			if not frappe.get_meta(doctype).get_field("institution").reqd
 		]
 		self.assertEqual(nullable, [])
+
+	# --- The roles stand on their own (slice 3) --------------------------------------
+
+	def test_an_institution_admin_needs_no_other_role(self):
+		"""Until the DocPerms landed, `Institution Admin` granted rows but no doctypes, so it had
+		to be paired with a functional role to be worth anything. It should run an institution by
+		itself."""
+		email = self.make_user("zt-inst-admin@example.com", ["Institution Admin"])
+		self.grant(email, self.INST_A)
+
+		visible = self.visible_staff(email)
+		self.assertIn(self.staff_a, visible)
+		self.assertNotIn(self.staff_b, visible)
+
+	def test_a_trust_admin_needs_no_other_role(self):
+		email = self.make_user("zt-trust-only@example.com", ["Trust Admin"])
+
+		visible = self.visible_staff(email)
+		self.assertIn(self.staff_a, visible)
+		self.assertIn(self.staff_b, visible)
+
+	def test_an_institution_admin_may_not_create_an_institution(self):
+		"""Standing up a new institution is a trust-level act. They may edit their own — contact
+		details, logo — which is why `write` is granted and `create` is not."""
+		email = self.make_user("zt-inst-admin-2@example.com", ["Institution Admin"])
+		self.grant(email, self.INST_A)
+
+		frappe.set_user(email)
+		try:
+			self.assertFalse(frappe.has_permission("Institution", "create"))
+			self.assertTrue(frappe.has_permission("Institution", "write", doc=self.INST_A))
+		finally:
+			frappe.set_user("Administrator")
+
+	def test_an_institution_admin_may_not_redefine_shared_vocabulary(self):
+		"""`Institution Type` and the other trust-global masters are shared by every institution,
+		so one institution's admin must not be able to change them for everybody."""
+		email = self.make_user("zt-inst-admin-3@example.com", ["Institution Admin"])
+		self.grant(email, self.INST_A)
+
+		frappe.set_user(email)
+		try:
+			self.assertTrue(frappe.has_permission("Institution Type", "read"))
+			self.assertFalse(frappe.has_permission("Institution Type", "write"))
+			self.assertFalse(frappe.has_permission("Programme Level", "write"))
+		finally:
+			frappe.set_user("Administrator")

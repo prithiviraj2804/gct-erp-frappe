@@ -10,6 +10,7 @@ from frappe.model.document import Document
 from erp.admission.eligibility import assert_prior_qualification
 from erp.admission.follow_up_state import derive_follow_up_state
 from erp.admission.pipeline import assert_status_transition
+from erp.master.doctype.institution_type.institution_type import institution_requires_department
 from erp.master.hierarchy import validate_same_parent
 from erp.utils import normalize_aadhaar, normalize_phone
 
@@ -116,8 +117,9 @@ class AdmissionEnquiry(Document):
 		"""Require a Department for every institution that is not a School.
 
 		`department` is optional on the schema because a school may admit into a class that sits
-		under no department (PRODUCT.md). A degree-awarding institution always names one, so the rule
-		is enforced here, turning on the institution's type, rather than with a static `reqd`.
+		under no department. A degree-awarding institution always names one, so the rule is enforced
+		here, turning on the institution's type, rather than with a static `reqd`. Which types
+		require one is a row on `Institution Type`, not a literal here.
 
 		Mirrors a real `reqd` field: skipped under `ignore_mandatory`, so the `New` stub
 		`start_from_gate_pass` inserts (institution known, department not yet chosen) is not blocked —
@@ -126,12 +128,7 @@ class AdmissionEnquiry(Document):
 		if self.department or self.flags.ignore_mandatory:
 			return
 
-		institution_type = (
-			frappe.db.get_value("Institution", self.institution, "institution_type")
-			if self.institution
-			else None
-		)
-		if institution_type != "School":
+		if institution_requires_department(self.institution):
 			frappe.throw(
 				_("Department is required for this institution."),
 				title=_("Department Required"),

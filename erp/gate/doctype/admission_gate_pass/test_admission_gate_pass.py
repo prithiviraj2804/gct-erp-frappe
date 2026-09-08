@@ -73,6 +73,7 @@ class IntegrationTestAdmissionGatePass(IntegrationTestCase):
 					"campus": campus,
 					"institution_code": code,
 					"institution_name": f"{code} Institution",
+					"institution_type": "Engineering",
 				}
 			).insert()
 

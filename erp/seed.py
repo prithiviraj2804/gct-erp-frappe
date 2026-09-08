@@ -24,6 +24,35 @@ edits an operator has made to its label. Only absence is corrected.
 
 import frappe
 
+# The kinds of institution a trust runs, as a tree. Ordered parents-first because each row names its
+# parent by name, and NestedSet needs the parent to exist.
+#
+# `requires_department` is stated only where it is *decided*: a school admits into a class that sits
+# under no department, every degree-awarding institution has one. The leaves under Professional say
+# nothing and inherit — which is the whole point of the tree, and the reason adding Nursing costs one
+# row and no rules.
+#
+# The names match the values the superseded `Select` already held, so the field becomes a Link with
+# no data migration: 'School', 'Arts & Science' and 'Engineering' are already exactly these rows.
+INSTITUTION_TYPES = (
+	{"type_name": "All", "is_group": 1},
+	{"type_name": "School", "parent_institution_type": "All", "requires_department": "No"},
+	{"type_name": "Arts & Science", "parent_institution_type": "All", "requires_department": "Yes"},
+	{
+		"type_name": "Professional",
+		"is_group": 1,
+		"parent_institution_type": "All",
+		"requires_department": "Yes",
+	},
+	{"type_name": "Engineering", "parent_institution_type": "Professional"},
+	{"type_name": "Medical", "parent_institution_type": "Professional"},
+	{"type_name": "Polytechnic", "parent_institution_type": "Professional"},
+	{"type_name": "Law", "parent_institution_type": "Professional"},
+	{"type_name": "MBA", "parent_institution_type": "Professional"},
+	{"type_name": "Nursing", "parent_institution_type": "Professional"},
+	{"type_name": "Pharmacy", "parent_institution_type": "Professional"},
+)
+
 # `level_code` is the business key — Programme Level autonames by it. The two ladders share a
 # `level_order` namespace and that is deliberate: a school and a college never sort against each
 # other, and forcing one combined ordering would make "Primary" and "Undergraduate" comparable,
@@ -57,12 +86,21 @@ ACADEMIC_STRUCTURES = (
 
 def ensure_shared_vocabulary():
 	"""`after_migrate` hook. Re-assert every code-owned vocabulary row."""
+	_ensure("Institution Type", "type_name", INSTITUTION_TYPES, standard=True)
 	_ensure("Programme Level", "level_code", PROGRAMME_LEVELS)
 	_ensure("Academic Structure", "structure_code", ACADEMIC_STRUCTURES)
 
 
-def _ensure(doctype: str, key: str, rows: tuple[dict, ...]):
+def _ensure(doctype: str, key: str, rows: tuple[dict, ...], standard: bool = False):
+	"""Insert any row that is absent, in the order given, leaving existing rows untouched.
+
+	`standard` marks the row as shipped, which is what stops it being deleted — a deleted standard
+	row would reappear on the next migrate having taken its configuration with it.
+	"""
 	for row in rows:
 		if frappe.db.exists(doctype, row[key]):
 			continue
-		frappe.get_doc({"doctype": doctype, **row}).insert(ignore_permissions=True)
+		values = dict(row)
+		if standard:
+			values["is_standard"] = 1
+		frappe.get_doc({"doctype": doctype, **values}).insert(ignore_permissions=True)

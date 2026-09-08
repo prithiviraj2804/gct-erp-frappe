@@ -38,6 +38,7 @@ class IntegrationTestStaff(IntegrationTestCase):
 					"trust": trust,
 					"institution_code": code,
 					"institution_name": f"{code} Institution",
+					"institution_type": "Engineering",
 				}
 			).insert()
 

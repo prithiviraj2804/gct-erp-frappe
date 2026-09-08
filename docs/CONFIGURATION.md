@@ -21,7 +21,7 @@ Anchors are *completed*, not required: given a Programme Intake the resolver der
 thence its Institution, thence its Institution Type and Trust. A caller passing only `institution=`
 gets levels 3–7.
 
-## 2. Institution Type is a tree
+## 2. Institution Type is a tree — **built**
 
 ```
 All  (is_group)
@@ -40,6 +40,15 @@ All  (is_group)
 A rule set at `Professional` is inherited by seven types without a duplicated row.
 `frappe.utils.nestedset.get_ancestors_of(..., order_by="lft desc")` returns ancestors nearest-first,
 which is exactly the order the resolver needs.
+
+Shipped in slice 3, seeded by the `after_migrate` hook and marked `is_standard` so a shipped row
+cannot be deleted. Capabilities live on the type as **`Select` with a blank option**, never `Check`
+— see the tri-state rule in [DATA-MODEL.md](DATA-MODEL.md#32-the-tri-state-rule); blank means
+inherit. `erp/master/doctype/institution_type/institution_type.py:resolve_capability` walks the
+chain and is the seed of the full resolver in §3.
+
+The first capability is `requires_department`, which replaced two byte-identical
+`if institution_type != "School"` branches in `programme.py` and `admission_enquiry.py`.
 
 ## 3. The resolver
 

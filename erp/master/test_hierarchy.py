@@ -61,6 +61,7 @@ class IntegrationTestHierarchy(IntegrationTestCase):
 					"campus": campus,
 					"institution_code": code,
 					"institution_name": f"{code} Institution",
+					"institution_type": "Engineering",
 				}
 			).insert()
 
@@ -214,6 +215,7 @@ class IntegrationTestHierarchy(IntegrationTestCase):
 				"campus": CAMPUS_B,
 				"institution_code": "ZTXCOL",
 				"institution_name": "Cross Campus Institution",
+				"institution_type": "Engineering",
 			}
 		)
 
@@ -228,6 +230,7 @@ class IntegrationTestHierarchy(IntegrationTestCase):
 				"trust": TRUST_A,
 				"institution_code": "ZTNOCAMP",
 				"institution_name": "Single Location Institution",
+				"institution_type": "Engineering",
 			}
 		).insert()
 

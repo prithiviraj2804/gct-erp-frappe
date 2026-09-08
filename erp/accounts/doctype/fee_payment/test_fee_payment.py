@@ -56,7 +56,12 @@ class IntegrationTestFeePayment(IntegrationTestCase):
 		cls.ensure(
 			"Institution",
 			cls.COL,
-			{"trust": cls.INST, "institution_code": cls.COL, "institution_name": "G Institution"},
+			{
+				"trust": cls.INST,
+				"institution_code": cls.COL,
+				"institution_name": "G Institution",
+				"institution_type": "Engineering",
+			},
 		)
 		cls.dept = (
 			frappe.get_doc(

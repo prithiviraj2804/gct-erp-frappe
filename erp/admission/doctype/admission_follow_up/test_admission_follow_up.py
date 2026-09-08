@@ -53,7 +53,12 @@ class IntegrationTestAdmissionFollowUp(IntegrationTestCase):
 		cls.ensure(
 			"Institution",
 			cls.COL,
-			{"trust": cls.INST, "institution_code": cls.COL, "institution_name": "F Institution"},
+			{
+				"trust": cls.INST,
+				"institution_code": cls.COL,
+				"institution_name": "F Institution",
+				"institution_type": "Engineering",
+			},
 		)
 		cls.dept = (
 			frappe.get_doc(

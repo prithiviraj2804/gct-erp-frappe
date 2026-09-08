@@ -115,11 +115,13 @@
   },
   {
    "fieldname": "institution_type",
-   "fieldtype": "Select",
+   "fieldtype": "Link",
    "label": "Institution Type",
-   "options": "\nEngineering\nArts & Science\nMedical\nPolytechnic\nSchool\nMBA\nLaw",
+   "options": "Institution Type",
+   "reqd": 1,
    "in_list_view": 1,
-   "in_standard_filter": 1
+   "in_standard_filter": 1,
+   "description": "What kind of institution this is. Configuration hangs off the type, so every institution of a kind inherits its rules"
   },
   {
    "fieldname": "established_year",
@@ -334,6 +336,26 @@
    "report": 1,
    "role": "Gate Security",
    "select": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Trust Admin",
+   "write": 1
+  },
+  {
+   "role": "Institution Admin",
+   "read": 1,
+   "report": 1,
+   "export": 1,
+   "write": 1,
+   "print": 1,
+   "email": 1
   }
  ],
  "row_format": "Dynamic",

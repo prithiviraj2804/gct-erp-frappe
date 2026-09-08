@@ -35,7 +35,9 @@ def refund_application_fee(
 	if not frappe.has_permission("Fee Refund", "create"):
 		frappe.throw(_("You are not permitted to refund a fee."), frappe.PermissionError)
 
-	payment = frappe.db.get_value("Fee Payment", fee_payment, ["institution", "admission_enquiry"], as_dict=True)
+	payment = frappe.db.get_value(
+		"Fee Payment", fee_payment, ["institution", "admission_enquiry"], as_dict=True
+	)
 	if not payment:
 		frappe.throw(_("Fee Payment {0} was not found.").format(frappe.bold(fee_payment)))
 	assert_institution_in_scope(payment.institution)
