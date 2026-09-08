@@ -14,11 +14,11 @@ export function WorkspaceLaunchpad({ workspaces }: { workspaces: Workspace[] }) 
     <section aria-labelledby="workspaces-heading">
       <h2
         id="workspaces-heading"
-        className="text-xs font-medium tracking-wide text-muted-foreground uppercase"
+        className="text-2xs font-medium tracking-eyebrow text-muted-foreground uppercase"
       >
         Your workspaces
       </h2>
-      <div className="mt-3 grid gap-4 sm:grid-cols-2">
+      <div className="mt-3 grid gap-(--section-stack) sm:grid-cols-2">
         {workspaces.map((workspace) => (
           <WorkspaceCard key={workspace.module} workspace={workspace} />
         ))}

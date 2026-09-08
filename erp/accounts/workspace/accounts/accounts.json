@@ -1,0 +1,74 @@
+{
+ "doctype": "Workspace",
+ "name": "Accounts",
+ "title": "Accounts",
+ "label": "Accounts",
+ "type": "Workspace",
+ "module": "Accounts",
+ "public": 1,
+ "is_hidden": 0,
+ "sequence_id": 4,
+ "icon": "es-line-payments",
+ "content": "[{\"id\":\"fee_payment_shortcut\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Fee Payment\",\"col\":4}},{\"id\":\"collections_card\",\"type\":\"card\",\"data\":{\"card_name\":\"Collections\",\"col\":4}},{\"id\":\"ledger_card\",\"type\":\"card\",\"data\":{\"card_name\":\"Ledger\",\"col\":4}},{\"id\":\"setup_card\",\"type\":\"card\",\"data\":{\"card_name\":\"Setup\",\"col\":4}}]",
+ "shortcuts": [
+  {
+   "type": "DocType",
+   "link_to": "Fee Payment",
+   "label": "Fee Payment",
+   "color": "Grey",
+   "doc_view": "List"
+  }
+ ],
+ "links": [
+  {
+   "type": "Card Break",
+   "label": "Collections",
+   "icon": "banknote"
+  },
+  {
+   "type": "Link",
+   "link_type": "DocType",
+   "link_to": "Fee Payment",
+   "icon": "receipt",
+   "label": "Fee Payment"
+  },
+  {
+   "type": "Link",
+   "link_type": "DocType",
+   "link_to": "Fee Refund",
+   "icon": "undo-2",
+   "label": "Fee Refund"
+  },
+  {
+   "type": "Card Break",
+   "label": "Ledger",
+   "icon": "book-open"
+  },
+  {
+   "type": "Link",
+   "link_type": "DocType",
+   "link_to": "Account",
+   "icon": "list-tree",
+   "label": "Chart of Accounts"
+  },
+  {
+   "type": "Link",
+   "link_type": "DocType",
+   "link_to": "GL Entry",
+   "icon": "scroll-text",
+   "label": "General Ledger"
+  },
+  {
+   "type": "Card Break",
+   "label": "Setup",
+   "icon": "settings"
+  },
+  {
+   "type": "Link",
+   "link_type": "DocType",
+   "link_to": "Mode of Payment",
+   "icon": "wallet",
+   "label": "Mode of Payment"
+  }
+ ]
+}

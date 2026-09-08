@@ -1,10 +1,10 @@
 import { Navigate, Outlet, useLocation } from 'react-router'
 
-import { Button } from '@/shared/ui/button'
-import { Spinner } from '@/shared/ui/spinner'
-import { useSession } from '@/shared/hooks/use-session'
-import { ROUTES } from '@/shared/lib/constants'
-import { normalizeFrappeError } from '@/shared/lib/errors'
+import { Button } from '@/components/ui/button'
+import { Spinner } from '@/components/ui/spinner'
+import { useSession } from '@/hooks/use-session'
+import { ROUTES } from '@/lib/constants'
+import { normalizeFrappeError } from '@/lib/errors'
 
 function FullPageSpinner() {
   return (

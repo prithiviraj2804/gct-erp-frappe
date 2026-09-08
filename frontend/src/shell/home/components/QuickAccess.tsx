@@ -1,7 +1,8 @@
 import { ArrowRightIcon, SearchIcon } from 'lucide-react'
 import { Link } from 'react-router'
 
-import { commandPaletteHint } from '@/shared/lib/platform'
+import { Kbd } from '@/components/controls/Kbd'
+import { commandPaletteHint } from '@/lib/platform'
 import type { QuickLink } from '@/shell/home/lib/quick-access'
 
 /**
@@ -16,11 +17,11 @@ export function QuickAccess({ links }: { links: QuickLink[] }) {
   return (
     <section
       aria-labelledby="quick-access-heading"
-      className="rounded-xl bg-card p-5 shadow-card ring-1 ring-foreground/10"
+      className="rounded-lg border border-border bg-card p-(--card-pad) shadow-card"
     >
       <h2
         id="quick-access-heading"
-        className="text-xs font-medium tracking-wide text-muted-foreground uppercase"
+        className="text-2xs font-medium tracking-eyebrow text-muted-foreground uppercase"
       >
         Quick access
       </h2>
@@ -31,7 +32,7 @@ export function QuickAccess({ links }: { links: QuickLink[] }) {
             <li key={link.route}>
               <Link
                 to={link.route}
-                className="group flex items-center gap-3 rounded-lg px-2 py-2 transition-colors duration-150 ease-out hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none motion-reduce:transition-none"
+                className="group flex items-center gap-3 rounded-lg px-2 py-2 transition-colors duration-150 ease-out hover:bg-accent active:bg-accent-pressed focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring motion-reduce:transition-none"
               >
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-medium text-foreground">{link.label}</span>
@@ -55,9 +56,7 @@ export function QuickAccess({ links }: { links: QuickLink[] }) {
         <SearchIcon className="size-3.5 shrink-0" aria-hidden="true" />
         <span>
           Search every screen with{' '}
-          <kbd className="rounded border border-border px-1.5 py-0.5 font-sans text-[11px] font-medium text-foreground">
-            {commandPaletteHint()}
-          </kbd>
+          <Kbd>{commandPaletteHint()}</Kbd>
         </span>
       </p>
     </section>

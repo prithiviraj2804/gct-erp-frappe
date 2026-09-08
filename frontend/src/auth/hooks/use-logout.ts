@@ -2,9 +2,9 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router'
 import { toast } from 'sonner'
 
-import { ROUTES } from '@/shared/lib/constants'
-import { normalizeFrappeError } from '@/shared/lib/errors'
-import { auth } from '@/shared/lib/frappe'
+import { ROUTES } from '@/lib/constants'
+import { normalizeFrappeError } from '@/lib/errors'
+import { auth } from '@/lib/frappe'
 
 export function useLogout() {
   const queryClient = useQueryClient()

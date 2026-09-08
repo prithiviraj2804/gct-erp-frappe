@@ -15,6 +15,16 @@
   "status",
   "counsellor",
   "next_follow_up",
+  "application_fee_paid",
+  "application_fee_payment",
+  "application_fee_refunded",
+  "application_fee_refund",
+  "follow_up_section",
+  "follow_up_state",
+  "last_contacted_on",
+  "column_break_followup",
+  "last_outcome",
+  "follow_up_count",
   "source_section",
   "reference",
   "staff_reference",
@@ -117,13 +127,94 @@
    "options": "Staff",
    "link_filters": "[[\"Staff\",\"institution\",\"=\",\"eval:doc.institution\"],[\"Staff\",\"status\",\"=\",\"Active\"]]",
    "in_standard_filter": 1,
-   "description": "Staff member who owns this enquiry"
+   "permlevel": 1,
+   "description": "Staff member who owns this enquiry. permlevel 1: an Admission Manager assigns it; a Counsellor can see who owns a lead but cannot reassign it (or grab someone else's). Row visibility keys on this field."
   },
   {
    "fieldname": "next_follow_up",
    "fieldtype": "Date",
    "label": "Next Follow-up",
-   "in_standard_filter": 1
+   "in_standard_filter": 1,
+   "in_list_view": 1,
+   "description": "When to reach the student next. Maintained from the latest Admission Follow-up once any exist."
+  },
+  {
+   "fieldname": "application_fee_paid",
+   "fieldtype": "Check",
+   "label": "Application Fee Paid",
+   "read_only": 1,
+   "no_copy": 1,
+   "default": "0",
+   "in_standard_filter": 1,
+   "in_list_view": 1,
+   "description": "Set only by a submitted Fee Payment. Gates advancing to Application Submitted and beyond."
+  },
+  {
+   "fieldname": "application_fee_payment",
+   "fieldtype": "Link",
+   "label": "Application Fee Payment",
+   "options": "Fee Payment",
+   "read_only": 1,
+   "no_copy": 1,
+   "description": "The receipt that collected the application fee"
+  },
+  {
+   "fieldname": "application_fee_refunded",
+   "fieldtype": "Check",
+   "label": "Application Fee Refunded",
+   "read_only": 1,
+   "no_copy": 1,
+   "in_standard_filter": 1,
+   "description": "Set by a Fee Refund. The fee-paid flag is left standing — it is what happened"
+  },
+  {
+   "fieldname": "application_fee_refund",
+   "fieldtype": "Link",
+   "label": "Application Fee Refund",
+   "options": "Fee Refund",
+   "read_only": 1,
+   "no_copy": 1
+  },
+  {
+   "fieldname": "follow_up_section",
+   "fieldtype": "Section Break",
+   "label": "Follow-up Tracking",
+   "collapsible": 1,
+   "description": "Rolled up from the Admission Follow-up log — read-only, maintained by the system."
+  },
+  {
+   "fieldname": "follow_up_state",
+   "fieldtype": "Select",
+   "label": "Follow-up State",
+   "options": "Never Contacted\nNo Next Step\nDue Today\nOverdue\nScheduled\nClosed",
+   "read_only": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "description": "At-a-glance health of the lead's follow-up, derived from the log and the next step."
+  },
+  {
+   "fieldname": "last_contacted_on",
+   "fieldtype": "Datetime",
+   "label": "Last Contacted On",
+   "read_only": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "column_break_followup",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "last_outcome",
+   "fieldtype": "Data",
+   "label": "Last Outcome",
+   "read_only": 1
+  },
+  {
+   "fieldname": "follow_up_count",
+   "fieldtype": "Int",
+   "label": "Follow-up Count",
+   "read_only": 1,
+   "description": "How many follow-ups have been logged against this lead"
   },
   {
    "fieldname": "source_section",
@@ -305,13 +396,13 @@
   {
    "fieldname": "programme",
    "fieldtype": "Link",
-   "label": "Programme",
+   "label": "Preferred Programme",
    "options": "Programme",
    "link_filters": "[[\"Programme\",\"department\",\"=\",\"eval:doc.department\"],[\"Programme\",\"status\",\"=\",\"Active\"]]",
    "reqd": 1,
    "in_list_view": 1,
    "in_standard_filter": 1,
-   "description": "Programme the student wants to join"
+   "description": "Programme the student asked about. The Admission Application carries the one actually admitted to, which a counselling allotment routinely makes a different branch"
   },
   {
    "fieldname": "programme_level",
@@ -377,7 +468,13 @@
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
- "links": [],
+ "links": [
+  {
+   "group": "Follow-ups",
+   "link_doctype": "Admission Follow-up",
+   "link_fieldname": "enquiry"
+  }
+ ],
  "modified": "2026-08-13 00:00:00.000000",
  "modified_by": "Administrator",
  "module": "Admission",
@@ -398,6 +495,30 @@
    "write": 1
   },
   {
+   "permlevel": 1,
+   "read": 1,
+   "role": "System Manager",
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Admission Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "permlevel": 1,
+   "read": 1,
+   "role": "Admission Manager",
+   "write": 1
+  },
+  {
    "create": 1,
    "email": 1,
    "print": 1,
@@ -406,6 +527,11 @@
    "role": "Admission Counsellor",
    "share": 1,
    "write": 1
+  },
+  {
+   "permlevel": 1,
+   "read": 1,
+   "role": "Admission Counsellor"
   }
  ],
  "row_format": "Dynamic",

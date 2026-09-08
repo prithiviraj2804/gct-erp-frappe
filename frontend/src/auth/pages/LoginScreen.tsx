@@ -1,10 +1,10 @@
 import { InstitutionPanel } from '@/auth/components/InstitutionPanel'
 import { LoginForm } from '@/auth/components/LoginForm'
-import { InstitutionMark } from '@/shared/components/brand/InstitutionMark'
-import { useBrandedDocument, useLoginBranding } from '@/shared/hooks/use-branding'
-import { institutionMetaLine } from '@/shared/lib/branding'
-import { APP_NAME } from '@/shared/lib/constants'
-import type { InstitutionBrand } from '@/shared/types/branding'
+import { InstitutionMark } from '@/components/brand/InstitutionMark'
+import { useBrandedDocument, useLoginBranding } from '@/hooks/use-branding'
+import { institutionMetaLine } from '@/lib/branding'
+import { APP_NAME } from '@/lib/constants'
+import type { InstitutionBrand } from '@/types/branding'
 
 /**
  * Sign-in, branded from the Institution record.

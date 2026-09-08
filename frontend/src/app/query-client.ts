@@ -1,6 +1,6 @@
 import { QueryClient } from '@tanstack/react-query'
 
-import { normalizeFrappeError } from '@/shared/lib/errors'
+import { normalizeFrappeError } from '@/lib/errors'
 
 export const queryClient = new QueryClient({
   defaultOptions: {

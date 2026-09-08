@@ -382,3 +382,237 @@ class IntegrationTestAdmissionEnquiry(IntegrationTestCase):
 		self.assertEqual(enquiry.aadhaar_number, aadhaar)
 		self.assertEqual(enquiry.reference, "Direct Admission")
 		self.assertEqual(enquiry.student_name, "Corrected Name")
+
+
+class IntegrationTestAdmissionEnquiryScoping(IntegrationTestCase):
+	"""Slice 1 authorization: who sees, and who may reassign, a lead.
+
+	A counsellor sees and touches only the enquiries they own; an Admission Manager sees every
+	lead (narrowed to their institution by a User Permission); and the `counsellor` field is
+	permlevel-locked so a counsellor cannot hand a lead to someone else. Own fixtures under a `ZP`
+	prefix so this stands apart from the validation suite above — IntegrationTestCase rolls it all
+	back at teardown, the Users and User Permissions included.
+	"""
+
+	INST_1 = "ZP1"
+	INST_2 = "ZP2"
+	COL_1 = "ZP1COL"
+
+	COUNSELLOR_A = "ze-scope-counsellor-a@example.com"
+	COUNSELLOR_B = "ze-scope-counsellor-b@example.com"
+	MANAGER = "ze-scope-manager@example.com"
+
+	@classmethod
+	def setUpClass(cls):
+		super().setUpClass()
+
+		# Aadhaar is unique per institution per year; a counter keeps every enquiry distinct across
+		# the shared class transaction.
+		cls._aadhaar = itertools.count(400000000001)
+
+		cls.ensure(
+			"Programme Level", "UG", {"level_code": "UG", "level_name": "Undergraduate", "level_order": 1}
+		)
+		degree = cls.ensure(
+			"Degree", "ZPDEG", {"degree_code": "ZPDEG", "degree_name": "Scope Bachelor", "programme_level": "UG"}
+		)
+		structure = cls.ensure(
+			"Academic Structure",
+			"ZPSEM",
+			{"structure_code": "ZPSEM", "structure_name": "Scope Semester", "terms_per_year": 2, "term_label": "Semester"},
+		)
+		cls.ensure(
+			"Admission Type", "REG", {"type_code": "REG", "type_name": "Regular", "default_entry_semester": 1}
+		)
+
+		# Two institutions: the second only has to exist, as a User Permission target that proves an
+		# institution-scoped manager sees none of the first institution's leads.
+		for code, name in ((cls.INST_1, "Scope One"), (cls.INST_2, "Scope Two")):
+			cls.ensure("Institution", code, {"institution_code": code, "institution_name": name})
+
+		cls.ensure(
+			"College", cls.COL_1, {"institution": cls.INST_1, "college_code": cls.COL_1, "college_name": "Scope College"}
+		)
+		cls.dept = frappe.get_doc(
+			{
+				"doctype": "Department",
+				"institution": cls.INST_1,
+				"college": cls.COL_1,
+				"department_code": "ZP1DEP",
+				"department_name": "Scope Dept",
+			}
+		).insert().name
+		cls.programme = frappe.get_doc(
+			{
+				"doctype": "Programme",
+				"college": cls.COL_1,
+				"department": cls.dept,
+				"degree": degree,
+				"academic_structure": structure,
+				"programme_code": "ZP1UG",
+				"programme_name": "Scope UG",
+				"duration_years": 4,
+				"total_terms": 8,
+				"required_prior_qualification": "12th",
+			}
+		).insert().name
+		frappe.get_doc(
+			{
+				"doctype": "Academic Year",
+				"institution": cls.INST_1,
+				"year_code": "2040-41",
+				"title": "Scope 2040-41",
+				"start_date": "2040-06-01",
+				"end_date": "2041-05-31",
+				"is_admission_open": 1,
+			}
+		).insert()
+
+		cls.staff_a = cls.make_counsellor("ZPCA", cls.COUNSELLOR_A)
+		cls.staff_b = cls.make_counsellor("ZPCB", cls.COUNSELLOR_B)
+		cls.make_user(cls.MANAGER, "Admission Manager")
+
+		# Two owned leads and one still in the managers' pool.
+		cls.e_a = cls.make_enquiry(cls.staff_a)
+		cls.e_b = cls.make_enquiry(cls.staff_b)
+		cls.e_unassigned = cls.make_enquiry(None)
+
+	# --- Fixture helpers ------------------------------------------------------------
+
+	@staticmethod
+	def ensure(doctype, name, values):
+		if frappe.db.exists(doctype, name):
+			return name
+		return frappe.get_doc({"doctype": doctype, **values}).insert().name
+
+	@classmethod
+	def make_user(cls, email, role):
+		if frappe.db.exists("User", email):
+			return email
+		user = frappe.new_doc("User")
+		user.email = email
+		user.first_name = email.split("@")[0]
+		user.append("roles", {"role": role})
+		user.flags.no_welcome_mail = True
+		user.insert(ignore_permissions=True)
+		return email
+
+	@classmethod
+	def make_counsellor(cls, code, email):
+		cls.make_user(email, "Admission Counsellor")
+		return frappe.get_doc(
+			{
+				"doctype": "Staff",
+				"institution": cls.INST_1,
+				"college": cls.COL_1,
+				"staff_code": code,
+				"staff_name": code,
+				"user": email,
+			}
+		).insert().name
+
+	@classmethod
+	def make_enquiry(cls, counsellor):
+		# Inserted as Administrator, who bypasses permlevel, so the fixture can set an owner directly.
+		doc = frappe.get_doc(
+			{
+				"doctype": "Admission Enquiry",
+				"student_name": f"Scope {counsellor or 'pool'}",
+				"phone_number": "9876500000",
+				"college": cls.COL_1,
+				"department": cls.dept,
+				"programme": cls.programme,
+				"admission_type": "REG",
+				"aadhaar_number": f"{next(cls._aadhaar):012d}",
+				"previous_education": [
+					{"qualification_level": "12th", "board_university": "State Board", "year_of_passing": 2039, "percentage": 90.0}
+				],
+			}
+		)
+		if counsellor:
+			doc.counsellor = counsellor
+		doc.insert()
+		return doc.name
+
+	def _visible_to(self, user):
+		frappe.set_user(user)
+		try:
+			return set(frappe.get_list("Admission Enquiry", pluck="name"))
+		finally:
+			frappe.set_user("Administrator")
+
+	# --- Row visibility --------------------------------------------------------------
+
+	def test_counsellor_sees_only_their_own_leads(self):
+		visible = self._visible_to(self.COUNSELLOR_A)
+		self.assertIn(self.e_a, visible)
+		self.assertNotIn(self.e_b, visible)
+		self.assertNotIn(self.e_unassigned, visible)
+
+	def test_other_counsellor_sees_only_their_own_leads(self):
+		visible = self._visible_to(self.COUNSELLOR_B)
+		self.assertIn(self.e_b, visible)
+		self.assertNotIn(self.e_a, visible)
+
+	def test_manager_sees_every_lead_including_the_unassigned_pool(self):
+		visible = self._visible_to(self.MANAGER)
+		self.assertLessEqual({self.e_a, self.e_b, self.e_unassigned}, visible)
+
+	def test_counsellor_without_a_staff_record_fails_closed(self):
+		# A login with the role but no Staff link sees nothing — never everything.
+		lonely = self.make_user("ze-scope-lonely@example.com", "Admission Counsellor")
+		self.assertEqual(self._visible_to(lonely), set())
+
+	# --- Single-record access --------------------------------------------------------
+
+	def test_counsellor_cannot_read_another_counsellors_lead(self):
+		frappe.set_user(self.COUNSELLOR_A)
+		try:
+			self.assertTrue(frappe.has_permission("Admission Enquiry", "read", doc=self.e_a))
+			self.assertFalse(frappe.has_permission("Admission Enquiry", "read", doc=self.e_b))
+		finally:
+			frappe.set_user("Administrator")
+
+	# --- The permlevel lock on the owner field ---------------------------------------
+
+	def test_counsellor_cannot_reassign_their_own_lead(self):
+		target = self.make_enquiry(self.staff_a)
+		frappe.set_user(self.COUNSELLOR_A)
+		try:
+			doc = frappe.get_doc("Admission Enquiry", target)
+			doc.counsellor = self.staff_b  # attempt to hand the lead off
+			doc.remarks = "counsellor edited this"
+			doc.save()
+		finally:
+			frappe.set_user("Administrator")
+
+		reloaded = frappe.get_doc("Admission Enquiry", target)
+		self.assertEqual(reloaded.counsellor, self.staff_a)  # locked — reassignment ignored
+		self.assertEqual(reloaded.remarks, "counsellor edited this")  # level-0 edit still saved
+
+	def test_manager_can_assign_a_lead(self):
+		target = self.make_enquiry(None)
+		frappe.set_user(self.MANAGER)
+		try:
+			doc = frappe.get_doc("Admission Enquiry", target)
+			doc.counsellor = self.staff_a
+			doc.save()
+		finally:
+			frappe.set_user("Administrator")
+
+		self.assertEqual(frappe.get_doc("Admission Enquiry", target).counsellor, self.staff_a)
+
+	# --- Manager tenant isolation via User Permission --------------------------------
+
+	def test_manager_scoped_to_another_institution_sees_no_leads_here(self):
+		# The manager hook returns "" (all rows); a User Permission on Institution is what pins a
+		# manager to their tenant. Scoped to INST_2, they see none of INST_1's leads.
+		email = self.make_user("ze-scope-mgr-inst2@example.com", "Admission Manager")
+		frappe.get_doc(
+			{"doctype": "User Permission", "user": email, "allow": "Institution", "for_value": self.INST_2}
+		).insert(ignore_permissions=True)
+
+		visible = self._visible_to(email)
+		self.assertNotIn(self.e_a, visible)
+		self.assertNotIn(self.e_b, visible)
+		self.assertNotIn(self.e_unassigned, visible)

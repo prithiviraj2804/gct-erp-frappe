@@ -1,55 +1,47 @@
 # `frontend/src` — layout and layering
 
-Five layers. Each may import the ones below it and nothing above. `eslint.config.js` enforces
-this; a violation fails `npm run lint`, not code review.
+The **conventional Vite/shadcn top level** — `components/`, `hooks/`, `lib/`, `types/` where a
+React developer expects to find them — over an **enforced layering rule**. `eslint.config.js`
+enforces the layers; a violation fails `npm run lint`, not code review.
 
 ```
-app/        Composition root: routes, providers, query client. Imports everything.
+app/          Composition root: routes, providers, query client. Imports everything.
   ↑
-shell/      The authenticated frame — rail, flyout, topbar, command palette, module overview.
-auth/       Sign-in, the session gate.
-screens/    The generic doctype renderer: list, record, and the registry that lets a
-            module override either without touching a route.
+shell/        The authenticated frame — rail, nav column, status bar, command palette. Picks
+              between three layouts in shell/layouts/.
+auth/         Sign-in, the session gate.
+pages/        The generic doctype renderer: list, record, create, and the registry that lets a
+              module override any of them without touching a route.
   ↑
-modules/    One folder per Frappe module (gate/, master/), mirroring erp/<module>/ on the
-            server. Screen overrides and bespoke task screens live here.
+modules/      One folder per Frappe module (gate/, master/, admission/, accounts/), mirroring
+              erp/<module>/ on the server. Screen overrides and bespoke task screens.
   ↑
-shared/     ui/ (shadcn output), lib/, hooks/, types/, components/. Bottom layer: imports
-            nothing above itself, ever.
+components/   ui/ (shadcn output) plus the app's own composites, grouped by job:
+              appearance/ brand/ controls/ feedback/ layout/ table/
+hooks/        Cross-cutting React hooks.
+lib/          Framework-free helpers, API handles, schemas.
+types/        Shared payload types.
+global/       Cross-cutting stores — the appearance preferences (theme, density, layout,
+              nav-column). Plain modules over `useSyncExternalStore`, no provider.
 ```
 
-## The rules, and why each one earns its keep
+## Why the base layer is five folders and not one
 
-**`shared/` imports nothing above itself.** The moment it imports a screen, every consumer of
-every shared component inherits that dependency, and "shared" becomes "the other bucket".
+It used to be a single `shared/`, which made the rule easy to state ("shared imports nothing
+above itself") and made the tree one level deeper than anyone expects: `shared/lib/utils`,
+`shared/hooks/use-session`, `shared/ui/button`. The five folders above are the layout every
+Vite + shadcn project uses, and `components.json` can point at them without a translation step.
 
-**No module imports another module.** Gate reaching into Master is how two features become one
-that cannot be removed independently. They meet at `screens/doctype/registry.ts`.
+**The rule did not change — only the number of places it has to be written.** All five are the
+base layer and none of them may import from `pages/`, `modules/`, `shell/`, `auth/` or `app/`.
+`eslint.config.js` applies the same boundary to each; there is a probe in the commit history
+proving it still rejects a violation, because a retargeted rule that quietly matches nothing
+passes lint just as happily as a correct one.
 
-**`screens/` does not import a module** — `registry.ts` is the single exception, because it *is*
-the inversion point. Modules register with the renderer; the renderer never grows a list of the
-specific things it knows about. That list is what a generic renderer exists to avoid.
+## The two inversions worth knowing
 
-**`shell/` does not import a screen.** Navigation is generated from Frappe Module Defs and
-Workspaces (`docs/MODULES.md`). A shell that imports a screen has hardcoded part of a nav tree
-that is supposed to be data.
-
-## Naming
-
-- A file whose default export is a React component is **PascalCase** (`DoctypeGrid.tsx`,
-  `DoctypeListScreen.tsx`).
-- Everything else — hooks, lib modules, types — is **kebab-case** (`use-list-state.ts`,
-  `module-icons.ts`).
-
-Route-level components are suffixed `Screen`, so `ModuleScreen.tsx` is never confused with
-`ModuleRail.tsx`.
-
-## Adding a doctype screen
-
-You don't. Add the doctype to a Workspace and it gets a list, a record page, breadcrumbs,
-filters, sorting and permissions with no frontend change at all — see
-[`docs/features/master-data-administration.md`](../../docs/features/master-data-administration.md).
-
-Reach for `screens/doctype/registry.ts` only when the schema genuinely cannot say the thing,
-and read the rule at the top of that file first: **an override may only override a default the
-renderer already produces; it may never supply something the doctype JSON could have said.**
+- **`pages/` may not import a module.** Modules register with the renderer through
+  `pages/doctype/registry.ts` — the one file exempted from the rule — so the generic renderer
+  never grows a list of the specific things it knows about.
+- **`shell/` may not import a page.** Navigation is data-driven from Frappe workspaces; a shell
+  that imports a page has hardcoded part of the nav tree.

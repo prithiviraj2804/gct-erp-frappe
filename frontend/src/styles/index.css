@@ -54,7 +54,7 @@
 	-moz-osx-font-smoothing: grayscale;
 
 	/* Surfaces */
-	--background: oklch(0.9785 0.0045 258.32); /* #F6F8FB */
+	--background: oklch(0.97 0.006 258); /* #F3F5F9 — hue-locked to the neutral ramp */
 	--foreground: oklch(0.2101 0.0318 264.66); /* #111827  16.67:1 on bg */
 	--card: oklch(1 0 0); /* #FFFFFF */
 	--card-foreground: oklch(0.2101 0.0318 264.66);
@@ -65,27 +65,40 @@
      translucent fill smears (same reason the sticky columns carry an opaque fill). */
 	--table-header: oklch(0.988 0.004 258); /* ~#FAFBFD */
 
-	/* Primary — sapphire, the only colour used for actions (DESIGN.md: "reserved for
-     actions"). Deeper and richer than the #225DB6 it replaces: same family, but the
-     chroma lift is what separates "brand blue" from "Bootstrap blue". */
-	--primary: oklch(0.47 0.19 262); /* #154FC3  white text 7.12:1 */
+	/* Primary — the brand blue, adopted from the Admin-CRM design (hue 241.1) and re-solved.
+     Theirs is #0085C8 — a good colour that fails: white on it measures 3.86:1, under the AA bar,
+     and that is the label on every button in the product. Held at their hue and taken down two
+     steps until white clears it. The difference is one you have to hold the two swatches side by
+     side to see; every button in the app depends on it. */
+	--primary: oklch(0.558 0.13 241.1); /* #017BB8  white text 4.63:1 */
 	--primary-foreground: oklch(1 0 0);
-	/* Hover DARKENS. `bg-primary/80` would lighten and drop white text below AA.
-     DESIGN.md's primary-dark exists for exactly this. See button.tsx. */
-	--primary-hover: oklch(0.41 0.17 262); /* #0D40A4  white text 9.17:1 */
-	/* C is 0.015, not 0.018: at this lightness 0.018 leaves the sRGB gamut and the browser
-     silently clips it, which is how a "tint" turns into a slightly different tint. */
-	--primary-subtle: oklch(0.964 0.015 262); /* #EEF3FE  primary text on it 6.41:1 */
+	/* Hover DARKENS. `bg-primary/80` would lighten and drop white text below AA. C is 0.117 rather
+     than 0.13 because 0.13 at this lightness leaves the sRGB gamut and the browser clips it
+     silently — the same trap this file has recorded before. */
+	--primary-hover: oklch(0.498 0.117 241.1); /* #00699E  white text 5.97:1 */
+	--primary-subtle: oklch(0.93 0.035 241.1); /* #D4ECFE */
+	--primary-subtle-foreground: oklch(0.45 0.105 241.1); /* 6.01:1 on the wash */
 
-	/* Neutral roles */
-	--secondary: oklch(0.9683 0.0069 247.9); /* #F1F5F9 */
+	/* Neutral roles. Hue-LOCKED to 258 across the whole ramp: these greys previously drifted
+     between h 247.9 / 255.5 / 258.32, which is why surfaces that should have read as one family
+     looked subtly mismatched. One hue, varying only in lightness, is most of what "tonal
+     precision" means — and it costs nothing. */
+	--secondary: oklch(0.958 0.008 258); /* #EEF1F7 */
 	--secondary-foreground: oklch(0.2101 0.0318 264.66);
-	--muted: oklch(0.9683 0.0069 247.9);
+	--muted: oklch(0.958 0.008 258);
 	/* #475569 (7.12:1), not DESIGN.md's neutral-500 #64748B — that is 4.47:1 on
      --background and misses AA by 0.03. */
 	--muted-foreground: oklch(0.4455 0.0374 257.28); /* #475569 */
-	--accent: oklch(0.9683 0.0069 247.9);
+	/* Hover fill for rows, ghost buttons and list items. Lifted from #F1F5F9 (1.10:1 on card —
+     a hover most monitors cannot show) to 1.20:1, which is visible without being a state change. */
+	--accent: oklch(0.938 0.01 258); /* #E6EBF1 */
 	--accent-foreground: oklch(0.2101 0.0318 264.66);
+	/* Press. Nothing in the app had a pressed state; hover and active were byte-identical, so a
+     click gave no feedback at all until the page changed under you. */
+	--accent-pressed: oklch(0.918 0.012 258); /* #DFE4EC */
+	/* Loading placeholders. Was --accent, i.e. the same value as a hover — a skeleton that reads
+     as a hovered row. Its own token, one step darker so it registers as "not content yet". */
+	--skeleton: oklch(0.928 0.01 258); /* #E3E7EE */
 
 	/* Destructive. The solid stays DESIGN.md's #DC2626 (white text 4.83:1), but text on a
      10% tint of it is only 4.13:1 — so tinted surfaces use the darker foreground below. */
@@ -94,10 +107,14 @@
 	--destructive-subtle: color-mix(in oklch, var(--destructive) 10%, var(--card));
 	--destructive-subtle-foreground: oklch(0.5054 0.1905 27.52); /* #B91C1C  5.54:1 on tint */
 
-	/* Boundaries */
-	--border: oklch(0.9288 0.0126 255.51); /* #E2E8F0 — decorative only */
+	/* Boundaries. Two, not one, and the split is meaning: --border is DECORATIVE (a card edge, a
+     divider) and is 1.4.11-exempt; --border-strong is MEANINGFUL (a hovered control's edge, a
+     focusable boundary) and is solved for the darkest plane it lands on, so it clears 3:1
+     everywhere rather than only on white. */
+	--border: oklch(0.9 0.012 256); /* #D9DEE6 */
+	--border-strong: oklch(0.615 0.02 258); /* #7D8591  3.11:1 worst case */
 	--input: oklch(0.5544 0.0407 257.42); /* #64748B  4.76:1 — control boundary, WCAG 1.4.11 */
-	--ring: oklch(0.47 0.19 262); /* #154FC3  7.12:1 vs card, 6.69:1 vs background */
+	--ring: oklch(0.558 0.13 241.1); /* tracks --primary */
 
 	/* Status. DESIGN.md's originals fail AA with white text (success 3.30, warning 3.19,
      info 4.10), so these are the corrected steps. */
@@ -108,58 +125,113 @@
 	--info: oklch(0.5 0.1193 242.75); /* #0369A1  white 5.93:1 */
 	--info-foreground: oklch(1 0 0);
 
-	/* Brand accents — badges, charts, illustration. Never a button fill with white text.
-     The old --brand-indigo (#4F46E5, H 277) sat 15° from the new sapphire and read as a
-     second, slightly-wrong primary. Moved to a true violet so it separates. */
-	--brand-teal: oklch(0.5109 0.0861 186.39); /* #0F766E — DESIGN.md #18B6A3 is 2.54:1 */
-	--brand-violet: oklch(0.52 0.19 292); /* #6F49CA */
+	/* Tinted status surfaces (badges, banners). The pattern `bg-warning/10 text-warning` that
+     these replace measured 4.38:1 — a live AA failure — because an alpha tint lightens the
+     surface while the foreground stays put. Each tint gets a foreground solved FOR that tint,
+     the same way --destructive-subtle already did five lines above. */
+	--warning-subtle: oklch(0.95 0.026 72); /* #FAECDC */
+	--warning-subtle-foreground: oklch(0.49 0.115 58); /* #8F4D05  5.60:1 on the tint */
+	--success-subtle: oklch(0.95 0.026 155); /* #E2F4E7 */
+	--success-subtle-foreground: oklch(0.47 0.125 150); /* #0B6D32  5.9:1 on the tint */
+	--info-subtle: oklch(0.95 0.025 238); /* #E0F1FE */
+	--info-subtle-foreground: oklch(0.47 0.108 242); /* #096092  5.7:1 on the tint */
 
-	/* The exact logo blue — the Gnanamani "G" (#225DB6). This is the BRAND-MOMENT colour: the
-     sign-in identity panel, the institution mark, brand illustration. It is deliberately NOT
-     --primary. The action blue (#154FC3) is a deeper, more saturated sibling of this exact hue
-     family (h 259 vs 262) that carries white text at 7.12:1 where this reaches 6.35:1 — so the
-     button clicked ten thousand times a day is the accessible one, and the mark seen for a
-     second is the literal one. They read as one blue. Splitting brand colour from action colour
-     is what Stripe/Linear/Atlassian do, and why a logo hex on every button is the amateur move.
-     Passes AA with white text, so it MAY carry large brand type (unlike the accents above). */
-	--brand-blue: oklch(0.491 0.154 259); /* #225DB6  white text 6.35:1 (AA) */
-	--brand-blue-foreground: oklch(1 0 0);
-	--brand-blue-subtle: oklch(
-		0.965 0.017 259
-	); /* wash for brand surfaces; brand-blue on it 6.0:1 */
+	/* The --brand-* family (teal, violet, blue, blue-foreground, blue-subtle) was DELETED here.
+     It had zero consumers in the whole SPA, and it encoded a brand/action split that no longer
+     exists: --primary IS the literal brand blue #235DB6 now. A second "brand" blue token beside
+     it is exactly the second-slightly-wrong-primary trap its own comment warned about.
 
-	/* Charts — brand-anchored, not a rainbow (ui skill: "no colorful dashboards") */
-	--chart-1: oklch(0.47 0.19 262);
-	--chart-2: oklch(0.5109 0.0861 186.39);
-	--chart-3: oklch(0.52 0.19 292);
-	--chart-4: oklch(0.6069 0.1335 258.21);
-	--chart-5: oklch(0.5544 0.0407 257.42);
+     Charts — brand-anchored, not a rainbow (ui skill: "no colorful dashboards"). chart-1 is the
+     brand blue itself; the rest are spaced around the wheel far enough to be told apart at a
+     4px sparkline width, all at a lightness that carries dark text on a light plot. */
+	--chart-1: oklch(0.492 0.153 259); /* #235DB6 */
+	--chart-2: oklch(0.66 0.145 62); /* #D07B18 */
+	--chart-3: oklch(0.47 0.175 300); /* #6C39AC */
+	--chart-4: oklch(0.61 0.1 186); /* #1F968C */
+	--chart-5: oklch(0.43 0.03 258); /* #465161 */
 
-	/* --- Chrome ------------------------------------------------------------------
-     Dark even in light mode (cf. Fiori/ERPNext). Used by the module rail, the module
-     menu panel, and the login identity panel, so those three read as one surface. */
-	--sidebar: oklch(0.18 0.025 264); /* #0C111D  ink */
-	--sidebar-foreground: oklch(0.93 0.009 258); /* #E4E8EE  15.32:1 */
-	--sidebar-primary: oklch(0.5 0.195 262); /* #1C58D0  white 6.25:1, 3.01:1 on ink */
-	--sidebar-primary-foreground: oklch(1 0 0);
-	/* NEUTRAL hover. Deliberately carries no chroma, so it cannot be mistaken for the
-     current page — see --sidebar-active. */
-	--sidebar-accent: oklch(0.25 0.027 262); /* #1B222F  1.18:1 on ink */
-	--sidebar-accent-foreground: oklch(0.93 0.009 258);
-	/* Current page in the module menu: a sapphire-TINTED surface, not the solid
-     --sidebar-primary fill. A saturated fill is right for the rail (one 48px square,
-     an anchor) and wrong for a list of full-width rows, where it turns the panel into a
-     block of colour. 1.16:1 against the neutral hover — subtle, but the indicator bar
-     below is what actually carries the state. */
-	--sidebar-active: oklch(0.3 0.09 262); /* #132B5A  fg on it 11.22:1 */
-	--sidebar-active-foreground: oklch(0.93 0.009 258);
-	/* The 2px bar marking the current item. Bright enough to read against BOTH the ink and
-     the active tint (--sidebar-primary is only 2.21:1 on the tint — it would disappear). */
-	--sidebar-indicator: oklch(0.68 0.16 262); /* #6095FA  6.43:1 on ink, 4.66:1 on tint */
-	/* Hairline, not a lighter solid. Light separating two same-coloured planes is the whole
-     difference between "deep" and "flat" here. */
-	--sidebar-border: oklch(1 0 0 / 10%);
-	--sidebar-ring: oklch(0.68 0.16 262); /* #6095FA  6.43:1 on ink */
+	/* --- Chrome ---------------------------------------------------------------
+     LIGHT MODE: a saturated BLUE nav, adopted from the Admin-CRM design.
+
+     This is the third arrangement this chrome has had, and the reasoning is worth keeping
+     because it is the same argument each time, resolved differently:
+
+       ink        a near-black rail. Premium, and anonymous — it said nothing about the tenant.
+       light grey a near-white rail. Recessive and calm; the brand disappeared entirely.
+       blue       this. The brand IS the chrome.
+
+     Admin-CRM sets `--sidebar` to `--primary` outright: one saturated mid-blue slab. That is
+     the look being adopted, with one correction it could not survive without. At their
+     lightness (#0085C8) the slab is 4.56:1 from pure white — enough for ONE text tone and no
+     more, which is why their own nav text measures 3.69:1 and fails. A nav that marks its
+     current row with a luminance jump needs two tiers, so the slab is taken down to L 0.44:
+     white 7.57:1, a muted tier at 4.55:1, and the hierarchy the nav actually needs.
+
+     The literal brand blue is not lost — it is `--primary`, on every button, link and focus
+     ring, and on the selected rail tile's glyph. */
+
+	/* The rail: one step deeper than the nav column, so the two read as a recession rail →
+     panel → content rather than one slab. 1.29:1 apart. */
+	--sidebar-deep: oklch(0.38 0.09 241.1); /* #00476D */
+	--sidebar: oklch(0.44 0.103 241.1); /* #005886 */
+	/* Near-pure white, not an off-white: at this slab lightness every 0.01 of L is contrast that
+     the muted tier below needs. 7.57:1 on the panel, 9.76:1 on the rail. */
+	--sidebar-foreground: oklch(0.995 0.002 241); /* #FCFEFF */
+	/* The rest-state tier — nav labels, group eyebrows. It is TEXT, so it answers to 4.5:1 and
+     not to the 3:1 non-text bar; 4.55:1 on the panel is deliberate and has no slack in it. */
+	--sidebar-foreground-muted: oklch(0.829 0.035 241); /* #B4CBDC */
+	/* The selected module tile: a near-white plate carrying the literal brand glyph. 9.76:1
+     against the rail, so the selected state clears WCAG 1.4.11 on the fill alone. */
+	--sidebar-primary: oklch(0.995 0.002 241); /* #FCFEFF */
+	--sidebar-primary-foreground: oklch(0.558 0.13 241.1); /* the brand blue, 4.56:1 on the plate */
+	/* States are BLACK alpha, not white. White over a saturated blue desaturates it — 12% white
+     turns #005886 into a grey-blue #617D9B and drops the label to 4.20:1. Black keeps the hue,
+     deepens the plate, and RAISES the text contrast: the current row reads 8.67:1. */
+	--sidebar-accent: oklch(0 0 0 / 10%);
+	--sidebar-accent-foreground: oklch(0.995 0.002 241);
+	--sidebar-active: oklch(0 0 0 / 20%);
+	--sidebar-active-foreground: var(--sidebar-foreground);
+	--sidebar-active-hover: oklch(0 0 0 / 26%);
+	--sidebar-indicator: oklch(1 0 0);
+	/* The seam goes the other way — a hairline has to be LIGHTER than the slab to read as an edge
+     rather than as another state. 2.33:1. */
+	--sidebar-border: oklch(1 0 0 / 20%);
+	--sidebar-ring: oklch(1 0 0);
+
+	/* --- Brand panel -----------------------------------------------------------
+     The sign-in identity panel, and the ONE surface that stays deep in both themes.
+
+     It used to ride --sidebar-deep, which was fine while the chrome was dark and is wrong now:
+     that panel is 62% of the first screen anyone ever sees, and at #E1E5EB beside a white form
+     column it measures 1.09:1 — an almost uniform white rectangle with a monogram floating in
+     it. The identity moment would have been the thing the light theme cost us.
+
+     So it is decoupled. It is not chrome; it is a hero, and a product with a light app can
+     still have a deep sign-in (Linear, Vercel and Notion all do). These values ARE the old
+     ink chrome, kept where it still earns its keep.
+
+     Deep and near-neutral rather than a saturated navy, for a reason specific to a multi-tenant
+     product: this panel sits directly beside an ARBITRARY tenant's crest, and a committed blue
+     fights a maroon or a green one. Ink flatters all of them. */
+	--brand-panel: oklch(0.32 0.076 241.1); /* #003656 — the deepest step of the chrome ramp */
+	--brand-panel-foreground: oklch(0.985 0.004 241); /* #F8FAFD */
+	--brand-panel-muted: oklch(0.775 0.035 241); /* on #003656 */
+	--brand-panel-border: oklch(1 0 0 / 13%);
+	/* Raised fills ON the deep panel — the accreditation chips and the identity skeleton. ONE
+     token rather than the ad-hoc white alphas this file spent a whole pass eliminating from the
+     chrome. It must be a white alpha and cannot alias --sidebar-accent any more: that token is
+     now BLACK alpha in light mode, which on a deep panel is invisible. */
+	--brand-panel-raised: oklch(1 0 0 / 8%);
+	/* The institution's mark on that panel: a near-white plate carrying the literal brand glyph,
+     so the tenant's mark is the brightest object on the screen. */
+	--brand-panel-mark: oklch(1 0 0); /* pure white — 4.63:1 for the glyph, where an
+                                off-white plate measured 4.43 and missed */
+	--brand-panel-mark-foreground: oklch(0.558 0.13 241.1); /* the brand blue, 4.63:1 */
+
+	/* The topbar avatar. Its OWN token: it is a disc on a white bar, a completely different
+     problem from a row plate on ink, and one value cannot solve both. 14.39:1 on --card. */
+	--avatar: oklch(0.44 0.103 241.1); /* the nav slab */
+	--avatar-foreground: oklch(0.968 0.006 259); /* #F2F5F9 */
 
 	/* --- Elevation ---------------------------------------------------------------
      DESIGN.md's shadow scale (sm/md/lg), finally wired. Every surface in the app was
@@ -174,6 +246,11 @@
 		0 4px 12px -2px oklch(0.21 0.04 266 / 0.1), 0 2px 6px -2px oklch(0.21 0.04 266 / 0.06);
 	--elevation-overlay:
 		0 8px 24px -4px oklch(0.21 0.04 266 / 0.12), 0 4px 8px -4px oklch(0.21 0.04 266 / 0.08);
+	/* The only one that casts UPWARD, for a bar pinned to the bottom of a scrolling form. Named
+     for the situation, not the depth: "lifted" would just be a synonym of `raised` and give an
+     author no rule for choosing. Same ink colour and same geometry as `raised`, y negated. */
+	--elevation-pinned:
+		0 -4px 12px -2px oklch(0.21 0.04 266 / 0.1), 0 -2px 6px -2px oklch(0.21 0.04 266 / 0.06);
 
 	/* Easing. DESIGN.md's asymmetric flyout curves, promoted to tokens so every surface settles
      the same way: emphasized = a steep ease-out that decelerates and settles (entrances), exit
@@ -181,25 +258,84 @@
 	--ease-emphasized: cubic-bezier(0.16, 1, 0.3, 1);
 	--ease-exit: cubic-bezier(0.33, 0, 0.2, 1);
 
-	--radius: 0.5rem; /* 8px — DESIGN.md button.radius / input.radius */
+	--radius: 0.625rem; /* 10px — Admin-CRM's base radius, softer than the 8px before it */
 }
 
-/* Ships complete and coherent, but is currently UNREACHABLE: nothing adds the `.dark`
-   class yet (no theme provider). Do not claim dark mode works until one exists. */
-.dark {
-	--background: oklch(0.165 0.021 264); /* #0A0E18 */
-	--foreground: oklch(0.9683 0.0069 247.9); /* 17.60:1 */
-	--card: oklch(0.225 0.024 262); /* #161C27  16.00:1; 1.13:1 vs background */
-	--card-foreground: oklch(0.9683 0.0069 247.9);
-	--popover: oklch(0.225 0.024 262);
-	--popover-foreground: oklch(0.9683 0.0069 247.9);
-	--table-header: oklch(0.255 0.024 262); /* a step above --card */
+/* --- Density -------------------------------------------------------------------
+   ONE density control for the whole app, not one per table.
 
-	/* L is 0.555, not 0.58: at 0.58 white text measures 4.39:1 and misses AA. */
-	--primary: oklch(0.555 0.175 262); /* #356CD8 — lifted; white text 4.88:1 */
-	--primary-foreground: oklch(1 0 0);
-	--primary-hover: oklch(0.49 0.19 262); /* darkens on dark too */
-	--primary-subtle: oklch(0.29 0.07 262);
+   The grid package ships its own per-table density toggle (`showDensityToggle`), persisted
+   per table. That is the wrong grain for an ERP: a registrar who wants tight rows wants them
+   on all forty screens, and setting it forty times — then again on every new doctype — is not
+   a preference, it is a chore. So the toggle is off and this attribute is the authority; the
+   `.bst-density-compact` rule it used to need is gone with it.
+
+   `data-density` rather than a class because it is an enumeration, not a flag, and because the
+   boot script in index.html sets it before first paint alongside the theme.
+
+   Comfortable was originally EXACTLY the app's previous geometry, so turning the feature on
+   changed nothing. It has since been tightened once, deliberately: the type scale dropped to a
+   13px body and the spacing did not follow it, so the page read as loose against its own text.
+   The stacks moved most (24 → 20) because the literals they replaced were worse still — see
+   below. Compact is roughly a quarter more rows per screen at the same type
+   size: the savings come out of padding and gutters, never out of font size or target size,
+   which is the line between a density control and an accessibility regression.
+
+   `:root[data-density=…]` is (0,2,0) against `:root`'s (0,1,0), so the override wins on
+   specificity rather than on source order — this block can move without changing behaviour. */
+:root {
+	--page-gutter-x: 20px; /* the one page gutter — PageFrame, list, record, home */
+	--page-gutter-y: 18px;
+	--page-stack: 20px; /* page header → body, and between a page's top-level sections */
+	--section-stack: 14px; /* between cards inside a section */
+	--card-pad: 16px; /* every card, INCLUDING the record and form section cards, which used to
+                       be drawn at 24px — three paddings for one job is two too many. */
+	--row-pad-y: 10px; /* a list row inside a card (Quick access, the attention worklist) */
+	--table-cell-pad-y: 6px; /* 40px row: 6 + 6 + the 28px row-actions button, which governs */
+	--field-stack: 16px; /* field → field inside a section card, read and edit alike. The field
+                        grid is most of a record page's height and was the one part the density
+                        preference could not reach — six literals across two files, and read and
+                        edit disagreed by 4px, so pressing Edit resettled every field. */
+}
+
+:root[data-density='compact'] {
+	--page-gutter-x: 16px;
+	--page-gutter-y: 12px;
+	--page-stack: 14px;
+	--section-stack: 10px;
+	--card-pad: 12px;
+	--row-pad-y: 6px;
+	--table-cell-pad-y: 2px; /* 32px row. The 28px actions button is the floor — going below
+                            this needs a smaller button, not less padding. */
+	--field-stack: 12px; /* 12, not 10: FormField hangs description and error at mt-1.5 (6px)
+                        under the control, so at 10px a helper line would sit 6px from its owner
+                        and 10px from the next field's label — belonging to neither. 12 holds
+                        2:1 and still saves 4px a field. */
+}
+
+/* LIVE. `shared/appearance/AppearanceProvider.tsx` adds this class (via next-themes,
+   `attribute="class"`, storage key `erp-theme`), and the inline boot script in `index.html`
+   applies it before first paint so a dark-mode user never sees a white flash. This block was
+   dead code for its whole life until then — complete, measured, and reachable by nobody. */
+.dark {
+	--background: oklch(0.165 0.02 241); /* #070F16 */
+	--foreground: oklch(0.9683 0.0069 247.9); /* 17.60:1 */
+	--card: oklch(0.225 0.022 241); /* #121D25  1.15:1 vs background */
+	--card-foreground: oklch(0.9683 0.0069 247.9);
+	--popover: oklch(0.225 0.022 241);
+	--popover-foreground: oklch(0.9683 0.0069 247.9);
+	--table-header: oklch(0.255 0.022 241); /* a step above --card */
+
+	/* Lifted off the dark card so a button reads as a button — and therefore too light to carry
+     WHITE text (3.59:1). Dark mode inverts the pairing: a light primary with a DARK label. This
+     is the one place the two themes differ in kind rather than in value. */
+	--primary: oklch(0.62 0.115 241.1); /* #3B8EC5 — 4.75:1 as a link on the card */
+	--primary-foreground: oklch(0.2 0.04 241); /* #031826  5.03:1 on the fill */
+	--primary-hover: oklch(0.55 0.115 241.1); /* darkens on dark too */
+	--primary-subtle: oklch(0.3 0.06 241.1);
+	/* --primary-subtle-foreground is set with the other dark *-subtle pairs below, where the
+     reasoning for that whole group lives. Defining it twice in one block is how the later
+     value silently wins and the earlier one looks authoritative but does nothing. */
 
 	--secondary: oklch(0.285 0.027 262);
 	--secondary-foreground: oklch(0.9683 0.0069 247.9);
@@ -213,9 +349,28 @@
 	--destructive-subtle: color-mix(in oklch, var(--destructive) 15%, var(--card));
 	--destructive-subtle-foreground: oklch(0.8077 0.1035 19.57);
 
+	/* The tinted status surfaces, which had NO dark values at all and therefore fell through to
+     the light ones — a cream chip and a pale-blue plate on a near-black card. That was harmless
+     while `.dark` was unreachable dead code; the moment a theme provider shipped it became four
+     live surfaces, one of them a hard AA failure: `--primary-subtle-foreground` (#0C4AA3, dark
+     blue) landed on the dark blue `--primary-subtle` at **1.71:1**, on the attention list's
+     avatars.
+
+     Written as explicit oklch rather than `color-mix`, unlike --destructive-subtle above. That
+     one mixes a colour with its OWN family so the interpolated hue is unambiguous; these mix
+     hues ~180° apart (amber 72 into card 262), where the shorter-arc result is undefined enough
+     that the value could not be measured before shipping it. Each pair below was. */
+	--primary-subtle-foreground: oklch(0.8 0.09 241); /* 7.34:1 on --primary-subtle */
+	--warning-subtle: oklch(0.32 0.055 72); /* #442E0F */
+	--warning-subtle-foreground: oklch(0.8369 0.1644 84.43); /* #FBBF24  7.67:1 */
+	--success-subtle: oklch(0.32 0.055 155); /* #193B26 */
+	--success-subtle-foreground: oklch(0.8003 0.1821 151.71); /* #4ADE80  7.11:1 */
+	--info-subtle: oklch(0.32 0.055 238); /* #13374C */
+	--info-subtle-foreground: oklch(0.7854 0.1216 230.32); /* #59C7F8  6.57:1 */
+
 	--border: oklch(1 0 0 / 10%);
 	--input: oklch(1 0 0 / 28%);
-	--ring: oklch(0.68 0.16 262); /* #6095FA  5.99:1 vs card */
+	--ring: oklch(0.68 0.11 241); /* tracks --primary, lifted for a dark ground */
 
 	--success: oklch(0.8003 0.1821 151.71);
 	--success-foreground: oklch(0.165 0.021 264);
@@ -224,31 +379,98 @@
 	--info: oklch(0.7854 0.1216 230.32);
 	--info-foreground: oklch(0.165 0.021 264);
 
-	/* Chrome sits BELOW the page background in dark mode, so the rail recedes and the
-     content plane is the thing that reads as lit. */
-	--sidebar: oklch(0.13 0.019 264); /* #04070F */
-	--sidebar-foreground: oklch(0.93 0.009 258);
-	--sidebar-primary: oklch(0.555 0.175 262);
-	--sidebar-primary-foreground: oklch(1 0 0);
-	--sidebar-accent: oklch(0.23 0.025 262);
-	--sidebar-accent-foreground: oklch(0.93 0.009 258);
-	--sidebar-active: oklch(0.28 0.085 262);
-	--sidebar-active-foreground: oklch(0.93 0.009 258);
-	--sidebar-indicator: oklch(0.68 0.16 262);
-	--sidebar-border: oklch(1 0 0 / 10%);
-	--sidebar-ring: oklch(0.68 0.16 262);
+	/* Chrome sits BELOW the page background in dark mode, so the rail recedes and the content
+     plane is the thing that reads as lit — the same recession the light chrome now runs, one
+     octave down. The selected plate stays a LIGHT plate carrying the literal brand glyph, which
+     is the mirror of light mode's solid sapphire plate carrying a white one: same rule, each
+     solved for its own ground, and still exactly ONE brand blue in the app. */
+	--sidebar-deep: oklch(0.165 0.028 241); /* #041019 */
+	--sidebar: oklch(0.208 0.028 241); /* #0B1923 */
+	--sidebar-foreground: oklch(0.965 0.006 241); /* #F0F4F7  16.06:1 */
+	--sidebar-foreground-muted: oklch(0.72 0.024 241); /* #98A7B3  7.19:1 */
+	--sidebar-primary: oklch(0.9 0.022 241); /* #D2E0EC  14.32:1 vs the rail */
+	--sidebar-primary-foreground: oklch(0.46 0.105 241.1); /* #065E8D  5.24:1 on the plate */
+	--sidebar-accent: oklch(1 0 0 / 9%);
+	--sidebar-accent-foreground: oklch(0.965 0.006 241);
+	--sidebar-active: oklch(0.272 0.03 241);
+	--sidebar-active-foreground: var(--sidebar-foreground);
+	--sidebar-active-hover: oklch(0.315 0.03 241);
+	--sidebar-indicator: oklch(1 0 0);
+	--sidebar-border: oklch(1 0 0 / 13%);
+	--sidebar-ring: oklch(1 0 0);
+
+	/* The sign-in panel goes one octave down in dark mode but stays DEEP — it is the one
+     surface that does not follow the chrome, in either theme. See the light block. */
+	--brand-panel: oklch(0.185 0.045 241.1); /* #001525 — C 0.045, not 0.05: 0.05 leaves gamut */
+	--brand-panel-foreground: oklch(0.965 0.006 241);
+	--brand-panel-muted: oklch(0.72 0.024 241);
+	--brand-panel-border: oklch(1 0 0 / 13%);
+	--brand-panel-raised: oklch(1 0 0 / 8%);
+	--brand-panel-mark: oklch(0.9 0.022 241);
+	--brand-panel-mark-foreground: oklch(0.46 0.105 241.1);
+
+	/* Inverted against light mode: on a dark topbar the disc must LIFT off the bar, where in
+     light mode it sinks into it. An alias to a chrome surface could not do both. */
+	--avatar: oklch(0.76 0.024 241);
+	--avatar-foreground: oklch(0.208 0.028 241);
 
 	/* Black alpha, not tinted: a coloured shadow on a near-black surface is invisible. Deeper
      than light mode because the ring is doing less separating work here. */
 	--elevation-card: 0 1px 2px 0 oklch(0 0 0 / 0.3);
 	--elevation-raised: 0 4px 12px -2px oklch(0 0 0 / 0.45), 0 2px 6px -2px oklch(0 0 0 / 0.3);
 	--elevation-overlay: 0 12px 32px -8px oklch(0 0 0 / 0.55), 0 4px 8px -4px oklch(0 0 0 / 0.4);
+	--elevation-pinned: 0 -4px 12px -2px oklch(0 0 0 / 0.45), 0 -2px 6px -2px oklch(0 0 0 / 0.3);
 }
 
 @theme inline {
 	--font-sans: "Inter Variable", "Segoe UI", Roboto, system-ui, sans-serif;
+	/* An alias, deliberately: heading differentiation comes from size, weight and tracking, not
+     from a second family. Stated so nobody "fixes" it by importing a display face. */
 	--font-heading: var(--font-sans);
 	--font-mono: "JetBrains Mono Variable", ui-monospace, monospace;
+
+	/* --- Type scale -------------------------------------------------------------
+     An ERP scale, redefined ON Tailwind's own steps rather than added beside them. Every
+     `text-sm` in the app becomes 13px here; no component had to change, and none can drift,
+     because there is no second vocabulary to forget.
+
+     Tailwind's defaults are a website's scale — 14/16/18/20/24 — and this app was running on
+     them: body inherited 16px, page titles were 24px. Against the products this competes with
+     (Odoo 13px body / 20px title, Linear 13/21, SAP Fiori 14/20, ERPNext 13/20) that is a step
+     large everywhere, which is what "the whole page looks zoomed" turns out to mean when you
+     measure it. Nothing was scaled; the scale itself was simply a size up.
+
+     11 / 12 / 13 / 14 / 16 / 18 / 20, then Tailwind's own 30 and 36 left ALONE above it —
+     those two are used only by the sign-in hero, which is the one screen that should shout.
+
+     Line heights are set with every step. Tailwind pairs 13px with a 20px line by default,
+     which at this size is loose enough to undo the density the size just bought. */
+
+	/* The eyebrow step: 11px on a 16px line, for the uppercase micro-labels above a value
+     ("CAMPUSES", "Your workspaces"). Previously spelled text-xs + an arbitrary tracking at
+     each site; this is the ONE form, so those labels finally read as one system. */
+	--text-2xs: 11px;
+	--text-2xs--line-height: 16px;
+	/* 12px stays Tailwind's own value — the secondary step (card descriptions, hints). */
+	--text-xs: 12px;
+	--text-xs--line-height: 16px;
+	/* THE BODY STEP. Was 14px. This is the app's most-used size by a wide margin, and `body`
+     itself is set to it below so nothing can fall through to something larger. */
+	--text-sm: 13px;
+	--text-sm--line-height: 18px;
+	/* The emphasis step — a lead paragraph, a dialog's first line. Was 16px. */
+	--text-base: 14px;
+	--text-base--line-height: 20px;
+	--text-lg: 16px;
+	--text-lg--line-height: 24px;
+	--text-xl: 18px;
+	--text-xl--line-height: 26px;
+	/* THE PAGE TITLE. Was 24px, which is 4px above every ERP this is measured against. */
+	--text-2xl: 20px;
+	--text-2xl--line-height: 28px;
+	/* Uppercase micro-labels need real letterspacing to stay legible; 0.06em is that one value,
+     replacing tracking-wide (0.025em) and a hand-written tracking-[0.08em]. */
+	--tracking-eyebrow: 0.06em;
 
 	--color-background: var(--background);
 	--color-foreground: var(--foreground);
@@ -261,46 +483,74 @@
 	--color-primary-foreground: var(--primary-foreground);
 	--color-primary-hover: var(--primary-hover);
 	--color-primary-subtle: var(--primary-subtle);
+	--color-primary-subtle-foreground: var(--primary-subtle-foreground);
 	--color-secondary: var(--secondary);
 	--color-secondary-foreground: var(--secondary-foreground);
 	--color-muted: var(--muted);
 	--color-muted-foreground: var(--muted-foreground);
 	--color-accent: var(--accent);
 	--color-accent-foreground: var(--accent-foreground);
+	--color-accent-pressed: var(--accent-pressed);
+	--color-skeleton: var(--skeleton);
 	--color-destructive: var(--destructive);
 	--color-destructive-foreground: var(--destructive-foreground);
 	--color-destructive-subtle: var(--destructive-subtle);
 	--color-destructive-subtle-foreground: var(--destructive-subtle-foreground);
 	--color-border: var(--border);
+	--color-border-strong: var(--border-strong);
 	--color-input: var(--input);
 	--color-ring: var(--ring);
 	--color-success: var(--success);
 	--color-success-foreground: var(--success-foreground);
+	--color-success-subtle: var(--success-subtle);
+	--color-success-subtle-foreground: var(--success-subtle-foreground);
 	--color-warning: var(--warning);
 	--color-warning-foreground: var(--warning-foreground);
+	--color-warning-subtle: var(--warning-subtle);
+	--color-warning-subtle-foreground: var(--warning-subtle-foreground);
 	--color-info: var(--info);
 	--color-info-foreground: var(--info-foreground);
-	--color-brand-teal: var(--brand-teal);
-	--color-brand-violet: var(--brand-violet);
-	--color-brand-blue: var(--brand-blue);
-	--color-brand-blue-foreground: var(--brand-blue-foreground);
-	--color-brand-blue-subtle: var(--brand-blue-subtle);
+	--color-info-subtle: var(--info-subtle);
+	--color-info-subtle-foreground: var(--info-subtle-foreground);
 	--color-chart-1: var(--chart-1);
 	--color-chart-2: var(--chart-2);
 	--color-chart-3: var(--chart-3);
 	--color-chart-4: var(--chart-4);
 	--color-chart-5: var(--chart-5);
 	--color-sidebar: var(--sidebar);
+	--color-sidebar-deep: var(--sidebar-deep);
 	--color-sidebar-foreground: var(--sidebar-foreground);
+	--color-sidebar-foreground-muted: var(--sidebar-foreground-muted);
 	--color-sidebar-primary: var(--sidebar-primary);
 	--color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
 	--color-sidebar-accent: var(--sidebar-accent);
 	--color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
 	--color-sidebar-active: var(--sidebar-active);
 	--color-sidebar-active-foreground: var(--sidebar-active-foreground);
+	--color-sidebar-active-hover: var(--sidebar-active-hover);
 	--color-sidebar-indicator: var(--sidebar-indicator);
 	--color-sidebar-border: var(--sidebar-border);
 	--color-sidebar-ring: var(--sidebar-ring);
+	--color-brand-panel: var(--brand-panel);
+	--color-brand-panel-foreground: var(--brand-panel-foreground);
+	--color-brand-panel-muted: var(--brand-panel-muted);
+	--color-brand-panel-border: var(--brand-panel-border);
+	--color-brand-panel-raised: var(--brand-panel-raised);
+	--color-brand-panel-mark: var(--brand-panel-mark);
+	--color-brand-panel-mark-foreground: var(--brand-panel-mark-foreground);
+	--color-avatar: var(--avatar);
+	--color-avatar-foreground: var(--avatar-foreground);
+
+	/* Density-aware spacing, so a utility can be written `px-(--page-gutter-x)` and mean "the
+     app's page gutter at the user's chosen density" rather than a fixed 24px. Registered as
+     --spacing-* so `gap-page`, `p-card` etc. also resolve. */
+	--spacing-page-x: var(--page-gutter-x);
+	--spacing-page-y: var(--page-gutter-y);
+	--spacing-page-stack: var(--page-stack);
+	--spacing-section-stack: var(--section-stack);
+	--spacing-card-pad: var(--card-pad);
+	--spacing-field-stack: var(--field-stack);
+	--spacing-row-pad: var(--row-pad-y);
 
 	/* Explicit values, not multipliers. DESIGN.md's scale is 4/6/8/12, which the previous
      0.6/0.8/1/1.4x scheme cannot produce (it yielded 4.8/6.4/11.2). --radius-xl is 10px
@@ -315,11 +565,12 @@
 	--radius-4xl: 24px;
 
 	/* Elevation utilities: `shadow-card` (resting surfaces), `shadow-raised` (popovers, menus,
-     the row hover lift), `shadow-overlay` (dialogs, command palette). Light/dark resolve through
-     the vars above. */
+     the row hover lift), `shadow-overlay` (dialogs, command palette), `shadow-pinned` (a bar
+     stuck to the bottom of a scroll, casting up). Light/dark resolve through the vars above. */
 	--shadow-card: var(--elevation-card);
 	--shadow-raised: var(--elevation-raised);
 	--shadow-overlay: var(--elevation-overlay);
+	--shadow-pinned: var(--elevation-pinned);
 
 	/* Motion utilities: `ease-emphasized` for entrances, `ease-exit` for leaves. Raw values here
      (not var()) so the utility is self-contained; the matching `:root` vars above cover
@@ -334,6 +585,16 @@
 	}
 	body {
 		@apply bg-background text-foreground;
+		/* Pinned to the body step. `html` stays at the browser's 16px — never override THAT, it
+       is the user's own accessibility setting and every rem in the app is built on it.
+       This sets the inherited size only.
+
+       It was inheriting 16px, which was a latent trap rather than a live bug: a census of the
+       rendered page found every visible string setting its own size, so nothing showed at 16px
+       — but the next component to forget a `text-` class would have rendered a full step large,
+       and looked exactly like the zoom bug that isn't one. */
+		font-size: var(--text-sm);
+		line-height: var(--text-sm--line-height);
 	}
 	html {
 		@apply font-sans;

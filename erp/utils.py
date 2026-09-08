@@ -68,3 +68,25 @@ def normalize_aadhaar(value: str) -> str:
 		)
 
 	return digits
+
+
+def ensure_module_defs():
+	"""Give every module named in `erp/modules.txt` a Module Def, before doctypes sync.
+
+	`before_migrate` hook. Frappe creates Module Defs only in `install_app`, never on migrate, so a
+	module added to `modules.txt` after installation has none — and a doctype in it then fails
+	`get_controller`, which `remove_orphan_doctypes` reads as "the code is gone" and deletes the
+	DocType it just imported. The failure is silent: migrate reports success and the doctype simply
+	is not there.
+
+	Running here rather than in a patch means the next module costs nothing: `before_migrate` fires
+	ahead of `sync_all` and of orphan removal on every migrate, so adding a line to `modules.txt` is
+	all that a new module ever needs.
+	"""
+	for module in frappe.get_module_list("erp"):
+		if frappe.db.exists("Module Def", module):
+			continue
+
+		frappe.get_doc({"doctype": "Module Def", "module_name": module, "app_name": "erp"}).insert(
+			ignore_permissions=True
+		)

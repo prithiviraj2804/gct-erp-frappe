@@ -7,14 +7,11 @@ import frappe
 from frappe import _
 from frappe.model.document import Document
 
+from erp.admission.eligibility import assert_prior_qualification
+from erp.admission.follow_up_state import derive_follow_up_state
+from erp.admission.pipeline import assert_status_transition
 from erp.master.hierarchy import validate_same_parent
 from erp.utils import normalize_aadhaar, normalize_phone
-
-# A lateral entrant joins a programme already in progress on the strength of a diploma, whatever
-# the programme's own entry requirement — so lateral entry overrides it with this. Every other
-# entry requirement now lives on the Programme itself (`required_prior_qualification`), so a school
-# class and a degree state their prerequisite in the same place rather than in a hardcoded map.
-LATERAL_ENTRY_QUALIFICATION = "Diploma"
 
 # The gate desk's record, held read-only on an enquiry started from a pass: the Aadhaar the
 # duplicate check keys on, and the reference block that decides who is credited with the walk-in.
@@ -41,6 +38,8 @@ class AdmissionEnquiry(Document):
 		self.validate_hierarchy()
 		self.validate_unique_aadhaar()
 		self.validate_previous_education()
+		self.enforce_pipeline_gates()
+		self.set_follow_up_state()
 		self.ensure_child_ids()
 
 	def set_derived_ancestors(self):
@@ -184,36 +183,12 @@ class AdmissionEnquiry(Document):
 		"""Require the prior qualification the chosen course actually rests on.
 
 		`mandatory_depends_on` and `link_filters` are Desk-form conveniences the server never
-		enforces, so the requirement lives here. The requirement is data, not a hardcoded map: a
-		lateral entrant joins a programme already in progress (`default_entry_semester` past the
-		first) on the strength of a diploma; otherwise the Programme's own
-		`required_prior_qualification` decides. A blank requirement means none is needed — the
-		case for an entry-level school class (LKG, Class 1), which no straight-through college
-		programme hit — so the enquiry saves with an empty Previous Education table.
+		enforces, so the requirement lives on the server. The rule itself is in
+		`erp/admission/eligibility.py` because the Admission Application checks it a second time,
+		against the programme actually being admitted to — which a counselling allotment routinely
+		makes a different one.
 		"""
-		if not self.programme:
-			return
-
-		required = None
-		if self.admission_type:
-			entry_semester = frappe.db.get_value(
-				"Admission Type", self.admission_type, "default_entry_semester"
-			)
-			if entry_semester and entry_semester > 1:
-				required = LATERAL_ENTRY_QUALIFICATION
-
-		if not required:
-			required = frappe.db.get_value("Programme", self.programme, "required_prior_qualification")
-
-		if not required:
-			return
-
-		levels_present = {row.qualification_level for row in self.previous_education}
-		if required not in levels_present:
-			frappe.throw(
-				_("This programme needs a {0} record in Previous Education.").format(frappe.bold(required)),
-				title=_("Previous Education Required"),
-			)
+		assert_prior_qualification(self.programme, self.admission_type, self.previous_education)
 
 	def ensure_child_ids(self):
 		"""Give every previous-education row the standard UUID `id`.
@@ -225,3 +200,32 @@ class AdmissionEnquiry(Document):
 		for row in self.previous_education:
 			if not row.get("id"):
 				row.id = str(uuid.uuid4())
+
+	def enforce_pipeline_gates(self):
+		"""Block an advance the lead has not earned — fee unpaid, documents unverified, no seat.
+
+		Reads the *stored* status so only an actual transition is checked; a lead already inside a
+		gated region (e.g. after a payment was cancelled) can still be saved and edited. All three
+		rules are composed in `erp/admission/pipeline.py`, which the Admission Follow-up's
+		`new_status` path calls too — that path writes with `set_value` and bypasses this `validate`
+		entirely, so the rule cannot live here.
+		"""
+		previous = None if self.is_new() else self.get_db_value("status")
+		assert_status_transition(
+			self.name,
+			self.status,
+			previous,
+			application_fee_paid=self.application_fee_paid,
+		)
+
+	def set_follow_up_state(self):
+		"""Keep the follow-up badge honest when the lead itself is edited.
+
+		The Admission Follow-up controller refreshes this whenever a call is logged; this covers the
+		other writer — a direct edit to the lead, most importantly a stage change to a closed status,
+		which should read as "Closed" at once rather than waiting for the next follow-up. `_count`
+		and `next_follow_up` are the log's roll-ups, so this only re-derives the label from them.
+		"""
+		self.follow_up_state = derive_follow_up_state(
+			self.status, self.next_follow_up, self.follow_up_count or 0
+		)

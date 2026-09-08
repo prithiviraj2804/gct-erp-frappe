@@ -1,4 +1,12 @@
 {
+  "permissions": {
+    "allow": [
+      "Bash(sed -n '/\"Institution\": {/,/},/p' erp/hooks.py)",
+      "Bash(python3 -c ' *)",
+      "Bash(bash -c 'cd /var/labsstorage/home/prithivi/projects/frappe_erp/sites && timeout 180 ../env/bin/python -c \" *)",
+      "Bash(cd /var/labsstorage/home/prithivi/projects/frappe_erp/apps/frappe && grep -n -A25 \"def add_custom_script\" frappe/desk/form/meta.py; echo \"=== link_filters ===\"; grep -rn \"link_filters\" frappe/public/js/frappe/form/controls/link.js frappe/model/*.py frappe/core/doctype/doctype/doctype.py | head -15)"
+    ]
+  },
   "enabledMcpjsonServers": [
     "playwright",
     "shadcn"

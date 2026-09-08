@@ -1,0 +1,250 @@
+/**
+ * The Bst-Table ↔ app theme bridge.
+ *
+ * `@bloomskill/table-shadcn` ships a hardcoded shadcn "zinc" palette on `.sc-card` and a second
+ * copy of it on `.sc-card.sc-dark`, toggled by a `dark` prop. This app does not work that way:
+ * its palette is the oklch token set in `styles/index.css` and dark mode is the `.dark` class
+ * that next-themes puts on `<html>`. Passing a `dark` prop from React would mean every table
+ * subscribing to the theme and re-rendering on a change, to reach a result CSS can express
+ * directly — so `BstTable` never passes it, and this file re-points the adapter's own variables
+ * at the app's tokens instead. `.sc-dark` is left permanently unmatched.
+ *
+ * Everything below is a variable reassignment on selectors the packages already define. Nothing
+ * here restyles the grid's structure; that stays the adapter's job, so an upgrade to either
+ * package changes the table and this file keeps holding the colours.
+ *
+ * Load order matters and is fixed by the import order in `BstTable.tsx`: engine, adapter, this.
+ * Each selector here matches the package's own at equal specificity, so later wins. Both package
+ * stylesheets and this one are unlayered, which also keeps them above Tailwind's `base` layer.
+ */
+
+.sc-card {
+	--sc-bg: var(--card);
+	--sc-fg: var(--card-foreground);
+	--sc-muted: var(--muted-foreground);
+	--sc-border: var(--border);
+	--sc-input: var(--input);
+	--sc-accent: var(--accent);
+	--sc-ring: var(--ring);
+	--sc-radius: var(--radius);
+
+	/* The adapter hardcodes a system font stack. The app loads Inter Variable. */
+	font-family: inherit;
+}
+
+/* The adapter derives the grid body from `--sc-*`, which the block above has already
+   redirected. These four are the places where the app has a more specific token than the
+   adapter's derivation reaches for. */
+.sc-card .bst-table-root {
+	--bst-table-header-bg: var(--table-header);
+	--bst-table-header-fg: var(--muted-foreground);
+	--bst-table-row-hover: color-mix(in oklab, var(--muted) 40%, transparent);
+	--bst-table-accent: var(--ring);
+
+	/* The grid body carries its own font stack, separately from the `.sc-card` one above, and
+     both are the packages' neutral system stack. Redirecting only the card left every cell in
+     `ui-sans-serif` while the toolbar around it was Inter — a difference small enough to read
+     as bad rendering rather than as a bug. */
+	--bst-table-font: inherit;
+}
+
+/* The app's ONE micro-label form — the eyebrow, defined in `styles/index.css` beside the type
+   scale. A column header, a breadcrumb and a section heading are the same tier of label, and
+   this file used to set its own 12px/0.025em, so a grid header and the section heading above it
+   were two different typesettings a few pixels apart.
+
+   No `line-height` here on purpose: at compact `--table-cell-pad-y` is 2px, and shortening the
+   label's line would drop the sortable header below the 24px target floor (WCAG 2.5.8). */
+.sc-card .bst-table-th-label {
+	font-size: var(--text-2xs);
+	font-weight: 500;
+	letter-spacing: var(--tracking-eyebrow);
+	text-transform: uppercase;
+}
+
+/* ------------------------------------------------------------------------ density
+   Row height is a variable in the engine, so density is a variable override rather than a
+   restyle. DESIGN.md sets 44px comfortable and 36px compact, and on the list the tallest thing
+   in a row is the 28px row-actions button — so the padding that lands on 44 is 8px, not the 12
+   a 21px line of text would suggest. Measured in the browser rather than derived: at 12px the
+   rows came out 53px and the density control moved them between two wrong numbers.
+
+   This used to key off `.bst-density-compact`, the class the package's own per-table toggle
+   writes. That toggle is now OFF (`DoctypeTable.tsx`) and density is one app-wide preference
+   instead — see the Density block in `styles/index.css` for why per-table was the wrong grain.
+   The value comes from `--table-cell-pad-y` so the number lives in one place with the rest of
+   the density scale, rather than here on its own. */
+
+:root[data-density] .bst-table-root {
+	--bst-table-cell-pad-y: var(--table-cell-pad-y);
+}
+
+/* ----------------------------------------------------------------------- embedded
+   The list screen already draws the card — border, radius, shadow, and a toolbar and footer
+   inside it. The adapter draws its own, so nesting them puts a second rounded border a pixel
+   inside the first. Same choice the app's previous list table made with its `embedded` prop,
+   for the same reason: the table is chrome inside a surface, not a surface of its own. */
+
+.bst-embedded .sc-card {
+	border: 0;
+	border-radius: 0;
+	background: transparent;
+}
+.bst-embedded .bst-table-scroll {
+	border: 0;
+	border-radius: 0;
+}
+.bst-embedded .sc-footer {
+	padding-left: 12px;
+	padding-right: 12px;
+}
+
+/* The grid card casts the app's own resting elevation.
+   `shadow-card` on the React component cannot do this: Tailwind emits its utilities inside
+   `@layer utilities`, and the adapter's `.sc-card` rule is UNLAYERED, so the package always
+   wins — the utility was on the element and doing nothing. Worse, the package then sets
+   `box-shadow: none` in any dark context, so the grid was the one surface on the page with no
+   depth in dark mode while every card beside it kept its cast.
+
+   Set here rather than by weakening the skeleton to match: the skeleton is supposed to be the
+   shape of the loaded grid, so the grid is the one that has to be right. Both now resolve
+   through --elevation-card, light and dark. */
+.sc-card {
+	box-shadow: var(--elevation-card);
+}
+:where(.dark, [data-theme='dark']) .sc-card:not(.sc-light) {
+	box-shadow: var(--elevation-card);
+}
+
+/* The header is a flex row holding the label, the filtered-column marker and the sort
+   indicator. The adapter's 6px gap spaces three items further apart than two. */
+.sc-card .bst-table-th-content {
+	gap: 4px;
+}
+
+/* A numeric column's figures are right-aligned by `meta.align`, which the engine composes onto
+   the td only — the th is pinned `text-align: left`, so on every Int/Float/Currency column the
+   header hugged the left rule up to 120px from its own digits.
+
+   `row-reverse` rather than `justify-content: flex-end`: the sort indicator always renders (it
+   is only faded at rest), so flex-end would leave it holding ~18px between the label and the
+   edge and the header would still miss the figures. Reversing packs the label against the same
+   `--bst-table-cell-pad-x` the cell uses, so the two right edges coincide, and puts the
+   indicator on its left — the convention for numeric columns. DOM order is unchanged, so
+   reading order is too.
+
+   Not `text-align: right` as well: a shrunken long label would then flip its ellipsis to the
+   leading edge and truncate the readable start. */
+.sc-card .bst-table-th.bst-th-numeric .bst-table-th-content {
+	flex-direction: row-reverse;
+}
+
+/* ---------------------------------------------------------------- editing
+   Everything below covers the packages' editing states. The engine and the adapter
+   both fell back to literal hex for the editing states — `#dc2626`, `#f59e0b`, `#16a34a` —
+   which is fine for a package with no host theme and wrong here twice over: it ignores the
+   institution's palette, and it does not lift on dark, where the app's own `--destructive`
+   is `#FCA5A5` precisely because `#dc2626` fails contrast on a near-black card.
+
+   Same rule as above: variable reassignment on the packages' own selectors, at equal or
+   higher specificity. No structure is restyled. */
+
+.sc-card .bst-table-root {
+	--bst-table-danger: var(--destructive);
+	--bst-table-warning: var(--warning);
+	/* The dirty-cell corner marker. `--warning` rather than a third colour: an unsaved cell is
+     the same "needs your attention, nothing is broken yet" the app's warning tone already
+     means, and the marker is a 5px triangle that cannot afford a hue nobody has learnt. */
+	--bst-table-dirty: var(--warning);
+}
+
+/* The success green a boolean cell prints its tick in. */
+.sc-card .bst-cell-bool.is-on {
+	color: var(--success);
+}
+
+/* The engine's inline editors. They already read `--bst-table-*`, so only the shape needs
+   saying: the app's controls are 8px-radius against `--input`, and an editor that is not
+   makes a grid cell look like a different application to the form above it. */
+.sc-card .bst-input {
+	border-color: var(--input);
+	border-radius: calc(var(--radius) - 2px);
+}
+.sc-card .bst-input:focus {
+	border-color: var(--ring);
+	box-shadow: 0 0 0 2px color-mix(in oklab, var(--ring) 40%, transparent);
+}
+.sc-card .bst-checkbox {
+	accent-color: var(--primary);
+}
+
+/* Toolbar chrome: Save, Discard, and the unsaved-count badge. */
+.sc-card .sc-btn-primary {
+	background: var(--primary);
+	color: var(--primary-foreground);
+}
+.sc-card .sc-btn-primary:hover {
+	background: var(--primary-hover);
+}
+.sc-card .sc-btn-danger {
+	color: var(--destructive);
+	border-color: color-mix(in oklab, var(--destructive) 40%, var(--border));
+}
+.sc-card .sc-badge {
+	background: color-mix(in oklab, var(--warning) 14%, var(--card));
+	color: var(--warning);
+	border-color: color-mix(in oklab, var(--warning) 40%, var(--border));
+}
+
+/* The adapter's dependency-free modal, used by the long-text and file editors. It is a
+   dialog, so it takes the app's overlay elevation rather than a flat drop shadow, and it
+   has to clear the shell: the rail is z-40 and a Radix popover is z-50, and the package
+   ships z-index 60 — which is already above both, so only the surface is restated. */
+.sc-card .sc-modal-overlay {
+	background: color-mix(in oklab, var(--foreground) 45%, transparent);
+}
+.sc-card .sc-modal {
+	border-radius: var(--radius);
+	box-shadow: var(--elevation-overlay);
+}
+
+/* ------------------------------------------------------------------- footer controls
+   The "Rows per page" control is a NATIVE <select>, which the adapter leaves unstyled. On a
+   page where every other control is a shadcn trigger it was the one thing rendering in the
+   browser's own chrome — a grey box with a system chevron, at a different height, radius and
+   font from its neighbours. One raw control is enough to make a finished page look unfinished.
+
+   Restyled rather than replaced: the element is the adapter's and it works: it is keyboard
+   accessible, it opens the platform picker on touch, and swapping in a custom listbox would be
+   a worse control with more code. This gives it the app's shape and leaves its behaviour alone.
+
+   `appearance: none` removes the platform chevron; the background-image redraws one in
+   `currentColor` so it follows the theme instead of staying dark on a dark surface. */
+.sc-card .sc-select {
+	appearance: none;
+	height: 32px;
+	padding: 0 28px 0 10px;
+	border: 1px solid var(--input);
+	border-radius: calc(var(--radius) - 2px);
+	background-color: var(--card);
+	color: var(--foreground);
+	font-size: var(--text-sm);
+	line-height: 1;
+	background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23475569' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+	background-repeat: no-repeat;
+	background-position: right 8px center;
+	background-size: 14px;
+}
+.sc-card .sc-select:hover {
+	border-color: var(--border-strong);
+}
+.sc-card .sc-select:focus-visible {
+	outline: 2px solid var(--ring);
+	outline-offset: 2px;
+}
+/* The inline SVG above is a fixed slate; on dark chrome it would sit invisible against the
+   surface, so dark mode gets its own light-stroked copy. Two data URIs rather than a mask,
+   because a mask needs a second element the adapter does not give us. */
+.dark .sc-card .sc-select {
+	background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239AA5B6' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}

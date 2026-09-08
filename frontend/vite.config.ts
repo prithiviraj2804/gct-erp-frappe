@@ -39,6 +39,7 @@ export default defineConfig(({ command, mode }) => {
       watch: {
         ignored: ['**/node_modules/**', '**/.git/**'],
       },
+      allowedHosts: ['frappe.selfmade.chat'],
       proxy: {
         // Everything Frappe owns: REST calls, its own bundled assets, and uploads.
         '^/(api|assets|files|private)': {

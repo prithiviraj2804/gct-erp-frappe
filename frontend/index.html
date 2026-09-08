@@ -4,7 +4,46 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- The browser's own chrome (mobile Safari's bar, an installed PWA's title bar). Tracks
+         `--card`, i.e. the topbar, which is what sits at the top of the viewport. Overridden
+         per-theme by the script below, which runs before this matters. -->
+    <meta name="theme-color" content="#FFFFFF" />
     <title>ERP</title>
+    <!--
+      Appearance boot — MUST stay inline, blocking, and in <head>.
+
+      React applies the theme in an effect, which is one frame too late: the browser has already
+      painted a white document by then, so a dark-mode user gets a full-screen white flash on
+      every cold load and every hard refresh. The only fix is to set the class before first paint,
+      which means synchronous script in the head — a build-time import cannot do it.
+
+      Kept deliberately tiny and dependency-free, and wrapped in try/catch because localStorage
+      throws outright in a partitioned iframe and in Safari's private mode. A theme that fails to
+      restore is a cosmetic miss; a script that throws here blocks the whole document.
+
+      The keys are duplicated from src/global/* on purpose — this file cannot import them,
+      and a constant that must be written twice is better than a flash of the wrong theme. Both
+      sites are commented so a rename changes both.
+    -->
+    <script>
+      ;(function () {
+        try {
+          var root = document.documentElement
+          // Key: 'erp-theme' — mirrors THEME_STORAGE_KEY in src/global/theme.ts.
+          var theme = localStorage.getItem('erp-theme') || 'system'
+          var dark =
+            theme === 'dark' ||
+            (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)
+          root.classList.toggle('dark', dark)
+          // Key: 'erp-density' — mirrors DENSITY_STORAGE_KEY in src/global/density.ts.
+          root.dataset.density = localStorage.getItem('erp-density') || 'comfortable'
+          var meta = document.querySelector('meta[name="theme-color"]')
+          if (meta) meta.setAttribute('content', dark ? '#161C27' : '#FFFFFF')
+        } catch (e) {
+          document.documentElement.dataset.density = 'comfortable'
+        }
+      })()
+    </script>
   </head>
   <body>
     <!-- Filled in by erp/www/erp.py when served at /erp. Under `npm run dev` this stays the

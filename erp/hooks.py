@@ -21,6 +21,11 @@ app_license = "mit"
 # 	}
 # ]
 
+# Frappe only creates Module Defs when an app is installed, so a module added to modules.txt
+# afterwards would have none — and its doctypes would be silently deleted as orphans during the
+# same migrate that imported them. See erp.utils.ensure_module_defs.
+before_migrate = "erp.utils.ensure_module_defs"
+
 website_route_rules = [
     {"from_route": "/erp/<path:app_path>", "to_route": "erp"},
     {"from_route": "/erp", "to_route": "erp"},
@@ -129,15 +134,24 @@ website_route_rules = [
 
 # Permissions
 # -----------
-# Permissions evaluated in scripted ways
-
-# permission_query_conditions = {
-# 	"Event": "frappe.desk.doctype.event.event.get_permission_query_conditions",
-# }
+# Permissions evaluated in scripted ways.
 #
-# has_permission = {
-# 	"Event": "frappe.desk.doctype.event.event.has_permission",
-# }
+# Admission Enquiry is a CRM lead: a counsellor sees only the leads they own, an Admission
+# Manager (or System Manager) sees all. `permission_query_conditions` scopes list/report views
+# — and therefore the SPA, which reads over /api/resource — while `has_permission` mirrors it for
+# single-record access. Both live in erp/api/permission.py.
+
+permission_query_conditions = {
+	"Admission Enquiry": "erp.api.permission.admission_enquiry_query",
+	"Admission Follow-up": "erp.api.permission.admission_followup_query",
+	"Admission Application": "erp.api.permission.admission_application_query",
+}
+
+has_permission = {
+	"Admission Enquiry": "erp.api.permission.admission_enquiry_has_permission",
+	"Admission Follow-up": "erp.api.permission.admission_followup_has_permission",
+	"Admission Application": "erp.api.permission.admission_application_has_permission",
+}
 
 # Document Events
 # ---------------
@@ -160,6 +174,8 @@ doc_events = {
 	# redis for anonymous callers. Without this, an admin who uploads a logo would keep seeing
 	# the old one until the TTL expired.
 	"Institution": {
+		# A new tenant gets its minimal chart of accounts so fee collection has somewhere to post.
+		"after_insert": "erp.accounts.provisioning.setup_institution_accounts",
 		"on_update": "erp.api.branding.clear_cache",
 		"on_trash": "erp.api.branding.clear_cache",
 	},

@@ -16,7 +16,8 @@
   "designation",
   "mobile",
   "email",
-  "status"
+  "status",
+  "user"
  ],
  "fields": [
   {
@@ -104,6 +105,15 @@
    "default": "Active",
    "in_list_view": 1,
    "in_standard_filter": 1
+  },
+  {
+   "fieldname": "user",
+   "fieldtype": "Link",
+   "label": "User",
+   "options": "User",
+   "unique": 1,
+   "in_standard_filter": 1,
+   "description": "Login for this staff member, if they have CRM access. One User maps to at most one Staff; the admission-lead scoping keys on this to show a counsellor only the leads they own. Leave blank for staff with no login (e.g. referral-only staff)."
   }
  ],
  "grid_page_length": 50,

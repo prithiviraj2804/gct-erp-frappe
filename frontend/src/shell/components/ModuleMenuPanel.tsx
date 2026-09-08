@@ -1,111 +1,101 @@
 import { FolderOpenIcon } from 'lucide-react'
+
+import { navIcon } from '@/shell/lib/module-icons'
 import { Link, useLocation } from 'react-router'
 
-import { Button } from '@/shared/ui/button'
+import { Button } from '@/components/ui/button'
 import {
   Sidebar,
   SidebarContent,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
-  SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarMenuSkeleton,
-} from '@/shared/ui/sidebar'
-import { useModuleMenu } from '@/shared/hooks/use-navigation'
-import { normalizeFrappeError } from '@/shared/lib/errors'
-import { cn } from '@/shared/lib/utils'
-import type { ModuleMenu } from '@/shared/types/navigation'
+} from '@/components/ui/sidebar'
+import { useModuleMenu } from '@/hooks/use-navigation'
+import { normalizeFrappeError } from '@/lib/errors'
+import { cn } from '@/lib/utils'
+import type { ModuleMenu } from '@/types/navigation'
 
 // shadcn's cva uses bg-sidebar-accent for BOTH hover and data-active, so the current page
 // and a hovered item look identical — unusable in an ERP navigated by muscle memory.
 //
-// The override used to be a solid --sidebar-primary fill. That distinguishes the states, but
-// a saturated full-width row in a list of full-width rows turns the panel into a block of
-// colour and shouts louder than a "you are here" needs to. The current page now reads as a
-// sapphire-TINTED surface plus a bright indicator bar: quieter than the rail's solid square
-// (which is the shell's anchor and earns its saturation), still unmistakable against the
-// neutral, chroma-free hover.
+// The current row is a raised ink PLATE (1.29:1 above the panel) carrying a full-strength label
+// where the rest rows are muted — a 1.72:1 luminance jump — at 600 weight, plus a 2px white bar
+// at 11.12:1. Four channels, none of them colour alone. It is deliberately not the rail's
+// near-white plate: one square anchoring the shell earns that much contrast, a column of
+// full-width rows drawn the same way becomes a block of light.
 const ACTIVE_CLASS = cn(
   'relative',
-  'data-active:bg-sidebar-active data-active:text-sidebar-active-foreground data-active:font-medium',
-  // --sidebar-indicator, not --sidebar-primary: the primary sapphire is only 2.21:1 against
-  // the active tint and would vanish into the row it is supposed to be marking.
-  'data-active:before:absolute data-active:before:left-0 data-active:before:h-4',
-  'data-active:before:w-0.5 data-active:before:rounded-full',
-  'data-active:before:bg-sidebar-indicator',
+  'data-active:bg-sidebar-active data-active:text-sidebar-active-foreground data-active:font-semibold',
+  // The current row had NO hover response: in the compiled cascade `data-active:bg-sidebar-active`
+  // outranks `hover:bg-sidebar-accent`, so the one row you are most likely to point at was inert.
+  'data-active:hover:bg-sidebar-active-hover',
+  // left-0, not a negative offset: the cva carries overflow-hidden, so a bar pulled outside the
+  // button is clipped. At left-0 it sits inside the row's own padding. Explicitly centred —
+  // it used to land centred only by accident of the row's line height.
+  'data-active:before:absolute data-active:before:top-1/2 data-active:before:left-0',
+  'data-active:before:h-4 data-active:before:w-0.5 data-active:before:-translate-y-1/2',
+  'data-active:before:rounded-full data-active:before:bg-sidebar-indicator',
 )
 
 /**
- * The flyout shell.
+ * The nav column: the current module, and the screens inside it. Nothing else.
  *
- * Absolutely positioned at `left-full` of the rail's wrapper, so it OVERLAYS the page instead
- * of pushing it: the content column keeps the same width whether the panel is out or not, and
- * nothing reflows under the cursor on hover.
+ * It held the institution's name, the palette launcher and the account for a while, after the
+ * topbar was deleted and before the rail was given a foot. All three are in the rail now, and
+ * this column is back to one job — which is the right split: the rail is GLOBAL chrome (who you
+ * are, what you are looking at, how to search, how it looks), and this is the CURRENT MODULE.
+ * A column that mixed both meant the institution's name sat directly above a module's name at
+ * the same size, and the two read as a breadcrumb that was not one.
  *
- * Closed state is `invisible`, not `hidden`: an element that leaves the layout cannot animate,
- * and `visibility` is what takes it out of the tab order so a keyboard user does not tab into
- * a panel they cannot see. Focus still reaches it, because focusing a rail item opens the
- * flyout first (see ModuleRail's onFocus) and the panel is the next thing in DOM order.
+ *   header   the module, linking its overview page
+ *   ─────
+ *   list     that module's screens          ← the only part that scrolls
+ *
+ * In-flow, not absolute: it takes real layout width beside the page rather than overlaying it, so
+ * it is always visible — no hover, no toggle, no open/closed animation.
  */
-function PanelShell({
-  title,
-  href,
-  open,
-  children,
-}: {
-  title: string
-  href: string | null
-  open: boolean
-  children: React.ReactNode
-}) {
+function PanelShell({ title, children }: { title: string; children: React.ReactNode }) {
   return (
+    // border-r, and it is load-bearing on light chrome. This used to have none, on the grounds
+    // that "the panel|content edge is already 12.9:1 on its own" — true of a dark panel against
+    // a white page, and false now: in light mode the panel and the page background are 1.061:1
+    // apart and merge without a line. Separating planes with light works when the planes ARE
+    // dark; between two near-whites you need an actual rule. `--sidebar-border` is a black alpha
+    // in light mode and a white one in dark, so one class is correct in both.
     <Sidebar
+      id="nav-column"
       collapsible="none"
-      data-state={open ? 'open' : 'closed'}
-      className={cn(
-        'absolute inset-y-0 left-full z-20 border-r border-sidebar-border shadow-lg',
-        // Promoted to its own compositor layer. A 260px panel carrying a large shadow,
-        // repainting every frame against the page behind it, is where this stutters on a
-        // mid-range machine — and this element animates on every pass of the pointer.
-        'will-change-[translate,opacity]',
-        // `translate`, NOT `transform`. Tailwind v4 compiles `-translate-x-4` to the standalone
-        // `translate` CSS property, so a transition naming `transform` animates nothing — the
-        // panel jumps its 16px in one frame and only the fade is left, which is precisely the
-        // blink this was. Verified against getComputedStyle, not by eye.
-        'transition-[opacity,translate,visibility]',
-        // Asymmetric on purpose. Coming out, it decelerates over 260ms — long enough to read
-        // as movement rather than a blink. Going away it leaves in 170ms, because a slow exit
-        // reads as lag, not polish. Both curves are ease-out per DESIGN.md; the entrance one
-        // is simply steeper than Tailwind's default so the panel settles rather than stops.
-        'ease-[cubic-bezier(0.16,1,0.3,1)] duration-[260ms]',
-        'data-[state=closed]:ease-[cubic-bezier(0.33,0,0.2,1)] data-[state=closed]:duration-[170ms]',
-        'motion-reduce:transition-none',
-        // 16px of travel, not 8. At 8 the slide is imperceptible beside the fade, so the panel
-        // appeared to flicker into place instead of arriving from behind the rail.
-        open ? 'visible translate-x-0 opacity-100' : 'invisible -translate-x-4 opacity-0',
-      )}
-      // Not aria-hidden when closed: `visibility: hidden` already removes it from the
-      // accessibility tree, and doubling up would hide it from a focus that is on its way in.
+      className="shrink-0 border-r border-sidebar-border"
       aria-label={`${title} menu`}
     >
-      <SidebarHeader className="h-12 justify-center border-b border-sidebar-border px-4">
-        {href ? (
-          // The header is the module's own overview page. Without it the flyout would be the
-          // one surface you can reach a module's screens from but never the module itself.
-          <Link
-            to={href}
-            className="-mx-2 truncate rounded-md px-2 py-1 text-sm font-semibold text-sidebar-foreground hover:bg-sidebar-accent focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:outline-none"
-          >
-            {title}
-          </Link>
-        ) : (
-          <span className="truncate text-sm font-semibold text-sidebar-foreground">{title}</span>
-        )}
-      </SidebarHeader>
-      <SidebarContent id="module-menu">{children}</SidebarContent>
+      {/*
+        No header, no module name, and NO TOP PADDING — the list starts at the top of the column.
+
+        The name went first: it said what the rail's selected tile already says and what hovering
+        that tile spells out, so a 52px band restating it was the most expensive label on screen.
+        The module's OVERVIEW page is not lost with it — the rail tile links to `/{slug}` itself,
+        which is where that header pointed.
+
+        Then a `pt-13` replaced the band, to keep the first group label level with the rail's
+        search tile (both landed at y=60) so the two columns stayed registered. That was wrong,
+        and the way it was wrong is worth recording: the alignment is real and measurable, and
+        nobody perceives it — there is no shared rule or edge for the eye to run along, so the
+        52px read as unexplained emptiness rather than as registration. It got asked about twice.
+
+        A deliberate choice that reads as a bug to the person using it is a bad choice, however
+        good the reason. The columns are simply allowed to start at different heights now: the
+        rail has a brand compartment at its top and this column does not, which is the truth.
+      */}
+      <SidebarContent id="module-menu">
+        {/* A real landmark, and it names the module — this is where the module name still lives
+            for anyone who cannot see the rail's selected tile. */}
+        <nav aria-label={`${title} screens`}>{children}</nav>
+      </SidebarContent>
     </Sidebar>
   )
 }
@@ -113,22 +103,22 @@ function PanelShell({
 interface ModuleMenuPanelProps {
   /** Module Def name to show, or null before the rail has resolved one. */
   module: string | null
-  /** Rail label — shown immediately, so the header does not wait on the menu request. */
+  /**
+   * Rail label. Not rendered — the module's name is the rail's job now — but it still NAMES the
+   * column and its landmark for assistive tech, which is the one channel that cannot see a
+   * selected tile or hover it. It comes from the rail rather than the menu payload so the label
+   * is right on the first frame, before the menu request resolves.
+   */
   label: string
-  /** Rail slug, for the header link. Null while unresolved. */
-  slug: string | null
-  open: boolean
 }
 
-export function ModuleMenuPanel({ module, label, slug, open }: ModuleMenuPanelProps) {
+export function ModuleMenuPanel({ module, label }: ModuleMenuPanelProps) {
   const location = useLocation()
   const { data, isPending, isError, error, refetch } = useModuleMenu(module)
 
-  const href = slug ? `/${slug}` : null
-
   if (!module) {
     return (
-      <PanelShell title="Modules" href={null} open={open}>
+      <PanelShell title="Modules">
         {null}
       </PanelShell>
     )
@@ -136,7 +126,7 @@ export function ModuleMenuPanel({ module, label, slug, open }: ModuleMenuPanelPr
 
   if (isPending) {
     return (
-      <PanelShell title={label} href={href} open={open}>
+      <PanelShell title={label}>
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu role="status" aria-live="polite">
@@ -157,10 +147,10 @@ export function ModuleMenuPanel({ module, label, slug, open }: ModuleMenuPanelPr
 
   if (isError) {
     return (
-      <PanelShell title={label} href={href} open={open}>
+      <PanelShell title={label}>
         <div className="px-4 py-8">
           <p className="text-sm font-medium text-sidebar-foreground">Menu unavailable</p>
-          <p className="mt-1 text-xs leading-relaxed text-sidebar-foreground/80">
+          <p className="mt-1 text-xs text-sidebar-foreground-muted">
             {normalizeFrappeError(error).message}
           </p>
           {/* Every Button variant is tuned for light surfaces — `outline` is bg-background,
@@ -185,11 +175,11 @@ export function ModuleMenuPanel({ module, label, slug, open }: ModuleMenuPanelPr
   // while modules are still being filled in.
   if (menu.groups.length === 0) {
     return (
-      <PanelShell title={menu.label} href={href} open={open}>
+      <PanelShell title={menu.label}>
         <div className="px-4 py-8 text-center">
-          <FolderOpenIcon className="mx-auto size-6 text-sidebar-foreground/50" aria-hidden="true" />
+          <FolderOpenIcon className="mx-auto size-6 text-sidebar-foreground-muted" aria-hidden="true" />
           <p className="mt-3 text-sm font-medium text-sidebar-foreground">No menu items</p>
-          <p className="mt-1 text-xs leading-relaxed text-sidebar-foreground/80">
+          <p className="mt-1 text-xs text-sidebar-foreground-muted">
             {menu.label} has nothing you can access yet.
           </p>
         </div>
@@ -198,11 +188,23 @@ export function ModuleMenuPanel({ module, label, slug, open }: ModuleMenuPanelPr
   }
 
   return (
-    <PanelShell title={menu.label} href={href} open={open}>
-      {menu.groups.map((group, gi) => (
+    <PanelShell title={menu.label}>
+      {menu.groups.map((group, gi) => {
+        // Resolved from the icon NAME the workspace publishes. An unset or unmapped name
+        // renders no icon rather than a placeholder — a generic glyph on every heading is noise,
+        // not information — and warns once in DEV, because silence is this lookup's failure mode.
+        const GroupIcon = navIcon(group.icon)
+        return (
         <SidebarGroup key={group.label ?? `group-${gi}`}>
+          {/* The eyebrow form lives in the primitive itself — no per-use override. The icon is
+              the one addition: at 11px uppercase these headings are deliberately quiet, and a
+              glyph gives the eye something to land on when scanning for a group rather than a
+              screen. */}
           {group.label && (
-            <SidebarGroupLabel className="text-sidebar-foreground/80">{group.label}</SidebarGroupLabel>
+            <SidebarGroupLabel>
+              {GroupIcon && <GroupIcon className="mr-1.5 size-3.5 shrink-0" aria-hidden="true" />}
+              {group.label}
+            </SidebarGroupLabel>
           )}
           <SidebarGroupContent>
             <SidebarMenu>
@@ -215,11 +217,20 @@ export function ModuleMenuPanel({ module, label, slug, open }: ModuleMenuPanelPr
                 const isCurrent =
                   !!item.route &&
                   (location.pathname === item.route || location.pathname.startsWith(`${item.route}/`))
+                const ScreenIcon = navIcon(item.icon)
                 return (
                   <SidebarMenuItem key={`${item.link_type}:${item.link_to}`}>
                     {item.route ? (
                       <SidebarMenuButton asChild isActive={isCurrent} className={ACTIVE_CLASS}>
                         <Link to={item.route} aria-current={isCurrent ? 'page' : undefined}>
+                          {/* The space is reserved whether or not an icon resolves, so a
+                              workspace that has only set some of them still produces a list with
+                              one left edge instead of a ragged one. */}
+                          {ScreenIcon ? (
+                            <ScreenIcon className="size-4 shrink-0" aria-hidden="true" />
+                          ) : (
+                            <span className="size-4 shrink-0" aria-hidden="true" />
+                          )}
                           {/* span must be the LAST child — the cva truncates
                               [&>span:last-child]. */}
                           <span>{item.label}</span>
@@ -238,7 +249,8 @@ export function ModuleMenuPanel({ module, label, slug, open }: ModuleMenuPanelPr
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
-      ))}
+        )
+      })}
     </PanelShell>
   )
 }

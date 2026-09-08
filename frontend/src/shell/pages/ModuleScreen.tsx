@@ -1,14 +1,14 @@
 import { ChevronRightIcon } from 'lucide-react'
 import { Link, useParams } from 'react-router'
 
-import { EmptyState } from '@/shared/components/feedback/EmptyState'
-import { ScreenNotFound } from '@/shared/components/feedback/ScreenNotFound'
-import { Button } from '@/shared/ui/button'
-import { Skeleton } from '@/shared/ui/skeleton'
-import { useBrandedDocument, useInstitutionBranding } from '@/shared/hooks/use-branding'
-import { useModuleMenu, useModuleRail } from '@/shared/hooks/use-navigation'
-import { normalizeFrappeError } from '@/shared/lib/errors'
-import type { MenuItem, ModuleMenu } from '@/shared/types/navigation'
+import { EmptyState } from '@/components/feedback/EmptyState'
+import { ScreenNotFound } from '@/components/feedback/ScreenNotFound'
+import { Button } from '@/components/ui/button'
+import { Skeleton } from '@/components/ui/skeleton'
+import { useBrandedDocument, useInstitutionBranding } from '@/hooks/use-branding'
+import { useModuleMenu, useModuleRail } from '@/hooks/use-navigation'
+import { normalizeFrappeError } from '@/lib/errors'
+import type { MenuItem, ModuleMenu } from '@/types/navigation'
 
 /**
  * A module's overview: every screen inside it, as a directory in the content area.
@@ -41,7 +41,7 @@ export default function ModulePage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-6xl px-6 py-8">
+    <div className="mx-auto w-full max-w-6xl px-(--page-gutter-x) py-(--page-gutter-y)">
       <header>
         <h1 className="font-heading text-2xl leading-snug font-semibold tracking-tight text-foreground">
           {menuQuery.data?.label ?? railModule.label}
@@ -49,7 +49,7 @@ export default function ModulePage() {
         <p className="mt-1.5 text-sm text-muted-foreground">Pick a screen to work in.</p>
       </header>
 
-      <div className="mt-8">
+      <div className="mt-(--page-stack)">
         <ModuleBody query={menuQuery} label={railModule.label} />
       </div>
     </div>
@@ -84,15 +84,15 @@ function ModuleBody({ query, label }: { query: ReturnType<typeof useModuleMenu>;
   }
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-(--page-stack)">
       {menu.groups.map((group, gi) => (
         <section key={group.label ?? `group-${gi}`}>
           {group.label && (
-            <h2 className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+            <h2 className="text-2xs font-medium tracking-eyebrow text-muted-foreground uppercase">
               {group.label}
             </h2>
           )}
-          <div className="mt-3 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="mt-2.5 grid gap-(--section-stack) sm:grid-cols-2 xl:grid-cols-3">
             {group.items.map((item) => (
               <ScreenCard key={`${item.link_type}:${item.link_to}`} item={item} />
             ))}
@@ -103,8 +103,12 @@ function ModuleBody({ query, label }: { query: ReturnType<typeof useModuleMenu>;
   )
 }
 
+// `shadow-card`, not a hand-written `shadow-[0_1px_2px_rgb(15_23_42/0.06)]`. The literal was
+// DESIGN.md's `shadow.sm` transcribed by hand, which meant it could not follow the token into
+// dark mode — where a slate-tinted shadow on a near-black surface is invisible — and it was the
+// one surface in the app not using the elevation scale.
 const CARD_CLASS =
-  'flex items-start gap-3 rounded-xl border border-border bg-card p-5 text-left shadow-[0_1px_2px_rgb(15_23_42/0.06)]'
+  'flex items-start gap-3 rounded-xl border border-border bg-card p-(--card-pad) text-left shadow-card'
 
 /**
  * One screen in the directory.
@@ -149,7 +153,7 @@ function ScreenCard({ item }: { item: MenuItem }) {
 
 function CardGridSkeleton() {
   return (
-    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3" role="status" aria-live="polite">
+    <div className="grid gap-(--section-stack) sm:grid-cols-2 xl:grid-cols-3" role="status" aria-live="polite">
       {Array.from({ length: 6 }).map((_, i) => (
         <Skeleton key={i} className="h-24 rounded-xl" />
       ))}
@@ -160,10 +164,10 @@ function CardGridSkeleton() {
 
 function PageSkeleton() {
   return (
-    <div className="mx-auto w-full max-w-6xl px-6 py-8">
+    <div className="mx-auto w-full max-w-6xl px-(--page-gutter-x) py-(--page-gutter-y)">
       <Skeleton className="h-8 w-48" />
       <Skeleton className="mt-2 h-4 w-64" />
-      <div className="mt-8">
+      <div className="mt-(--page-stack)">
         <CardGridSkeleton />
       </div>
     </div>

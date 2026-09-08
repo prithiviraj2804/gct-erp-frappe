@@ -1,0 +1,222 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "autoname": "naming_series:",
+ "creation": "2026-08-24 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "details_section",
+  "id",
+  "naming_series",
+  "enquiry",
+  "student_name",
+  "column_break_details",
+  "follow_up_on",
+  "channel",
+  "outcome",
+  "outcome_section",
+  "notes",
+  "column_break_outcome",
+  "next_follow_up_on",
+  "new_status",
+  "lead_section",
+  "counsellor",
+  "institution",
+  "column_break_lead",
+  "college"
+ ],
+ "fields": [
+  {
+   "fieldname": "details_section",
+   "fieldtype": "Section Break",
+   "label": "Follow-up"
+  },
+  {
+   "fieldname": "id",
+   "fieldtype": "Data",
+   "label": "ID",
+   "unique": 1,
+   "read_only": 1,
+   "no_copy": 1,
+   "in_standard_filter": 1,
+   "description": "Auto-generated UUID"
+  },
+  {
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "label": "Naming Series",
+   "options": "AFUP-.YYYY.-.#####",
+   "default": "AFUP-.YYYY.-.#####",
+   "reqd": 1,
+   "hidden": 1
+  },
+  {
+   "fieldname": "enquiry",
+   "fieldtype": "Link",
+   "label": "Enquiry",
+   "options": "Admission Enquiry",
+   "reqd": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "description": "The lead this follow-up belongs to"
+  },
+  {
+   "fieldname": "student_name",
+   "fieldtype": "Data",
+   "label": "Student",
+   "fetch_from": "enquiry.student_name",
+   "read_only": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "column_break_details",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "follow_up_on",
+   "fieldtype": "Datetime",
+   "label": "Followed Up On",
+   "default": "Now",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "channel",
+   "fieldtype": "Select",
+   "label": "Channel",
+   "options": "Call\nWhatsApp\nVisit\nEmail\nSMS",
+   "default": "Call",
+   "reqd": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "outcome",
+   "fieldtype": "Select",
+   "label": "Outcome",
+   "options": "Connected\nNo Answer\nBusy\nInterested\nNot Interested\nCallback Requested\nSwitched Off\nInvalid Number",
+   "reqd": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "outcome_section",
+   "fieldtype": "Section Break",
+   "label": "Outcome & Next Step"
+  },
+  {
+   "fieldname": "notes",
+   "fieldtype": "Small Text",
+   "label": "Notes"
+  },
+  {
+   "fieldname": "column_break_outcome",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "next_follow_up_on",
+   "fieldtype": "Date",
+   "label": "Next Follow-up On",
+   "in_standard_filter": 1,
+   "description": "When to reach the student next. Rolls up to the lead as its Next Follow-up."
+  },
+  {
+   "fieldname": "new_status",
+   "fieldtype": "Select",
+   "label": "Move Lead To",
+   "options": "\nNew\nContacted\nVisited\nApplication Submitted\nDocuments Verified\nAdmitted\nRejected\nDropped",
+   "description": "Optional: advance the lead's stage from this follow-up. Leave blank to keep the current stage."
+  },
+  {
+   "fieldname": "lead_section",
+   "fieldtype": "Section Break",
+   "label": "Lead",
+   "collapsible": 1
+  },
+  {
+   "fieldname": "counsellor",
+   "fieldtype": "Link",
+   "label": "Counsellor",
+   "options": "Staff",
+   "fetch_from": "enquiry.counsellor",
+   "read_only": 1,
+   "in_standard_filter": 1,
+   "description": "Owner of the lead, copied from the enquiry. Follow-up visibility keys on this field."
+  },
+  {
+   "fieldname": "institution",
+   "fieldtype": "Link",
+   "label": "Institution",
+   "options": "Institution",
+   "fetch_from": "enquiry.institution",
+   "read_only": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "column_break_lead",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "college",
+   "fieldtype": "Link",
+   "label": "College",
+   "options": "College",
+   "fetch_from": "enquiry.college",
+   "read_only": 1
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-08-24 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Admission",
+ "name": "Admission Follow-up",
+ "naming_rule": "By \"Naming Series\" field",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Admission Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Admission Counsellor",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "search_fields": "student_name,enquiry",
+ "sort_field": "follow_up_on",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "student_name",
+ "track_changes": 1
+}

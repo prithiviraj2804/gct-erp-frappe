@@ -1,7 +1,7 @@
-import { InstitutionMark } from '@/shared/components/brand/InstitutionMark'
-import { institutionMetaLine, scopeStats } from '@/shared/lib/branding'
-import { APP_NAME } from '@/shared/lib/constants'
-import type { InstitutionBrand, InstitutionScope } from '@/shared/types/branding'
+import { InstitutionMark } from '@/components/brand/InstitutionMark'
+import { institutionMetaLine, scopeStats } from '@/lib/branding'
+import { APP_NAME } from '@/lib/constants'
+import type { InstitutionBrand, InstitutionScope } from '@/types/branding'
 
 /**
  * The identity half of the sign-in screen: who this bench belongs to, drawn from the
@@ -28,8 +28,20 @@ export function InstitutionPanel({
   const meta = institutionMetaLine(brand)
   const stats = scopeStats(scope)
 
-  // The fill is flat `--sidebar`, the same surface the app shell's module rail uses, so
-  // signing in and arriving inside the product read as one continuous surface.
+  // The fill is `--brand-panel`, and this is the ONE surface in the app that stays deep in both
+  // themes. It used to ride `--sidebar-deep`, which was the same value while the chrome was ink
+  // — but the chrome is light in light mode now, and this panel following it there would have
+  // rendered a #E1E5EB slab beside a white form column: 1.09:1, an almost uniform white
+  // rectangle with a monogram floating in it.
+  //
+  // The distinction is real rather than a workaround. This is not chrome, it is a hero: it is
+  // 62% of the first screen anyone ever sees, and identity is its entire job. A product with a
+  // light app can still have a deep sign-in, and most do.
+  //
+  // Deep ink rather than a saturated blue, for a reason specific to a multi-tenant product: it
+  // sits directly beside an ARBITRARY tenant's crest, and a committed mid-blue fights a maroon
+  // or a green one. Ink flatters all of them, and lets the institution's own mark be the
+  // brightest object on the panel — which is the entire point of the sign-in screen.
   //
   // Two textures were tried here and removed, both on the evidence of a screenshot: a
   // hairline grid, which rendered as a spreadsheet lattice, and a vertical black wash, which
@@ -37,7 +49,7 @@ export function InstitutionPanel({
   // with. Flat is what the design system specifies and the only one of the three that renders
   // cleanly at this size.
   return (
-    <aside className="hidden bg-sidebar p-10 text-sidebar-foreground lg:flex xl:p-14">
+    <aside className="hidden bg-brand-panel p-10 text-brand-panel-foreground lg:flex xl:p-14">
       {/* One measure for both zones, centred in the panel. Without the cap the heading would
           run to whatever width the viewport allows; without the centring the whole column hugs
           the left edge and a 1376px-wide panel on a 1920 monitor reads as mostly empty navy.
@@ -55,10 +67,10 @@ export function InstitutionPanel({
           {stats.length > 0 && (
             // <div> inside <dl> is valid, and is what lets each term/definition pair share a
             // divider cell.
-            <dl className="mt-10 flex flex-wrap divide-x divide-sidebar-border border-t border-sidebar-border pt-6">
+            <dl className="mt-10 flex flex-wrap divide-x divide-brand-panel-border border-t border-brand-panel-border pt-6">
               {stats.map((stat) => (
                 <div key={stat.key} className="px-6 first:pl-0">
-                  <dt className="text-[11px] font-medium tracking-[0.08em] text-sidebar-foreground/60 uppercase">
+                  <dt className="text-2xs font-medium tracking-eyebrow text-brand-panel-muted uppercase">
                     {stat.label}
                   </dt>
                   <dd className="mt-1 font-heading text-2xl font-semibold tabular-nums">{stat.value}</dd>
@@ -73,7 +85,7 @@ export function InstitutionPanel({
             href={normalizeUrl(brand.website)}
             target="_blank"
             rel="noreferrer noopener"
-            className="self-start rounded-sm text-xs text-sidebar-foreground/70 underline-offset-4 hover:text-sidebar-foreground hover:underline focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:outline-none"
+            className="self-start rounded-sm text-xs text-brand-panel-muted underline-offset-4 hover:text-brand-panel-foreground hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-panel-mark"
           >
             {displayUrl(brand.website)}
           </a>
@@ -88,7 +100,10 @@ function Identity({ brand, meta }: { brand: InstitutionBrand | null; meta: strin
     // Fades in only once the name is known, so the panel doesn't flash placeholder text.
     // motion-safe keeps it out of the way for prefers-reduced-motion.
     <div className="motion-safe:animate-in motion-safe:fade-in motion-safe:duration-200">
-      <InstitutionMark brand={brand} size="lg" />
+      {/* surface="brand": on the deep panel the monogram is a light plate carrying the brand
+          glyph, which is what makes the institution's mark the brightest object here — the
+          stated point of the whole screen. A tenant with a real logo still gets their logo. */}
+      <InstitutionMark brand={brand} size="lg" surface="brand" />
 
       {/* APP_NAME only as a last resort — a bench with no Institution record has no
           institution to name, and a headless panel would read as a broken page. */}
@@ -96,7 +111,7 @@ function Identity({ brand, meta }: { brand: InstitutionBrand | null; meta: strin
         {brand?.name ?? APP_NAME}
       </h2>
 
-      <p className="mt-3 text-sm text-sidebar-foreground/70">
+      <p className="mt-3 text-sm text-brand-panel-muted">
         {meta ?? 'Sign in to the institution management system.'}
       </p>
 
@@ -105,7 +120,7 @@ function Identity({ brand, meta }: { brand: InstitutionBrand | null; meta: strin
           {brand.accreditations.map((item) => (
             <li
               key={item}
-              className="rounded-md border border-sidebar-border bg-sidebar-accent px-2.5 py-1 text-xs font-medium text-sidebar-foreground/90"
+              className="rounded-md border border-brand-panel-border bg-brand-panel-raised px-2.5 py-1 text-xs font-medium text-brand-panel-foreground"
             >
               {item}
             </li>
@@ -120,9 +135,9 @@ function Identity({ brand, meta }: { brand: InstitutionBrand | null; meta: strin
 function IdentitySkeleton() {
   return (
     <div aria-hidden="true" className="animate-pulse">
-      <div className="size-16 rounded-xl bg-sidebar-accent" />
-      <div className="mt-7 h-9 w-80 max-w-full rounded-md bg-sidebar-accent" />
-      <div className="mt-3 h-4 w-52 max-w-full rounded bg-sidebar-accent" />
+      <div className="size-16 rounded-xl bg-brand-panel-raised" />
+      <div className="mt-7 h-9 w-80 max-w-full rounded-md bg-brand-panel-raised" />
+      <div className="mt-3 h-4 w-52 max-w-full rounded bg-brand-panel-raised" />
     </div>
   )
 }

@@ -6,7 +6,8 @@
     },
     "shadcn": {
       "command": "npx",
-      "args": ["-y", "shadcn@latest", "mcp", "-c", "./frontend"]
+      "args": ["-y", "shadcn@latest", "mcp", "-c", "./frontend"],
+      "type": "stdio"
     }
   }
 }

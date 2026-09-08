@@ -1,6 +1,5 @@
-import { InstitutionMark } from '@/shared/components/brand/InstitutionMark'
-import { institutionMetaLine } from '@/shared/lib/branding'
-import type { InstitutionBrand } from '@/shared/types/branding'
+import { institutionMetaLine } from '@/lib/branding'
+import type { InstitutionBrand } from '@/types/branding'
 import { firstNameOf, formatToday, greetingFor } from '@/shell/home/lib/greeting'
 
 /**
@@ -24,10 +23,17 @@ export function WelcomeHeader({
   const detail = [institutionMetaLine(brand), formatToday(now)].filter(Boolean).join(' · ')
 
   return (
-    <header className="flex items-center gap-4">
-      {brand && <InstitutionMark brand={brand} size="lg" className="hidden shrink-0 sm:inline-flex" />}
+    // The 64px mark is gone. The institution is already named in the topbar on every screen and
+    // again in the line directly below this greeting; a third statement of it, at the largest
+    // size on the page, pushed the first clickable thing 314px down. Home opens on your work now.
+    <header>
       <div className="min-w-0">
-        <h1 className="font-heading text-2xl leading-snug font-semibold tracking-tight text-foreground">
+        {/* text-2xl, the ONE page-title step, shared with PageHeader and the module overview.
+            It was text-xl — a step below every other page in the app, so the greeting read as a
+            subheading of nothing. `leading-tight` and the hand-written tracking go with it: the
+            scale sets a line height per step now, and negative tracking at 20px costs legibility
+            for a tightening nobody can see. */}
+        <h1 className="font-heading text-2xl font-semibold tracking-tight text-foreground">
           {greeting}
         </h1>
         <p className="mt-1 truncate text-sm text-muted-foreground">

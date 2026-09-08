@@ -1,4 +1,4 @@
-import type { ModuleMenu } from '@/shared/types/navigation'
+import type { ModuleMenu } from '@/types/navigation'
 
 /** A one-click deep link on the home page's Quick access rail. */
 export interface QuickLink {

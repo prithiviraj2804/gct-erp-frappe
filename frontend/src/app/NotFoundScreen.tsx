@@ -1,7 +1,7 @@
 import { Link } from 'react-router'
 
-import { Button } from '@/shared/ui/button'
-import { ROUTES } from '@/shared/lib/constants'
+import { Button } from '@/components/ui/button'
+import { ROUTES } from '@/lib/constants'
 
 export default function NotFoundPage() {
   return (

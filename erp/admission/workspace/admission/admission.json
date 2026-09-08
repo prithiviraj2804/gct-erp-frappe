@@ -13,22 +13,33 @@
  "links": [
   {
    "type": "Card Break",
-   "label": "Enquiries"
+   "label": "Enquiries",
+   "icon": "inbox"
   },
   {
    "type": "Link",
    "link_type": "DocType",
    "link_to": "Admission Enquiry",
+   "icon": "file-text",
    "label": "Admission Enquiry"
   },
   {
+   "type": "Link",
+   "link_type": "DocType",
+   "link_to": "Admission Application",
+   "icon": "clipboard-list",
+   "label": "Admission Application"
+  },
+  {
    "type": "Card Break",
-   "label": "Intake"
+   "label": "Intake",
+   "icon": "user-plus"
   },
   {
    "type": "Link",
    "link_type": "DocType",
    "link_to": "Admission Gate Pass",
+   "icon": "ticket",
    "label": "Admission Gate Pass"
   }
  ]

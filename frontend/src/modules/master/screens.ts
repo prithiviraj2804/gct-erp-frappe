@@ -1,4 +1,4 @@
-import type { ScreenTable } from '@/screens/doctype/registry'
+import type { ScreenTable } from '@/pages/doctype/registry'
 
 /**
  * Master module screen overrides.

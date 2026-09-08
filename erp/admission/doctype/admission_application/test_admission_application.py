@@ -1,0 +1,727 @@
+# Copyright (c) 2026, Prithivi and Contributors
+# See license.txt
+
+"""What an application does between a paid lead and an admitted student.
+
+The case this slice was built for runs through the whole suite: a student walks in asking for one
+branch and counselling allots them another. The application owns the programme it admits to, the
+lead keeps what was asked for, and the two are allowed to disagree forever.
+
+Also proved here: one Admission Application serves an engineering college and an LKG class, with the
+difference carried as data on the intake — an age window and a document checklist — and no rule
+anywhere keyed on `College.college_type`. Plus the three pipeline gates, through both status-writers.
+
+Own fixtures under a `ZA` prefix, in two disjoint institutions so every test has a legitimate record
+and an alien one. Nothing is committed: IntegrationTestCase rolls the connection back at class
+teardown, which is also why identity columns come from counters rather than literals.
+"""
+
+import itertools
+import uuid
+
+import frappe
+from frappe.tests import IntegrationTestCase
+from frappe.utils import add_days, today
+
+from erp.api.accounts.fee_payment import record_application_fee
+from erp.api.admission.admission import confirm_admission
+from erp.api.admission.application import start_application
+
+
+class IntegrationTestAdmissionApplication(IntegrationTestCase):
+	INST = "ZA1"
+	OTHER_INST = "ZA2"
+	ENG = "ZA1ENG"
+	SCHOOL = "ZA1SCH"
+	FEE = 750.0
+
+	# --- Fixtures -------------------------------------------------------------------
+
+	@classmethod
+	def setUpClass(cls):
+		super().setUpClass()
+		cls._aadhaar = itertools.count(710000000001)
+		cls._phone = itertools.count(9700000001)
+		cls._offering = itertools.count(1)
+
+		cls.ensure(
+			"Programme Level", "UG", {"level_code": "UG", "level_name": "Undergraduate", "level_order": 1}
+		)
+		cls.ensure("Programme Level", "PRI", {"level_code": "PRI", "level_name": "Primary", "level_order": 1})
+		cls.ensure(
+			"Admission Type", "REG", {"type_code": "REG", "type_name": "Regular", "default_entry_semester": 1}
+		)
+		cls.ensure(
+			"Admission Type", "LAT", {"type_code": "LAT", "type_name": "Lateral", "default_entry_semester": 3}
+		)
+		cls.ensure("Mode of Payment", "Cash", {"mode_name": "Cash", "type": "Cash"})
+		for code, name in (
+			("MARK12", "12th Mark Sheet"),
+			("ALLOTMENT", "Allotment Order"),
+			("BIRTH", "Birth Certificate"),
+		):
+			cls.ensure("Admission Document Type", code, {"document_code": code, "document_name": name})
+		cls.structure = cls.ensure(
+			"Academic Structure",
+			"ZASEM",
+			{
+				"structure_code": "ZASEM",
+				"structure_name": "A Semester",
+				"terms_per_year": 2,
+				"term_label": "Semester",
+			},
+		)
+
+		# Inserting an institution builds its chart of accounts through the after_insert hook.
+		cls.ensure("Institution", cls.INST, {"institution_code": cls.INST, "institution_name": "A Institute"})
+		cls.ensure(
+			"Institution", cls.OTHER_INST, {"institution_code": cls.OTHER_INST, "institution_name": "A Rival"}
+		)
+		cls.ensure(
+			"College",
+			cls.ENG,
+			{
+				"institution": cls.INST,
+				"college_code": cls.ENG,
+				"college_name": "A Engineering",
+				"college_type": "Engineering",
+			},
+		)
+		cls.ensure(
+			"College",
+			cls.SCHOOL,
+			{
+				"institution": cls.INST,
+				"college_code": cls.SCHOOL,
+				"college_name": "A School",
+				"college_type": "School",
+			},
+		)
+
+		cls.year = cls.ensure(
+			"Academic Year",
+			f"{cls.INST}-2060-61",
+			{
+				"institution": cls.INST,
+				"year_code": "2060-61",
+				"title": "A 2060-61",
+				"start_date": "2060-06-01",
+				"end_date": "2061-05-31",
+				"is_admission_open": 1,
+			},
+		)
+
+		cls.cse, cls.cse_intake = cls.make_offering("CSE", cls.ENG, "UG", "12th", seats=60)
+		cls.ece, cls.ece_intake = cls.make_offering("ECE", cls.ENG, "UG", "12th", seats=60)
+		# Two seats so exhaustion is cheap to prove.
+		cls.lat, cls.lat_intake = cls.make_offering("MECHLAT", cls.ENG, "UG", "12th", seats=60)
+		# The school class: no department, no prior qualification, an age window instead.
+		cls.lkg, cls.lkg_intake = cls.make_offering(
+			"LKG",
+			cls.SCHOOL,
+			"PRI",
+			None,
+			seats=2,
+			documents=("BIRTH",),
+			min_age=3,
+			max_age=5,
+			age_as_on="2060-06-01",
+		)
+
+	@staticmethod
+	def ensure(doctype, name, values):
+		if frappe.db.exists(doctype, name):
+			return name
+		return frappe.get_doc({"doctype": doctype, **values}).insert().name
+
+	@classmethod
+	def make_offering(
+		cls, code, college, level, prior, *, seats, documents=("MARK12", "ALLOTMENT"), **intake
+	):
+		"""A programme plus the intake that publishes its seats, checklist and entry conditions."""
+		department = None
+		if college != cls.SCHOOL:
+			department = cls.ensure(
+				"Department",
+				f"{college}-{code}",
+				{
+					"institution": cls.INST,
+					"college": college,
+					"department_code": code,
+					"department_name": code,
+				},
+			)
+		programme = (
+			frappe.get_doc(
+				{
+					"doctype": "Programme",
+					"college": college,
+					"department": department,
+					"programme_code": code,
+					"programme_name": code,
+					"programme_level": level,
+					"required_prior_qualification": prior,
+					"academic_structure": cls.structure,
+					"duration_years": 4,
+					"total_terms": 8,
+				}
+			)
+			.insert()
+			.name
+		)
+		programme_intake = (
+			frappe.get_doc(
+				{
+					"doctype": "Programme Intake",
+					"academic_year": cls.year,
+					"programme": programme,
+					"total_seats": seats,
+					"status": "Open",
+					"application_fee": cls.FEE,
+					"required_documents": [{"document_type": d, "is_required": 1} for d in documents],
+					**intake,
+				}
+			)
+			.insert()
+			.name
+		)
+		return programme, programme_intake
+
+	@classmethod
+	def make_lead(
+		cls, programme, intake, *, college=None, date_of_birth=None, education=("12th",), **overrides
+	):
+		"""A lead at the point the counsellor has taken the details but no fee yet."""
+		values = {
+			"doctype": "Admission Enquiry",
+			"enquiry_date": today(),
+			"status": "New",
+			"student_name": f"A Applicant {next(cls._aadhaar) % 10000}",
+			"phone_number": str(next(cls._phone)),
+			"aadhaar_number": f"{next(cls._aadhaar):012d}",
+			"college": college or frappe.db.get_value("Programme", programme, "college"),
+			"department": frappe.db.get_value("Programme", programme, "department"),
+			"programme": programme,
+			"programme_intake": intake,
+			"admission_type": "REG",
+			"date_of_birth": date_of_birth,
+			"previous_education": [{"qualification_level": q} for q in education if q],
+		}
+		values.update(overrides)
+		return frappe.get_doc(values).insert().name
+
+	@classmethod
+	def paid_lead(cls, programme, intake, **kwargs):
+		enquiry = cls.make_lead(programme, intake, **kwargs)
+		record_application_fee(enquiry, "Cash")
+		return enquiry
+
+	@staticmethod
+	def verify_documents(application):
+		doc = frappe.get_doc("Admission Application", application)
+		for row in doc.documents:
+			row.copy_collected, row.original_verified, row.verified_on = 1, 1, today()
+		doc.save()
+		return doc
+
+	@classmethod
+	def allot(cls, application, programme, intake, outcome="Allotted To Us"):
+		"""Record what counselling returned — routinely a different branch from the one enquired about."""
+		doc = frappe.get_doc("Admission Application", application)
+		doc.programme, doc.programme_intake = programme, intake
+		doc.counselling_outcome = outcome
+		doc.entrance_exam, doc.allotment_reference, doc.allotment_date = "TNEA", "TNEA/2060/0001", today()
+		doc.save()
+		return doc
+
+	# --- Raising the application ----------------------------------------------------
+
+	def test_application_needs_the_fee_first(self):
+		"""This college hands out its form only after the fee is taken, and so does the pipeline."""
+		enquiry = self.make_lead(self.cse, self.cse_intake)
+		with self.assertRaises(frappe.ValidationError) as caught:
+			start_application(enquiry)
+		self.assertIn("fee", str(caught.exception).lower())
+
+	def test_application_is_seeded_from_the_lead_and_the_intake(self):
+		enquiry = self.paid_lead(self.cse, self.cse_intake)
+		result = start_application(enquiry)
+		doc = frappe.get_doc("Admission Application", result["name"])
+
+		self.assertTrue(result["created"])
+		self.assertTrue(doc.name.startswith("AAPP-"), doc.name)
+		self.assertEqual(str(uuid.UUID(doc.id)), doc.id)
+		self.assertEqual(doc.programme, self.cse)
+		# The branch walked in for is choice 1 until the form says otherwise.
+		self.assertEqual([r.programme for r in doc.preferences], [self.cse])
+		# The checklist comes from the intake, not from a global list.
+		self.assertEqual({r.document_type for r in doc.documents}, {"MARK12", "ALLOTMENT"})
+		self.assertTrue(all(str(uuid.UUID(r.id)) == r.id for r in doc.documents))
+
+	def test_starting_twice_returns_the_same_application(self):
+		enquiry = self.paid_lead(self.cse, self.cse_intake)
+		first = start_application(enquiry)
+		second = start_application(enquiry)
+		self.assertFalse(second["created"])
+		self.assertEqual(first["name"], second["name"])
+
+	def test_a_lead_cannot_carry_two_applications(self):
+		enquiry = self.paid_lead(self.cse, self.cse_intake)
+		start_application(enquiry)
+		with self.assertRaises(frappe.ValidationError):
+			frappe.get_doc(
+				{
+					"doctype": "Admission Application",
+					"admission_enquiry": enquiry,
+					"application_date": today(),
+					"programme": self.cse,
+					"programme_intake": self.cse_intake,
+				}
+			).insert()
+
+	# --- The case the slice exists for ----------------------------------------------
+
+	def test_allotted_branch_may_differ_from_the_one_enquired_about(self):
+		"""Walked in for CSE, TNEA allotted ECE. Both facts survive, on their own records."""
+		enquiry = self.paid_lead(self.cse, self.cse_intake)
+		application = start_application(enquiry)["name"]
+
+		doc = self.allot(application, self.ece, self.ece_intake)
+
+		self.assertEqual(doc.programme, self.ece)
+		self.assertEqual(doc.department, f"{self.ENG}-ECE", "the department must follow the branch")
+		self.assertEqual(
+			frappe.db.get_value("Admission Enquiry", enquiry, "programme"),
+			self.cse,
+			"the lead must still record what the student actually asked for",
+		)
+
+	def test_the_admitted_student_carries_the_allotted_branch(self):
+		enquiry = self.paid_lead(self.cse, self.cse_intake)
+		application = start_application(enquiry)["name"]
+		self.allot(application, self.ece, self.ece_intake)
+		self.verify_documents(application)
+
+		student = frappe.get_doc("Student", confirm_admission(application)["student"])
+
+		self.assertEqual(student.programme, self.ece)
+		self.assertEqual(student.programme_intake, self.ece_intake)
+		self.assertEqual(student.admission_enquiry, enquiry)
+
+	def test_intake_must_belong_to_the_programme(self):
+		"""The intake carries the seats, checklist and age window — the wrong one applies wrong rules."""
+		enquiry = self.paid_lead(self.cse, self.cse_intake)
+		doc = frappe.get_doc("Admission Application", start_application(enquiry)["name"])
+		doc.programme = self.ece  # intake still points at CSE
+		with self.assertRaises(frappe.ValidationError) as caught:
+			doc.save()
+		self.assertIn("not", str(caught.exception).lower())
+
+	def test_a_branch_change_rechecks_the_entry_requirement(self):
+		"""A lateral-entry seat needs a diploma the original choice never asked for."""
+		enquiry = self.paid_lead(self.cse, self.cse_intake, education=("12th",))
+		doc = frappe.get_doc("Admission Application", start_application(enquiry)["name"])
+		doc.programme, doc.programme_intake = self.lat, self.lat_intake
+		doc.admission_type = "LAT"
+		with self.assertRaises(frappe.ValidationError) as caught:
+			doc.save()
+		self.assertIn("Diploma", str(caught.exception))
+
+	def test_branch_cannot_change_after_admission(self):
+		application = self.admitted_application()  # admitted into CSE
+		doc = frappe.get_doc("Admission Application", application)
+		doc.programme, doc.programme_intake = self.ece, self.ece_intake
+		with self.assertRaises(frappe.ValidationError) as caught:
+			doc.save()
+		self.assertIn("cannot be changed", str(caught.exception))
+
+	# --- One doctype for a school and a college -------------------------------------
+
+	def test_school_intake_enforces_its_age_window(self):
+		too_young = self.paid_lead(self.lkg, self.lkg_intake, date_of_birth="2058-01-01", education=())
+		with self.assertRaises(frappe.ValidationError) as caught:
+			start_application(too_young)
+		self.assertIn("age", str(caught.exception).lower())
+
+		too_old = self.paid_lead(self.lkg, self.lkg_intake, date_of_birth="2052-01-01", education=())
+		with self.assertRaises(frappe.ValidationError):
+			start_application(too_old)
+
+		just_right = self.paid_lead(self.lkg, self.lkg_intake, date_of_birth="2056-01-01", education=())
+		self.assertTrue(start_application(just_right)["created"])
+
+	def test_a_degree_intake_sets_no_age_window_so_none_is_checked(self):
+		"""The same date of birth that fails LKG is irrelevant to a B.E. — the rule is data, not a
+		branch on the college's type."""
+		enquiry = self.paid_lead(self.cse, self.cse_intake, date_of_birth="2058-01-01")
+		self.assertTrue(start_application(enquiry)["created"])
+
+	def test_the_checklist_is_the_intake_s_own(self):
+		school = self.paid_lead(self.lkg, self.lkg_intake, date_of_birth="2056-02-02", education=())
+		college = self.paid_lead(self.cse, self.cse_intake)
+
+		school_docs = frappe.get_doc("Admission Application", start_application(school)["name"]).documents
+		college_docs = frappe.get_doc("Admission Application", start_application(college)["name"]).documents
+
+		self.assertEqual([r.document_type for r in school_docs], ["BIRTH"])
+		self.assertEqual({r.document_type for r in college_docs}, {"MARK12", "ALLOTMENT"})
+
+	# --- Derived state ---------------------------------------------------------------
+
+	def test_state_is_derived_not_typed(self):
+		enquiry = self.paid_lead(self.cse, self.cse_intake)
+		application = start_application(enquiry)["name"]
+		doc = frappe.get_doc("Admission Application", application)
+		self.assertEqual(doc.application_state, "Awaiting Counselling")
+
+		doc = self.allot(application, self.cse, self.cse_intake)
+		self.assertEqual(doc.application_state, "Documents Pending")
+
+		doc = self.verify_documents(application)
+		self.assertEqual(doc.application_state, "Documents Verified")
+
+		doc.offer_issued_on = today()
+		doc.save()
+		self.assertEqual(doc.application_state, "Offered")
+
+		doc.offer_response = "Accepted"
+		doc.save()
+		self.assertEqual(doc.application_state, "Accepted")
+		self.assertEqual(
+			frappe.utils.getdate(doc.offer_response_on),
+			frappe.utils.getdate(today()),
+			"a response dates itself",
+		)
+
+		confirm_admission(application)
+		self.assertEqual(
+			frappe.db.get_value("Admission Application", application, "application_state"), "Admitted"
+		)
+
+	def test_allotted_elsewhere_reads_not_allotted(self):
+		enquiry = self.paid_lead(self.cse, self.cse_intake)
+		application = start_application(enquiry)["name"]
+		doc = frappe.get_doc("Admission Application", application)
+		doc.counselling_outcome = "Allotted Elsewhere"
+		doc.save()
+		self.assertEqual(doc.application_state, "Not Allotted")
+
+	# --- The gates -------------------------------------------------------------------
+
+	def test_documents_gate_blocks_documents_verified(self):
+		enquiry = self.paid_lead(self.cse, self.cse_intake)
+		self.allot(start_application(enquiry)["name"], self.cse, self.cse_intake)
+
+		lead = frappe.get_doc("Admission Enquiry", enquiry)
+		lead.status = "Documents Verified"
+		with self.assertRaises(frappe.ValidationError) as caught:
+			lead.save()
+		self.assertIn("unverified", str(caught.exception).lower())
+
+	def test_documents_gate_blocks_the_follow_up_path_too(self):
+		"""The follow-up writes status with set_value, bypassing the enquiry's validate entirely —
+		which is exactly why the rule lives in pipeline.py and both writers call it."""
+		enquiry = self.paid_lead(self.cse, self.cse_intake)
+		self.allot(start_application(enquiry)["name"], self.cse, self.cse_intake)
+
+		with self.assertRaises(frappe.ValidationError) as caught:
+			frappe.get_doc(
+				{
+					"doctype": "Admission Follow-up",
+					"enquiry": enquiry,
+					"follow_up_on": frappe.utils.now(),
+					"channel": "Call",
+					"outcome": "Connected",
+					"new_status": "Documents Verified",
+				}
+			).insert()
+		self.assertIn("unverified", str(caught.exception).lower())
+		self.assertEqual(frappe.db.get_value("Admission Enquiry", enquiry, "status"), "Application Submitted")
+
+	def test_advancing_without_an_application_is_refused(self):
+		enquiry = self.paid_lead(self.cse, self.cse_intake)
+		lead = frappe.get_doc("Admission Enquiry", enquiry)
+		lead.status = "Documents Verified"
+		with self.assertRaises(frappe.ValidationError) as caught:
+			lead.save()
+		self.assertIn("Application", str(caught.exception))
+
+	def test_an_applicant_allotted_elsewhere_cannot_be_admitted(self):
+		"""And that is what they are told first — verifying certificates would change nothing."""
+		enquiry = self.paid_lead(self.cse, self.cse_intake)
+		application = start_application(enquiry)["name"]
+		self.allot(application, self.cse, self.cse_intake, outcome="Allotted Elsewhere")
+
+		with self.assertRaises(frappe.ValidationError) as caught:
+			confirm_admission(application)
+		self.assertIn("cannot be admitted", str(caught.exception))
+
+	def test_an_awaited_allotment_cannot_be_admitted(self):
+		enquiry = self.paid_lead(self.cse, self.cse_intake)
+		application = start_application(enquiry)["name"]
+		self.verify_documents(application)
+		with self.assertRaises(frappe.ValidationError) as caught:
+			confirm_admission(application)
+		self.assertIn("allotment", str(caught.exception).lower())
+
+	def test_an_issued_offer_must_be_accepted(self):
+		enquiry = self.paid_lead(self.cse, self.cse_intake)
+		application = start_application(enquiry)["name"]
+		self.allot(application, self.cse, self.cse_intake)
+		doc = self.verify_documents(application)
+		doc.offer_issued_on = today()
+		doc.save()
+
+		with self.assertRaises(frappe.ValidationError) as caught:
+			confirm_admission(application)
+		self.assertIn("not been accepted", str(caught.exception))
+
+	def test_an_offer_answered_after_it_lapsed_is_refused(self):
+		enquiry = self.paid_lead(self.cse, self.cse_intake)
+		application = start_application(enquiry)["name"]
+		self.allot(application, self.cse, self.cse_intake)
+		doc = self.verify_documents(application)
+		doc.offer_issued_on = add_days(today(), -10)
+		doc.offer_expires_on = add_days(today(), -3)
+		doc.offer_response = "Accepted"
+		doc.offer_response_on = today()
+		doc.save()
+
+		with self.assertRaises(frappe.ValidationError) as caught:
+			confirm_admission(application)
+		self.assertIn("expired", str(caught.exception).lower())
+
+	def test_a_response_needs_an_offer(self):
+		enquiry = self.paid_lead(self.cse, self.cse_intake)
+		doc = frappe.get_doc("Admission Application", start_application(enquiry)["name"])
+		doc.offer_response = "Accepted"
+		with self.assertRaises(frappe.ValidationError):
+			doc.save()
+
+	def test_no_offer_at_all_is_fine(self):
+		"""A counselling allotment is its own offer; a management seat is settled across a desk."""
+		application = self.admitted_application()
+		self.assertTrue(frappe.db.get_value("Admission Application", application, "student"))
+
+	# --- Seats ------------------------------------------------------------------------
+
+	def test_an_intake_cannot_be_admitted_past_its_seats(self):
+		# Its own two-seat intake: the seat tests must not fill each other's, and the class rolls back
+		# only at teardown, so state set by one test method is still there for the next.
+		programme, intake = self.tiny_intake(seats=2)
+		for _ in range(2):
+			self.admitted_application(programme=programme, intake=intake)
+
+		self.assertEqual(frappe.db.count("Student", {"programme_intake": intake, "status": "Active"}), 2)
+
+		enquiry = self.paid_lead(programme, intake)
+		application = start_application(enquiry)["name"]
+		self.allot(application, programme, intake)
+		self.verify_documents(application)
+
+		with self.assertRaises(frappe.ValidationError) as caught:
+			confirm_admission(application)
+		self.assertIn("full", str(caught.exception).lower())
+
+	def test_only_active_students_hold_a_seat(self):
+		"""Seats are counted on Active students so a later withdrawal slice frees them by flipping a
+		status, with no change to the gate."""
+		programme, intake = self.tiny_intake(seats=2)
+		first = self.admitted_application(programme=programme, intake=intake)
+		self.admitted_application(programme=programme, intake=intake)
+
+		student = frappe.db.get_value("Admission Application", first, "student")
+		frappe.db.set_value("Student", student, "status", "Discontinued")
+
+		third = self.admitted_application(programme=programme, intake=intake)
+		self.assertTrue(frappe.db.get_value("Admission Application", third, "student"))
+
+	# --- Admission --------------------------------------------------------------------
+
+	def test_confirming_twice_admits_once(self):
+		application = self.admitted_application()
+		student = frappe.db.get_value("Admission Application", application, "student")
+		again = confirm_admission(application)
+		self.assertFalse(again["created"])
+		self.assertEqual(again["student"], student)
+
+	def test_admission_numbers_the_register_per_institution(self):
+		application = self.admitted_application()
+		student = frappe.get_doc(
+			"Student", frappe.db.get_value("Admission Application", application, "student")
+		)
+		self.assertTrue(student.name.startswith(f"{self.INST}-STU-"), student.name)
+		self.assertEqual(str(uuid.UUID(student.id)), student.id)
+		self.assertEqual(student.status, "Active")
+		self.assertEqual(student.date_of_admission, frappe.utils.getdate(today()))
+
+	def test_admission_moves_the_lead_to_admitted(self):
+		application = self.admitted_application()
+		enquiry = frappe.db.get_value("Admission Application", application, "admission_enquiry")
+		self.assertEqual(frappe.db.get_value("Admission Enquiry", enquiry, "status"), "Admitted")
+
+	# --- Tenancy ----------------------------------------------------------------------
+
+	def test_an_application_cannot_admit_into_another_institution(self):
+		"""A Link accepts any programme in the system; only the hierarchy check rejects a rival's.
+
+		The application derives its institution from the programme, so pointing it at another
+		tenant's branch makes the lead it came from the odd one out — which is exactly what
+		`validate_same_parent` on `admission_enquiry` is there to catch.
+		"""
+		rival_college = self.ensure(
+			"College",
+			f"{self.OTHER_INST}COL",
+			{
+				"institution": self.OTHER_INST,
+				"college_code": f"{self.OTHER_INST}COL",
+				"college_name": "Rival College",
+				"college_type": "Engineering",
+			},
+		)
+		rival_department = self.ensure(
+			"Department",
+			f"{rival_college}-CSE",
+			{
+				"institution": self.OTHER_INST,
+				"college": rival_college,
+				"department_code": "CSE",
+				"department_name": "Rival CSE",
+			},
+		)
+		rival_programme = (
+			frappe.get_doc(
+				{
+					"doctype": "Programme",
+					"college": rival_college,
+					"department": rival_department,
+					"programme_code": "RCSE",
+					"programme_name": "Rival CSE",
+					"programme_level": "UG",
+					"academic_structure": self.structure,
+					"duration_years": 4,
+					"total_terms": 8,
+				}
+			)
+			.insert()
+			.name
+		)
+
+		enquiry = self.paid_lead(self.cse, self.cse_intake)
+		doc = frappe.get_doc("Admission Application", start_application(enquiry)["name"])
+		doc.programme = rival_programme
+		doc.programme_intake = None
+		with self.assertRaises(frappe.ValidationError):
+			doc.save()
+
+	# --- Shared helper ----------------------------------------------------------------
+
+	@classmethod
+	def tiny_intake(cls, *, seats):
+		"""A private programme + intake, so a test that fills seats cannot starve another."""
+		return cls.make_offering(f"SEAT{next(cls._offering)}", cls.ENG, "UG", "12th", seats=seats)
+
+	@classmethod
+	def admitted_application(cls, programme=None, intake=None, **kwargs):
+		"""A lead carried all the way to a student, for tests about what happens afterwards."""
+		programme = programme or cls.cse
+		intake = intake or cls.cse_intake
+		enquiry = cls.paid_lead(programme, intake, **kwargs)
+		application = start_application(enquiry)["name"]
+		cls.allot(application, programme, intake)
+		cls.verify_documents(application)
+		confirm_admission(application)
+		return application
+
+
+class IntegrationTestAdmissionApplicationScoping(IntegrationTestCase):
+	"""An application must not be the hole in the lead scoping.
+
+	A counsellor barred from another counsellor's enquiry would otherwise read the same applicant's
+	marks, documents and allotment through the application raised from it. Same `ZP`-style shape as
+	the enquiry's scoping suite: two counsellors, one manager, one lead each.
+	"""
+
+	INST = "ZA1"
+
+	@classmethod
+	def setUpClass(cls):
+		super().setUpClass()
+		base = IntegrationTestAdmissionApplication
+		base.setUpClass.__func__(base)
+
+		cls.staff_a = cls.make_staff("ZASTA", "za-counsellor-a@example.com")
+		cls.staff_b = cls.make_staff("ZASTB", "za-counsellor-b@example.com")
+		cls.manager = cls.make_user("za-manager@example.com", "Admission Manager")
+
+		cls.app_a = cls.application_owned_by(cls.staff_a)
+		cls.app_b = cls.application_owned_by(cls.staff_b)
+
+	@classmethod
+	def make_staff(cls, code, email):
+		user = cls.make_user(email, "Admission Counsellor")
+		base = IntegrationTestAdmissionApplication
+		staff = base.ensure(
+			"Staff",
+			f"{base.ENG}-{code}",
+			{
+				"institution": cls.INST,
+				"college": base.ENG,
+				"staff_code": code,
+				"staff_name": code,
+				"user": user,
+				"status": "Active",
+			},
+		)
+		return staff
+
+	@staticmethod
+	def make_user(email, role):
+		if frappe.db.exists("User", email):
+			return email
+		user = frappe.new_doc("User")
+		user.email, user.first_name = email, email.split("@")[0]
+		user.append("roles", {"role": role})
+		user.flags.no_welcome_mail = True
+		user.insert(ignore_permissions=True)
+		frappe.get_doc(
+			{"doctype": "User Permission", "user": email, "allow": "Institution", "for_value": "ZA1"}
+		).insert(ignore_permissions=True)
+		return email
+
+	@classmethod
+	def application_owned_by(cls, staff):
+		base = IntegrationTestAdmissionApplication
+		enquiry = base.paid_lead(base.cse, base.cse_intake, counsellor=staff)
+		return start_application(enquiry)["name"]
+
+	def _visible_to(self, user):
+		frappe.set_user(user)
+		try:
+			return set(frappe.get_list("Admission Application", pluck="name"))
+		finally:
+			frappe.set_user("Administrator")
+
+	def test_a_counsellor_sees_only_their_own_applicants(self):
+		visible = self._visible_to("za-counsellor-a@example.com")
+		self.assertIn(self.app_a, visible)
+		self.assertNotIn(self.app_b, visible)
+
+	def test_a_manager_sees_every_application_in_their_institution(self):
+		visible = self._visible_to("za-manager@example.com")
+		self.assertIn(self.app_a, visible)
+		self.assertIn(self.app_b, visible)
+
+	def test_a_counsellor_cannot_read_another_s_application_directly(self):
+		frappe.set_user("za-counsellor-a@example.com")
+		try:
+			with self.assertRaises(frappe.PermissionError):
+				frappe.get_doc("Admission Application", self.app_b).check_permission("read")
+		finally:
+			frappe.set_user("Administrator")
+
+	def test_the_owner_is_taken_from_the_lead_not_from_the_caller(self):
+		doc = frappe.get_doc("Admission Application", self.app_a)
+		doc.counsellor = self.staff_b
+		doc.save()
+		self.assertEqual(doc.counsellor, self.staff_a, "a posted owner must not survive validate")

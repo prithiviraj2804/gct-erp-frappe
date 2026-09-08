@@ -18,8 +18,13 @@
   "eligibility_section",
   "min_percentage",
   "eligibility_criteria",
+  "min_age",
+  "max_age",
+  "age_as_on",
   "column_break_eligibility",
   "application_fee",
+  "documents_section",
+  "required_documents",
   "remarks_section",
   "remarks"
  ],
@@ -120,6 +125,26 @@
    "description": "Free-text eligibility (e.g. 10+2 with PCM)"
   },
   {
+   "fieldname": "min_age",
+   "fieldtype": "Int",
+   "label": "Minimum Age",
+   "non_negative": 1,
+   "description": "Leave blank when age is not an entry condition — the usual case for a degree programme"
+  },
+  {
+   "fieldname": "max_age",
+   "fieldtype": "Int",
+   "label": "Maximum Age",
+   "non_negative": 1,
+   "description": "Leave blank for no upper bound"
+  },
+  {
+   "fieldname": "age_as_on",
+   "fieldtype": "Date",
+   "label": "Age Reckoned As On",
+   "description": "Cut-off date the age window is measured against, e.g. 1 June for a school class"
+  },
+  {
    "fieldname": "column_break_eligibility",
    "fieldtype": "Column Break"
   },
@@ -130,6 +155,18 @@
    "reqd": 1,
    "non_negative": 1,
    "description": "Fee payable to submit an application"
+  },
+  {
+   "fieldname": "documents_section",
+   "fieldtype": "Section Break",
+   "label": "Required Documents"
+  },
+  {
+   "fieldname": "required_documents",
+   "fieldtype": "Table",
+   "label": "Required Documents",
+   "options": "Programme Intake Document",
+   "description": "Checklist copied onto every application for this intake"
   },
   {
    "fieldname": "remarks_section",

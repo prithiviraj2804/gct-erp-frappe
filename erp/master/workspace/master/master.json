@@ -1,108 +1,132 @@
 {
-  "doctype": "Workspace",
-  "name": "Master",
-  "title": "Master",
-  "label": "Master",
-  "type": "Workspace",
-  "module": "Master",
-  "public": 1,
-  "is_hidden": 0,
-  "sequence_id": 1,
-  "content": "[{\"id\":\"master_organisation_card\",\"type\":\"card\",\"data\":{\"card_name\":\"Organisation\",\"col\":4}},{\"id\":\"master_academic_card\",\"type\":\"card\",\"data\":{\"card_name\":\"Academic\",\"col\":4}},{\"id\":\"master_admissions_card\",\"type\":\"card\",\"data\":{\"card_name\":\"Admissions\",\"col\":4}},{\"id\":\"master_people_card\",\"type\":\"card\",\"data\":{\"card_name\":\"People\",\"col\":4}}]",
-  "links": [
-    {
-      "type": "Card Break",
-      "label": "Organisation"
-    },
-    {
-      "type": "Link",
-      "link_type": "DocType",
-      "link_to": "Institution",
-      "label": "Institution"
-    },
-    {
-      "type": "Link",
-      "link_type": "DocType",
-      "link_to": "Campus",
-      "label": "Campus"
-    },
-    {
-      "type": "Link",
-      "link_type": "DocType",
-      "link_to": "College",
-      "label": "College"
-    },
-    {
-      "type": "Link",
-      "link_type": "DocType",
-      "link_to": "Department",
-      "label": "Department"
-    },
-    {
-      "type": "Card Break",
-      "label": "Academic"
-    },
-    {
-      "type": "Link",
-      "link_type": "DocType",
-      "link_to": "Programme Level",
-      "label": "Programme Level"
-    },
-    {
-      "type": "Link",
-      "link_type": "DocType",
-      "link_to": "Degree",
-      "label": "Degree"
-    },
-    {
-      "type": "Link",
-      "link_type": "DocType",
-      "link_to": "Academic Structure",
-      "label": "Academic Structure"
-    },
-    {
-      "type": "Link",
-      "link_type": "DocType",
-      "link_to": "Programme",
-      "label": "Programme"
-    },
-    {
-      "type": "Card Break",
-      "label": "Admissions"
-    },
-    {
-      "type": "Link",
-      "link_type": "DocType",
-      "link_to": "Academic Year",
-      "label": "Academic Year"
-    },
-    {
-      "type": "Link",
-      "link_type": "DocType",
-      "link_to": "Admission Type",
-      "label": "Admission Type"
-    },
-    {
-      "type": "Link",
-      "link_type": "DocType",
-      "link_to": "Programme Intake",
-      "label": "Programme Intake"
-    },
-    {
-      "type": "Link",
-      "link_type": "DocType",
-      "link_to": "Consultancy",
-      "label": "Consultancy"
-    },
-    {
-      "type": "Card Break",
-      "label": "People"
-    },
-    {
-      "type": "Link",
-      "link_type": "DocType",
-      "link_to": "Staff",
-      "label": "Staff"
-    }
-  ]
+ "doctype": "Workspace",
+ "name": "Master",
+ "title": "Master",
+ "label": "Master",
+ "type": "Workspace",
+ "module": "Master",
+ "public": 1,
+ "is_hidden": 0,
+ "sequence_id": 1,
+ "content": "[{\"id\":\"master_organisation_card\",\"type\":\"card\",\"data\":{\"card_name\":\"Organisation\",\"col\":4}},{\"id\":\"master_academic_card\",\"type\":\"card\",\"data\":{\"card_name\":\"Academic\",\"col\":4}},{\"id\":\"master_admissions_card\",\"type\":\"card\",\"data\":{\"card_name\":\"Admissions\",\"col\":4}},{\"id\":\"master_people_card\",\"type\":\"card\",\"data\":{\"card_name\":\"People\",\"col\":4}}]",
+ "links": [
+  {
+   "type": "Card Break",
+   "label": "Organisation",
+   "icon": "building-2"
+  },
+  {
+   "type": "Link",
+   "link_type": "DocType",
+   "link_to": "Institution",
+   "icon": "landmark",
+   "label": "Institution"
+  },
+  {
+   "type": "Link",
+   "link_type": "DocType",
+   "link_to": "Campus",
+   "icon": "map-pin",
+   "label": "Campus"
+  },
+  {
+   "type": "Link",
+   "link_type": "DocType",
+   "link_to": "College",
+   "icon": "school",
+   "label": "College"
+  },
+  {
+   "type": "Link",
+   "link_type": "DocType",
+   "link_to": "Department",
+   "icon": "network",
+   "label": "Department"
+  },
+  {
+   "type": "Card Break",
+   "label": "Academic",
+   "icon": "graduation-cap"
+  },
+  {
+   "type": "Link",
+   "link_type": "DocType",
+   "link_to": "Programme Level",
+   "icon": "layers-2",
+   "label": "Programme Level"
+  },
+  {
+   "type": "Link",
+   "link_type": "DocType",
+   "link_to": "Degree",
+   "icon": "award",
+   "label": "Degree"
+  },
+  {
+   "type": "Link",
+   "link_type": "DocType",
+   "link_to": "Academic Structure",
+   "icon": "workflow",
+   "label": "Academic Structure"
+  },
+  {
+   "type": "Link",
+   "link_type": "DocType",
+   "link_to": "Programme",
+   "icon": "book-marked",
+   "label": "Programme"
+  },
+  {
+   "type": "Card Break",
+   "label": "Admissions",
+   "icon": "clipboard-list"
+  },
+  {
+   "type": "Link",
+   "link_type": "DocType",
+   "link_to": "Academic Year",
+   "icon": "calendar-days",
+   "label": "Academic Year"
+  },
+  {
+   "type": "Link",
+   "link_type": "DocType",
+   "link_to": "Admission Type",
+   "icon": "tag",
+   "label": "Admission Type"
+  },
+  {
+   "type": "Link",
+   "link_type": "DocType",
+   "link_to": "Programme Intake",
+   "icon": "clipboard-check",
+   "label": "Programme Intake"
+  },
+  {
+   "type": "Link",
+   "link_type": "DocType",
+   "link_to": "Admission Document Type",
+   "icon": "file-check",
+   "label": "Admission Document Type"
+  },
+  {
+   "type": "Link",
+   "link_type": "DocType",
+   "link_to": "Consultancy",
+   "icon": "handshake",
+   "label": "Consultancy"
+  },
+  {
+   "type": "Card Break",
+   "label": "People",
+   "icon": "users"
+  },
+  {
+   "type": "Link",
+   "link_type": "DocType",
+   "link_to": "Staff",
+   "icon": "contact",
+   "label": "Staff"
+  }
+ ]
 }

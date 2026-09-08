@@ -233,9 +233,7 @@ test.beforeEach(async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 })
 })
 
-test.describe('status views', () => {
-  // Counts differ per view, which is the whole point of the strip: the answer to "how many are
-  // still Inactive?" has to be visible before anyone filters.
+test.describe('status scope', () => {
   const COUNTS: Record<string, number> = { '': 2, Active: 1, Inactive: 1 }
 
   const statusIn = (filters: string | null) => {
@@ -256,24 +254,28 @@ test.describe('status views', () => {
     })
   })
 
-  const views = (page: Page) => page.getByRole('navigation', { name: 'Status views' })
+  // This was a full-width strip of tabs, one per status word, each with its own count and its own
+  // bottom rule. It became a single Select in the page header — the band cost a whole horizontal
+  // plane above a table that already carries a toolbar, a header row and a footer, and it grew a
+  // tab for every word in the vocabulary.
+  //
+  // What must survive the change is the only thing that made it more than decoration: it narrows
+  // what the SERVER returns, not just the rows on screen.
+  const scope = (page: Page) => page.getByRole('combobox', { name: /Filter by status/i })
 
-  test('offers a view per status word, each carrying its own count', async ({ page }) => {
+  test('offers one control listing every status word, resting on All', async ({ page }) => {
     await page.goto('/master/college')
 
-    // `exact`, because "Active 1" is a substring of "Inactive 1".
-    await expect(views(page).getByRole('link', { name: 'All 2', exact: true })).toBeVisible()
-    await expect(views(page).getByRole('link', { name: 'Active 1', exact: true })).toBeVisible()
-    await expect(views(page).getByRole('link', { name: 'Inactive 1', exact: true })).toBeVisible()
-
-    // All is where an unfiltered list rests.
-    await expect(views(page).getByRole('link', { name: 'All 2', exact: true })).toHaveAttribute(
-      'aria-current',
-      'page',
-    )
+    await expect(scope(page)).toHaveText('All statuses')
+    await scope(page).click()
+    // `exact`, because "Active" is a substring of "Inactive" — an accessible-name match is
+    // substring by default, and the strip this replaced carried the same warning for the same
+    // reason. Dropping it here resolves to two elements and trips strict mode.
+    await expect(page.getByRole('option', { name: 'Active', exact: true })).toBeVisible()
+    await expect(page.getByRole('option', { name: 'Inactive', exact: true })).toBeVisible()
   })
 
-  test('a view narrows what the SERVER returns, and is shareable', async ({ page }) => {
+  test('narrows what the SERVER returns, and is shareable', async ({ page }) => {
     const requested: string[] = []
     await page.route(RESOURCE, (r) => {
       const status = statusIn(new URL(r.request().url()).searchParams.get('filters'))
@@ -284,23 +286,21 @@ test.describe('status views', () => {
     await page.goto('/master/college')
     await expect(page.getByRole('link', { name: 'SV Polytechnic' })).toBeVisible()
 
-    await views(page).getByRole('link', { name: 'Active 1', exact: true }).click()
+    await scope(page).click()
+    await page.getByRole('option', { name: 'Active', exact: true }).click()
 
-    // The filter reaches the query, not just the rendered rows — this is what makes a view
-    // meaningful against the 2000-row cap the screen fetches under.
+    // The filter reaches the QUERY, not just the rendered rows. This is the whole reason it did
+    // not fold into the table's own filters, which narrow the ≤2000 rows already fetched.
     await expect.poll(() => requested).toContain('Active')
     await expect(page).toHaveURL(/\?status=Active$/)
     await expect(page.getByRole('link', { name: 'St Joseph College' })).toBeVisible()
     await expect(page.getByRole('link', { name: 'SV Polytechnic' })).toHaveCount(0)
   })
 
-  test('restores a view from the URL alone', async ({ page }) => {
+  test('restores the scope from the URL alone', async ({ page }) => {
     await page.goto('/master/college?status=Inactive')
 
-    await expect(views(page).getByRole('link', { name: 'Inactive 1', exact: true })).toHaveAttribute(
-      'aria-current',
-      'page',
-    )
+    await expect(scope(page)).toHaveText('Inactive')
     await expect(page.getByRole('link', { name: 'SV Polytechnic' })).toBeVisible()
     await expect(page.getByRole('link', { name: 'St Joseph College' })).toHaveCount(0)
   })
@@ -310,30 +310,27 @@ test.describe('status views', () => {
     // read as a permission problem; falling back to All is the honest answer.
     await page.goto('/master/college?status=Archived')
 
-    await expect(views(page).getByRole('link', { name: 'All 2', exact: true })).toHaveAttribute(
-      'aria-current',
-      'page',
-    )
+    await expect(scope(page)).toHaveText('All statuses')
     await expect(page.getByRole('link', { name: 'St Joseph College' })).toBeVisible()
     await expect(page.getByRole('link', { name: 'SV Polytechnic' })).toBeVisible()
   })
 
-  test('an empty view offers the way back, not "add the first one"', async ({ page }) => {
+  test('an empty scope offers the way back, not "add the first one"', async ({ page }) => {
     await page.route(RESOURCE, (r) => r.fulfill({ json: { data: [] } }))
 
     await page.goto('/master/college?status=Inactive')
 
-    await expect(page.getByText('No college in Inactive')).toBeVisible()
+    await expect(page.getByText('No College records in Inactive')).toBeVisible()
     // Exactly one create link — the page header's. The empty state does not add a second,
-    // because creating from inside a status view makes a record that view cannot show.
-    await expect(page.getByRole('link', { name: /^New college/ })).toHaveCount(1)
-    await expect(page.getByRole('link', { name: 'Show all college' })).toHaveAttribute(
+    // because creating from inside a filtered scope makes a record that scope cannot show.
+    await expect(page.getByRole('link', { name: /^New College/ })).toHaveCount(1)
+    await expect(page.getByRole('link', { name: /Clear the Inactive filter/ })).toHaveAttribute(
       'href',
       '/master/college',
     )
   })
 
-  test('offers no views for a doctype without a status field', async ({ page }) => {
+  test('offers no scope control for a doctype without a status field', async ({ page }) => {
     await page.route(SCHEMA, (r) =>
       r.fulfill({
         json: {
@@ -349,7 +346,7 @@ test.describe('status views', () => {
     await page.goto('/master/college')
 
     await expect(page.getByRole('link', { name: 'St Joseph College' })).toBeVisible()
-    await expect(views(page)).toHaveCount(0)
+    await expect(scope(page)).toHaveCount(0)
   })
 })
 
@@ -412,6 +409,10 @@ test.describe('list screen', () => {
   test('a header click reorders the rows in the browser', async ({ page }) => {
     await page.goto('/master/college')
 
+    // nth-child(2) is the identity column: (1) is the selection checkbox. It used to be (3),
+    // behind a row-pin column that has since been removed — and while that column was there this
+    // assertion compared ['', ''] against itself and passed no matter what the grid did. Worth
+    // remembering when a positional selector "passes": an empty column is a silent pass.
     const identityColumn = () => page.locator('tbody tr td:nth-child(2)').allInnerTexts()
 
     const header = page.getByRole('button', {
@@ -421,7 +422,11 @@ test.describe('list screen', () => {
 
     await header.click()
     const ascending = await identityColumn()
-    expect([...ascending].sort()).toEqual(ascending)
+    // `localeCompare`, not the default `.sort()`. The default is by UTF-16 code unit, which puts
+    // every capital before every lowercase — so "SV Polytechnic" sorts before "St Joseph
+    // College" and the grid, which sorts the way a person reads, looks wrong. Comparing a
+    // locale-aware grid against an ASCII sort is a bug in the test, not in the grid.
+    expect([...ascending].sort((a, b) => a.localeCompare(b))).toEqual(ascending)
 
     // A second click reverses it. The engine holds the sort, so it is deliberately NOT in the
     // URL — `DoctypeGrid` explains why a param the table cannot report back would be a lie.
@@ -461,6 +466,24 @@ test.describe('list screen', () => {
     await expect(page.getByRole('columnheader', { name: /Status/i })).toHaveCount(0)
     // The identity column is never offered, because it is the row's only link to its record.
     await expect(page.getByRole('link', { name: 'St Joseph College' })).toBeVisible()
+  })
+
+  test('the Columns menu lists only real columns, never the row-actions chrome', async ({ page }) => {
+    // The row-actions column is a column to the grid but not to the user: it holds the per-row
+    // menu and has no header, so before it was given a `__bst` id it appeared here as a blank,
+    // unlabelled entry that could still be reordered and pinned. The library hides `__bst*` ids
+    // from this menu, which is the whole mechanism — hence a guard on the id staying prefixed.
+    await page.goto('/master/college')
+    await expect(page.getByRole('columnheader', { name: /College Name/i })).toBeVisible()
+
+    await page.getByRole('button', { name: 'Columns' }).click()
+    const entries = page.getByRole('menuitemcheckbox')
+    await expect(entries.first()).toBeVisible()
+
+    const labels = await entries.allTextContents()
+    expect(labels.length).toBeGreaterThan(0)
+    for (const label of labels) expect(label.trim()).not.toBe('')
+    expect(labels.some((l) => l.includes('College Name'))).toBe(true)
   })
 
   test('restores hidden columns and density from the URL alone', async ({ page }) => {
@@ -520,6 +543,49 @@ test.describe('list screen', () => {
 
     // Edit mode is URL state, so the menu can link straight into it.
     await expect(page).toHaveURL('/master/college/SJC?edit=1')
+  })
+
+  // Right-click and the row menu are one vocabulary. The failure mode is silent — a broken
+  // `getContextMenuItems` just falls through to the engine's defaults, which look fine on their
+  // own — so the guard is that the row's OWN actions are there, above them.
+  test('right-click offers the same actions as the row menu', async ({ page }) => {
+    await page.goto('/master/college')
+    await page.getByRole('link', { name: 'St Joseph College' }).click({ button: 'right' })
+
+    for (const action of ['Open', 'Edit', 'Delete']) {
+      await expect(page.getByText(action, { exact: true })).toBeVisible()
+    }
+    // The engine's own items survive below the row's, rather than being replaced.
+    await expect(page.getByText('Autosize column', { exact: true })).toBeVisible()
+  })
+
+  test('a numeric column header is right-aligned with its figures', async ({ page }) => {
+    await page.route(SCHEMA, (r) =>
+      r.fulfill({
+        json: {
+          message: {
+            ...SCHEMA_COLLEGE,
+            list_columns: ['college_name', 'seats', 'status'],
+            fields: [
+              ...SCHEMA_COLLEGE.fields,
+              field({ fieldname: 'seats', fieldtype: 'Int', label: 'Sanctioned Seats', in_list_view: 1 }),
+            ],
+          },
+        },
+      }),
+    )
+    await page.route(RESOURCE, (r) =>
+      r.fulfill({ json: { data: ROWS.map((row, i) => ({ ...row, seats: [120, 60][i] })) } }),
+    )
+    await page.goto('/master/college')
+    await expect(page.getByText('120')).toBeVisible()
+
+    // `meta.align` reaches the td only, so the th needs its own class or the label sits at the
+    // far left of a column of right-aligned figures. Measured, because the whole point is where
+    // the pixels land: the label's right edge should meet the figures'.
+    const label = await page.locator('.bst-th-numeric .bst-table-th-label').boundingBox()
+    const cell = await page.getByText('120').boundingBox()
+    expect(Math.abs(label!.x + label!.width - (cell!.x + cell!.width))).toBeLessThan(2)
   })
 
   test('a column can be resized for the session', async ({ page }) => {

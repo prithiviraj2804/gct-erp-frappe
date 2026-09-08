@@ -1,4 +1,4 @@
-import type { ModuleMenu, RailModule } from '@/shared/types/navigation'
+import type { ModuleMenu, RailModule } from '@/types/navigation'
 
 /**
  * One launchable module on the home page — a rail module enriched with what its menu holds.

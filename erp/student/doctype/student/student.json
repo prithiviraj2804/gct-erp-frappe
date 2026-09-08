@@ -1,0 +1,349 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "creation": "2026-09-04 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "identity_section",
+  "id",
+  "student_name",
+  "date_of_admission",
+  "column_break_identity",
+  "status",
+  "admission_type",
+  "admission_section",
+  "admission_application",
+  "admission_enquiry",
+  "column_break_admission",
+  "admission_route",
+  "allotment_reference",
+  "academic_section",
+  "institution",
+  "college",
+  "campus",
+  "department",
+  "column_break_academic",
+  "programme",
+  "programme_level",
+  "academic_year",
+  "programme_intake",
+  "personal_section",
+  "date_of_birth",
+  "gender",
+  "aadhaar_number",
+  "phone_number",
+  "email",
+  "column_break_personal",
+  "parent_name",
+  "parent_phone",
+  "address",
+  "city",
+  "state",
+  "pincode",
+  "remarks_section",
+  "remarks"
+ ],
+ "fields": [
+  {
+   "fieldname": "identity_section",
+   "fieldtype": "Section Break",
+   "label": "Student"
+  },
+  {
+   "fieldname": "id",
+   "fieldtype": "Data",
+   "label": "ID",
+   "unique": 1,
+   "read_only": 1,
+   "no_copy": 1,
+   "in_standard_filter": 1,
+   "description": "Auto-generated UUID"
+  },
+  {
+   "fieldname": "student_name",
+   "fieldtype": "Data",
+   "label": "Student Name",
+   "reqd": 1,
+   "in_list_view": 1,
+   "in_global_search": 1
+  },
+  {
+   "fieldname": "date_of_admission",
+   "fieldtype": "Date",
+   "label": "Date of Admission",
+   "reqd": 1,
+   "in_list_view": 1,
+   "description": "The date entered against this student in the admission register"
+  },
+  {
+   "fieldname": "column_break_identity",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Active\nDiscontinued\nAlumni",
+   "default": "Active",
+   "reqd": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "description": "Only an Active student occupies a seat in the intake"
+  },
+  {
+   "fieldname": "admission_type",
+   "fieldtype": "Link",
+   "label": "Admission Type",
+   "options": "Admission Type",
+   "read_only": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "admission_section",
+   "fieldtype": "Section Break",
+   "label": "Admitted Through"
+  },
+  {
+   "fieldname": "admission_application",
+   "fieldtype": "Link",
+   "label": "Admission Application",
+   "options": "Admission Application",
+   "read_only": 1,
+   "no_copy": 1,
+   "description": "The application this admission was confirmed from"
+  },
+  {
+   "fieldname": "admission_enquiry",
+   "fieldtype": "Link",
+   "label": "Admission Enquiry",
+   "options": "Admission Enquiry",
+   "read_only": 1,
+   "no_copy": 1
+  },
+  {
+   "fieldname": "column_break_admission",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "admission_route",
+   "fieldtype": "Data",
+   "label": "Admission Route",
+   "read_only": 1,
+   "in_standard_filter": 1,
+   "description": "Government Quota, Management Quota or Direct, as recorded on the application"
+  },
+  {
+   "fieldname": "allotment_reference",
+   "fieldtype": "Data",
+   "label": "Allotment Reference",
+   "read_only": 1,
+   "description": "Counselling allotment order this seat came from, for a government-quota admission"
+  },
+  {
+   "fieldname": "academic_section",
+   "fieldtype": "Section Break",
+   "label": "Academic"
+  },
+  {
+   "fieldname": "institution",
+   "fieldtype": "Link",
+   "label": "Institution",
+   "options": "Institution",
+   "reqd": 1,
+   "read_only": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "college",
+   "fieldtype": "Link",
+   "label": "College",
+   "options": "College",
+   "reqd": 1,
+   "read_only": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "campus",
+   "fieldtype": "Link",
+   "label": "Campus",
+   "options": "Campus",
+   "read_only": 1
+  },
+  {
+   "fieldname": "department",
+   "fieldtype": "Link",
+   "label": "Department",
+   "options": "Department",
+   "read_only": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "column_break_academic",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "programme",
+   "fieldtype": "Link",
+   "label": "Programme",
+   "options": "Programme",
+   "reqd": 1,
+   "read_only": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "description": "The programme actually admitted to, which need not be the one first enquired about"
+  },
+  {
+   "fieldname": "programme_level",
+   "fieldtype": "Link",
+   "label": "Programme Level",
+   "options": "Programme Level",
+   "read_only": 1
+  },
+  {
+   "fieldname": "academic_year",
+   "fieldtype": "Link",
+   "label": "Academic Year",
+   "options": "Academic Year",
+   "reqd": 1,
+   "read_only": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "programme_intake",
+   "fieldtype": "Link",
+   "label": "Programme Intake",
+   "options": "Programme Intake",
+   "reqd": 1,
+   "read_only": 1,
+   "description": "The intake whose seat this student occupies"
+  },
+  {
+   "fieldname": "personal_section",
+   "fieldtype": "Section Break",
+   "label": "Personal"
+  },
+  {
+   "fieldname": "date_of_birth",
+   "fieldtype": "Date",
+   "label": "Date of Birth"
+  },
+  {
+   "fieldname": "gender",
+   "fieldtype": "Select",
+   "label": "Gender",
+   "options": "\nMale\nFemale\nOther"
+  },
+  {
+   "fieldname": "aadhaar_number",
+   "fieldtype": "Data",
+   "label": "Aadhaar Number",
+   "description": "12 digits, stored without spaces"
+  },
+  {
+   "fieldname": "phone_number",
+   "fieldtype": "Data",
+   "label": "Phone Number"
+  },
+  {
+   "fieldname": "email",
+   "fieldtype": "Data",
+   "label": "Email",
+   "options": "Email"
+  },
+  {
+   "fieldname": "column_break_personal",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "parent_name",
+   "fieldtype": "Data",
+   "label": "Parent / Guardian Name"
+  },
+  {
+   "fieldname": "parent_phone",
+   "fieldtype": "Data",
+   "label": "Parent / Guardian Phone"
+  },
+  {
+   "fieldname": "address",
+   "fieldtype": "Small Text",
+   "label": "Address"
+  },
+  {
+   "fieldname": "city",
+   "fieldtype": "Data",
+   "label": "City"
+  },
+  {
+   "fieldname": "state",
+   "fieldtype": "Data",
+   "label": "State"
+  },
+  {
+   "fieldname": "pincode",
+   "fieldtype": "Data",
+   "label": "Pincode"
+  },
+  {
+   "fieldname": "remarks_section",
+   "fieldtype": "Section Break",
+   "label": "Remarks"
+  },
+  {
+   "fieldname": "remarks",
+   "fieldtype": "Small Text",
+   "label": "Remarks"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-09-04 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Student",
+ "name": "Student",
+ "naming_rule": "By script",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Admission Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "read": 1,
+   "report": 1,
+   "role": "Admission Counsellor",
+   "select": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "search_fields": "student_name,programme",
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "student_name",
+ "track_changes": 1
+}

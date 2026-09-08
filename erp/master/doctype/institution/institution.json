@@ -43,6 +43,7 @@
   "column_break_geo",
   "timezone",
   "configuration_section",
+  "default_currency",
   "financial_year_start",
   "academic_year_start",
   "column_break_config",
@@ -282,6 +283,14 @@
    "fieldname": "configuration_section",
    "fieldtype": "Section Break",
    "label": "Configuration"
+  },
+  {
+   "fieldname": "default_currency",
+   "fieldtype": "Link",
+   "options": "Currency",
+   "label": "Default Currency",
+   "default": "INR",
+   "description": "The currency the institution keeps its books and prints receipts in. One source of truth for the currency symbol shown on money."
   },
   {
    "fieldname": "financial_year_start",

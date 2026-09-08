@@ -57,3 +57,7 @@ jspm_packages/
 # Playwright MCP session artifacts (snapshots, console logs)
 .playwright-mcp/
 docs/
+
+# Crash dumps and redis snapshots that land in the app root
+core
+*.rdb

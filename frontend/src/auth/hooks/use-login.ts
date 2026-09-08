@@ -1,9 +1,9 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 
-import { auth } from '@/shared/lib/frappe'
-import type { LoginValues } from '@/shared/lib/schemas/auth'
-import { sessionKeys } from '@/shared/lib/session'
-import type { LoginOutcome } from '@/shared/types/auth'
+import { auth } from '@/lib/frappe'
+import type { LoginValues } from '@/lib/schemas/auth'
+import { sessionKeys } from '@/lib/session'
+import type { LoginOutcome } from '@/types/auth'
 
 async function login({ usr, pwd }: LoginValues): Promise<LoginOutcome> {
   const res = await auth.loginWithUsernamePassword({

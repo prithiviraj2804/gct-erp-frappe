@@ -2,9 +2,9 @@ import { CornerDownLeftIcon, SearchIcon } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
 
-import { useAllModuleMenus } from '@/shared/hooks/use-navigation'
-import { cn } from '@/shared/lib/utils'
-import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/shared/ui/dialog'
+import { useAllModuleMenus } from '@/hooks/use-navigation'
+import { cn } from '@/lib/utils'
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import { FALLBACK_MODULE_ICON, MODULE_ICONS } from '@/shell/lib/module-icons'
 
 interface Destination {
@@ -29,9 +29,11 @@ interface Destination {
  * ## What this is not
  *
  * It is not global search. It finds *screens*, never records, and it says so — the placeholder
- * reads "Jump to a screen". `TopBar` still leaves the record-search slot empty and documented,
+ * reads "Jump to a screen". There is deliberately no record-search box anywhere in the shell,
  * because there is no search endpoint and a box that silently fails to find a student is worse
- * than no box. When that endpoint lands, this is where it goes.
+ * than no box. `SidebarLauncher` is drawn as a hairline chip rather than a filled field for
+ * exactly that reason — a full-width input at the top of a sidebar promises search it cannot do.
+ * When that endpoint lands, this is where it goes.
  *
  * ## Permissions
  *
@@ -74,10 +76,22 @@ function PaletteBody({ onOpenChange }: { onOpenChange: (open: boolean) => void }
 
   const destinations = useMemo(() => {
     const out: Destination[] = []
+    // A route may only appear once. `route` is this list's React key AND the thing Enter opens,
+    // so a duplicate is both a React "two children with the same key" error and a palette that
+    // offers the user the same screen twice. It happens whenever two rail entries resolve to one
+    // module's menu — which the shell can produce mid-transition, and which a fixture reproduces
+    // immediately. Deduping here rather than keying on the index, because the index would silence
+    // the warning while leaving the duplicate row on screen.
+    const seen = new Set<string>()
+    const push = (destination: Destination) => {
+      if (seen.has(destination.route)) return
+      seen.add(destination.route)
+      out.push(destination)
+    }
     for (const menu of menus) {
       // The module overview first, so "master" reaches the module page and not just the
       // screens inside it. It is a real route and the rail's own click target.
-      out.push({
+      push({
         route: `/${menu.module_slug}`,
         label: 'Overview',
         moduleLabel: menu.label,
@@ -91,7 +105,7 @@ function PaletteBody({ onOpenChange }: { onOpenChange: (open: boolean) => void }
           // module page renders those as unavailable; here they are simply omitted, because a
           // launcher's whole promise is that pressing Enter goes somewhere.
           if (!item.route) continue
-          out.push({
+          push({
             route: item.route,
             label: item.label,
             moduleLabel: menu.label,

@@ -13,8 +13,8 @@
     "test:e2e:report": "playwright show-report"
   },
   "dependencies": {
-    "@bloomskill/table-engine": "^0.38.0",
-    "@bloomskill/table-shadcn": "^0.38.0",
+    "@bloomskill/table-engine": "^0.47.0",
+    "@bloomskill/table-shadcn": "^0.47.0",
     "@fontsource-variable/inter": "^5.2.8",
     "@fontsource-variable/jetbrains-mono": "^5.2.8",
     "@hookform/resolvers": "^5.4.0",

@@ -1,25 +1,30 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { Outlet, useLocation } from 'react-router'
+import { useEffect, useState } from 'react'
+import { useLocation } from 'react-router'
 
 import { CommandPalette } from '@/shell/components/CommandPalette'
-import { ModuleMenuPanel } from '@/shell/components/ModuleMenuPanel'
-import { ModuleRail } from '@/shell/components/ModuleRail'
-import { TopBar } from '@/shell/components/TopBar'
-import { SidebarInset, SidebarProvider } from '@/shared/ui/sidebar'
-import { useModuleRail, usePrefetchModuleMenus } from '@/shared/hooks/use-navigation'
+import { ShortcutsDialog } from '@/shell/components/ShortcutsDialog'
+import { RailShell } from '@/shell/layouts/RailShell'
+import { StackedShell } from '@/shell/layouts/StackedShell'
+import { TopNavShell } from '@/shell/layouts/TopNavShell'
+import { TooltipProvider } from '@/components/ui/tooltip'
+import { useLayout } from '@/global/layout'
+import { getNavCollapsed, setNavCollapsed } from '@/global/nav-column'
+import { useModuleRail, usePrefetchModuleMenus } from '@/hooks/use-navigation'
+import type { ShellLayoutProps } from '@/shell/layouts/types'
 
-// The rail is always on screen at 56px; the flyout overlays the content at 260px and costs
-// the layout nothing. 56px is a 36px icon tile in a 10px gutter — the rail carries icons and
-// nothing else, so the width is whatever the tile needs and not a round number above it.
-const SHELL_STYLE = {
-  '--sidebar-width': '260px',
-  '--sidebar-width-icon': '56px',
-} as React.CSSProperties
-
-// Long enough to cross the gap from a rail icon to the panel, or to slip diagonally past an
-// icon on the way to the page, without the panel snapping shut behind the pointer. Short
-// enough that it never feels stuck open.
-const CLOSE_DELAY_MS = 200
+/**
+ * The layouts this shell can render, by preference value.
+ *
+ * A record, not a switch, and deliberately: adding a layout is adding one entry, and TypeScript
+ * makes the record exhaustive over `Layout` so a new value cannot be introduced without a
+ * component to render it. Each is a plain function of `ShellLayoutProps` — no layout owns state,
+ * so switching between them cannot change what the app *does*, only where things sit.
+ */
+const LAYOUTS: Record<ReturnType<typeof useLayout>[0], (props: ShellLayoutProps) => React.ReactNode> = {
+  rail: RailShell,
+  topnav: TopNavShell,
+  stacked: StackedShell,
+}
 
 function SkipLink() {
   return (
@@ -33,83 +38,49 @@ function SkipLink() {
 }
 
 /**
- * The authenticated shell: topbar across the top, module rail down the left, page in the rest.
+ * Whether the keystroke belongs to a text field.
  *
- * Navigation is two-level and both levels are reachable by clicking:
+ * `contentEditable` is checked as well as the two tags because Frappe's rich-text and code
+ * fields render as editable divs, not textareas — a check that stops at input/textarea passes
+ * those through and eats the character.
+ */
+function isTyping(): boolean {
+  const el = document.activeElement
+  if (!(el instanceof HTMLElement)) return false
+  return el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable
+}
+
+/**
+ * The authenticated shell — a DISPATCHER, not a layout.
  *
- *   1. The rail lists the modules this user is allocated. Clicking one goes to its overview
- *      page, which lists that module's screens in the content area.
- *   2. Hovering (or focusing) the rail flies out the menu panel for the module under the
- *      pointer, so a screen inside any module is one hover and one click away.
+ * It resolves everything a shell needs exactly once (the rail query, the module the URL is in,
+ * the module to show, the global key handling) and hands that to whichever arrangement the user
+ * has chosen. `rail` is the default and is what shipped; `topnav` and `stacked` are alternatives
+ * that can be compared on real data without the default ever being at risk.
  *
- * The flyout is an accelerator, never the only way through: everything it lists, the module
- * overview page lists too. That is what keeps the shell usable on touch, where there is no
- * hover — and it is why the topbar no longer carries a sidebar toggle. Nothing needs opening.
+ * Three things stay here rather than in a layout, and each for a reason:
+ *
+ *   - **The one global key listener.** ⌘K and `?` are registered here, so there is still exactly
+ *     one in the app no matter how many layouts exist.
+ *   - **The skip link**, because it has to be the first focusable thing in the document
+ *     regardless of arrangement.
+ *   - **The palette and the shortcut sheet**, which are global surfaces; a layout owning one
+ *     would mean switching layouts could lose an open dialog.
+ *
+ * What is left is a pure function of props, three times over — which is the point. Two layouts
+ * that share no state cannot disagree about what the app DOES; they can only disagree about
+ * where things sit.
  */
 export function AppShell() {
   const location = useLocation()
   const { data: modules, isPending } = useModuleRail()
 
-  // Warms every module's menu, so hovering the rail never has to show skeletons — see the hook.
+  // Warms every module's menu, so switching modules never has to show skeletons — see the hook.
   usePrefetchModuleMenus(modules)
 
+  const [layout] = useLayout()
+
   const pathname = location.pathname
-
-  // The flyout's whole state, stamped with the pathname it was opened on.
-  //
-  // That stamp is what retires it: arriving somewhere new makes a look-ahead stale, and the
-  // panel has to close and go back to answering "where am I?". Deriving that from the URL
-  // costs no effect and no cascading render, where a `useEffect(() => setOpen(false))` would
-  // re-render the whole shell a second time on every navigation.
-  const [flyout, setFlyout] = useState<{
-    open: boolean
-    module: string | null
-    at: string
-  }>({
-    open: false,
-    module: null,
-    at: '',
-  })
-  const live = flyout.at === pathname ? flyout : null
-
-  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  const cancelClose = useCallback(() => {
-    if (closeTimer.current) {
-      clearTimeout(closeTimer.current)
-      closeTimer.current = null
-    }
-  }, [])
-
-  // Entering the rail anywhere opens the panel on whatever it was already showing — the
-  // module under the pointer, if there is one, else where you are.
-  const openFlyout = useCallback(() => {
-    cancelClose()
-    setFlyout((prev) =>
-      prev.at === pathname ? { ...prev, open: true } : { open: true, module: null, at: pathname },
-    )
-  }, [cancelClose, pathname])
-
-  const previewModule = useCallback(
-    (module: string) => {
-      cancelClose()
-      setFlyout({ open: true, module, at: pathname })
-    },
-    [cancelClose, pathname],
-  )
-
-  // Only `open` is cleared, never `module`: dropping the preview here would swap the panel's
-  // contents at the exact moment it starts fading out, which is visible. The stale module is
-  // retired by the pathname stamp instead, long after the panel has gone.
-  const closeFlyout = useCallback(() => {
-    cancelClose()
-    closeTimer.current = setTimeout(() => {
-      closeTimer.current = null
-      setFlyout((prev) => ({ ...prev, open: false }))
-    }, CLOSE_DELAY_MS)
-  }, [cancelClose])
-
-  useEffect(() => cancelClose, [cancelClose])
 
   // Cmd/Ctrl+K — the launcher. Registered here rather than inside CommandPalette so the
   // shortcut exists whether or not the dialog is mounted, and so there is exactly one global
@@ -119,12 +90,36 @@ export function AppShell() {
   // Not swallowed while typing: Cmd+K is not a character, so it cannot collide with input, and
   // reaching the palette from inside the search box is exactly when you want it.
   const [paletteOpen, setPaletteOpen] = useState(false)
+  const [shortcutsOpen, setShortcutsOpen] = useState(false)
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key.toLowerCase() === 'k' && (event.metaKey || event.ctrlKey) && !event.altKey) {
         event.preventDefault()
         setPaletteOpen((open) => !open)
+        return
+      }
+      // Cmd/Ctrl+B — hide or show the nav column. This shortcut existed once, registered by
+      // SidebarProvider, and toggled nothing because both columns were `collapsible="none"`; it
+      // was removed for that reason. It is back now that there is something for it to do, and
+      // it is HERE rather than in the provider, so the app still has exactly one key listener.
+      //
+      // Read from the store rather than from React state: this effect must register its
+      // listener exactly once, so it cannot close over a value that changes on every toggle.
+      if (event.key.toLowerCase() === 'b' && (event.metaKey || event.ctrlKey) && !event.altKey) {
+        event.preventDefault()
+        setNavCollapsed(!getNavCollapsed())
+        return
+      }
+      // `?` opens the shortcut sheet — the convention GitHub, Linear, Slack and Gmail share.
+      //
+      // Unlike Cmd+K this one MUST yield while typing: `?` is a printable character, so
+      // swallowing it inside a search box or a Long Text field would eat a real keystroke and
+      // look like a dropped input. `isTyping` is the guard, and it is the whole reason this
+      // handler is not a copy of the one above.
+      if (event.key === '?' && !event.metaKey && !event.ctrlKey && !event.altKey && !isTyping()) {
+        event.preventDefault()
+        setShortcutsOpen((open) => !open)
       }
     }
     window.addEventListener('keydown', onKeyDown)
@@ -136,102 +131,48 @@ export function AppShell() {
   const slug = pathname.split('/')[1] ?? ''
   const active = modules?.find((m) => m.slug === slug) ?? null
 
-  // At rest the panel shows where you are; with no module in the URL (e.g. on /home, the
-  // dashboard) it falls back to the first allocated module, so the flyout still has something to
-  // preview rather than opening blank.
-  const resting = active ?? modules?.[0] ?? null
-  const shown = modules?.find((m) => m.module === live?.module) ?? resting
+  // The module the secondary sidebar shows. It follows the URL; on a non-module route (e.g.
+  // /home) it falls back to the first allocated module, so the permanent panel is never blank.
+  const shown = active ?? modules?.[0] ?? null
 
-  // A user with no modules gets no nav at all — an empty 72px bar reads as broken. The /home
-  // page's own "No modules available" carries the explanation.
-  const hasNav = isPending || (modules?.length ?? 0) > 0
+  // The RAIL always renders, and the NAV COLUMN is the conditional one. This is the inverse of
+  // what it was an hour ago, and the flip followed the controls: whichever column holds the
+  // account has to be unconditional, or a user with no modules is stranded with no way to sign
+  // out. The rail holds it now — along with the institution's logo, search and appearance, none
+  // of which depend on having modules — so the rail is never empty and never hidden.
+  //
+  // The nav column, by contrast, has exactly one job now: the current module and its screens.
+  // With no modules there is no module, so a 220px blank column would be worse than none.
+  // /home's own "No modules available" carries the explanation instead.
+  const hasModules = isPending || (modules?.length ?? 0) > 0
+
+  const Shell = LAYOUTS[layout]
 
   return (
-    // SidebarProvider must wrap the TopBar, not sit beside it: every `Sidebar` calls
-    // useSidebar() and throws outside this context. Its collapse state is inert here — the
-    // rail and flyout are both `collapsible="none"` and the flyout is driven by hover — but
-    // the provider itself is still required. Its wrapper is `flex` by default; `flex-col`
-    // turns it into the T-shape (full-width topbar above rail+content) that the ui skill's
-    // "Top Navbar first" ordering asks for.
-    <SidebarProvider
-      open={false}
-      onOpenChange={() => {}}
-      // `h-svh` + `overflow-hidden`: the shell is exactly one viewport tall and the document
-      // itself never scrolls. Everything that scrolls does so inside a pane below — the rail,
-      // the flyout and the page each own theirs, so scrolling a long table cannot move the
-      // navigation and reaching the end of the menu cannot drag the page.
-      className="h-svh flex-col overflow-hidden"
-      style={SHELL_STYLE}
-    >
+    // TooltipProvider wraps the shell because the rail is icon-only: every tile in it needs a
+    // hover label, and Radix requires one provider above them all.
+    //
+    // `delayDuration` is 400ms, NOT the primitive's 0. A rail is navigated by muscle memory and
+    // crossed constantly on the way somewhere else; at 0 every pass fires four tooltips in
+    // sequence. `skipDelayDuration` then lets a deliberate move BETWEEN tiles show instantly,
+    // so the delay is paid once per visit to the column rather than once per tile.
+    <TooltipProvider delayDuration={400} skipDelayDuration={300}>
+      {/* Outside the layout on purpose. The skip link must be the FIRST focusable thing in the
+          document whichever arrangement is on, and the two dialogs are global surfaces that a
+          layout has no business owning — keeping them here is also what lets every layout be a
+          pure function of its props. */}
       <SkipLink />
-      <TopBar onOpenCommandPalette={() => setPaletteOpen(true)} />
       <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
-      <div className="flex w-full min-h-0 flex-1 overflow-hidden">
-        {hasNav && (
-          // `relative` anchors the absolutely-positioned flyout, and the panel being a CHILD
-          // is what lets the pointer travel from rail to panel without a mouseleave: leaving
-          // for a descendant does not fire it.
-          //
-          // onFocus/onBlur rather than onFocusCapture: React's focus events bubble (they are
-          // focusin/focusout underneath), so these fire for any rail or panel item. Blur
-          // reuses the same delayed close, which the immediately-following focus cancels —
-          // that is what lets focus move from the rail into the panel.
-          <div
-            // `z-20` promotes this whole region (rail + flyout) into its own stacking context,
-            // above the page content but below the `z-30` topbar. Without it, the flyout's own
-            // `z-20` and the data table's sticky header — also `z-20` — resolve in the same root
-            // context, and the table's `<main>` comes later in the DOM, so the header paints
-            // OVER the flyout. Lifting the parent settles it once for the whole subtree rather
-            // than chasing each sticky cell's z-index against the panel.
-            className="relative z-20 shrink-0"
-            onMouseEnter={openFlyout}
-            onMouseLeave={closeFlyout}
-            onFocus={openFlyout}
-            onBlur={closeFlyout}
-          >
-            <ModuleRail
-              modules={modules ?? []}
-              isPending={isPending}
-              activeModule={active?.module ?? null}
-              // Gated on `open`, not on `shown`: the panel keeps rendering the last previewed
-              // module so its contents don't swap mid-fade, but once it is off screen there
-              // is nothing disclosed — and a bar left burning beside a module whose menu is
-              // gone claims a second mark the rail cannot back up.
-              disclosedModule={live?.open ? (shown?.module ?? null) : null}
-              onPreview={previewModule}
-            />
-            <ModuleMenuPanel
-              module={shown?.module ?? null}
-              label={shown?.label ?? 'Modules'}
-              slug={shown?.slug ?? null}
-              open={live?.open ?? false}
-            />
-          </div>
-        )}
-        {/* SidebarInset already renders <main> — pages must not nest another.
-
-            `isolate` is load-bearing, not cosmetic. This <main> is `position: relative` with no
-            z-index, so it does NOT create a stacking context — which means the data table's
-            sticky header (`z-20`) escapes into the ROOT context and ties the flyout panel there,
-            with the table winning on DOM order. `isolation: isolate` gives <main> a stacking
-            context of its own, trapping every z-index inside it below the flyout region (lifted
-            to `z-20` above). Without this the content bleeds through the flyout on any screen
-            with a sticky-header table. */}
-        {/* The page's own scroll. `min-h-0` because a flex child will not shrink below its
-            content otherwise and the overflow would escape to the row; `overscroll-contain` so
-            hitting the bottom of a list does not chain the scroll onto anything behind it.
-
-            Sticky things inside a page — a table's header, the record's context rail — now
-            stick to THIS box rather than the window, which is what they were always meant to
-            do. */}
-        <SidebarInset
-          id="main-content"
-          tabIndex={-1}
-          className="isolate min-h-0 min-w-0 overflow-y-auto overscroll-contain focus:outline-none"
-        >
-          <Outlet />
-        </SidebarInset>
-      </div>
-    </SidebarProvider>
+      <ShortcutsDialog open={shortcutsOpen} onOpenChange={setShortcutsOpen} />
+      <Shell
+        modules={modules ?? []}
+        isPending={isPending}
+        activeModule={active?.module ?? null}
+        shown={shown}
+        hasModules={hasModules}
+        onOpenCommandPalette={() => setPaletteOpen(true)}
+        onOpenShortcuts={() => setShortcutsOpen(true)}
+      />
+    </TooltipProvider>
   )
 }

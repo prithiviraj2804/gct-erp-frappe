@@ -261,6 +261,9 @@ class IntegrationTestHierarchy(IntegrationTestCase):
 				"academic_year": YEAR_A,
 				"programme": programme.name,
 				"total_seats": 60,
+				# Mandatory since the application-fee slice; the sibling test above never reached the
+				# mandatory check because the hierarchy error fires first.
+				"application_fee": 500,
 			}
 		)
 		intake.insert()
