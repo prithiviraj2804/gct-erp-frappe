@@ -141,13 +141,24 @@ website_route_rules = [
 # — and therefore the SPA, which reads over /api/resource — while `has_permission` mirrors it for
 # single-record access. Both live in erp/api/permission.py.
 
+# The `"*"` entry is the tenancy boundary and applies to every doctype carrying an `institution`
+# column. Frappe supports the wildcard for both hooks — `database/query.py:1617` and
+# `permissions.py:490` do `hooks.get(doctype, []) + hooks.get("*", [])` — and passes the doctype in,
+# so one pair of functions scopes the whole app and picks up doctypes added later. A per-doctype
+# list would be a list somebody forgets to append to, and forgetting means a silent cross-tenant
+# read.
+#
+# The named entries below are a *different* rule that composes with it by AND: a counsellor sees
+# only the leads they own, within the institution the wildcard already narrowed them to.
 permission_query_conditions = {
+	"*": "erp.api.permission.institution_scope_query",
 	"Admission Enquiry": "erp.api.permission.admission_enquiry_query",
 	"Admission Follow-up": "erp.api.permission.admission_followup_query",
 	"Admission Application": "erp.api.permission.admission_application_query",
 }
 
 has_permission = {
+	"*": "erp.api.permission.institution_has_permission",
 	"Admission Enquiry": "erp.api.permission.admission_enquiry_has_permission",
 	"Admission Follow-up": "erp.api.permission.admission_followup_has_permission",
 	"Admission Application": "erp.api.permission.admission_application_has_permission",

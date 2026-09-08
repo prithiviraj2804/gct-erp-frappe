@@ -14,7 +14,7 @@ controller, and needs no wrapper here.
 import frappe
 from frappe import _
 
-from erp.api.permission import assert_trust_in_scope
+from erp.api.permission import assert_institution_in_scope
 
 # Copied off the lead as the application's starting point. They are a *starting* point only: the
 # programme is the one the student asked about, and counselling routinely moves it. That is why the
@@ -37,12 +37,12 @@ def start_application(enquiry: str) -> dict:
 	lead = frappe.db.get_value(
 		"Admission Enquiry",
 		enquiry,
-		["trust", "application_fee_paid", "date_of_birth", *SEEDED_FROM_ENQUIRY],
+		["institution", "application_fee_paid", "date_of_birth", *SEEDED_FROM_ENQUIRY],
 		as_dict=True,
 	)
 	if not lead:
 		frappe.throw(_("Admission Enquiry {0} was not found.").format(frappe.bold(enquiry)))
-	assert_trust_in_scope(lead.trust)
+	assert_institution_in_scope(lead.institution)
 
 	existing = frappe.db.get_value("Admission Application", {"admission_enquiry": enquiry}, "name")
 	if existing:

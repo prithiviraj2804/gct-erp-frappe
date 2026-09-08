@@ -518,7 +518,7 @@ class IntegrationTestAdmissionEnquiryScoping(IntegrationTestCase):
 
 		cls.staff_a = cls.make_counsellor("ZPCA", cls.COUNSELLOR_A)
 		cls.staff_b = cls.make_counsellor("ZPCB", cls.COUNSELLOR_B)
-		cls.make_user(cls.MANAGER, "Admission Manager")
+		cls.grant_institution(cls.make_user(cls.MANAGER, "Admission Manager"), cls.COL_1)
 
 		# Two owned leads and one still in the managers' pool.
 		cls.e_a = cls.make_enquiry(cls.staff_a)
@@ -532,6 +532,29 @@ class IntegrationTestAdmissionEnquiryScoping(IntegrationTestCase):
 		if frappe.db.exists(doctype, name):
 			return name
 		return frappe.get_doc({"doctype": doctype, **values}).insert().name
+
+	@classmethod
+	def grant_institution(cls, email, institution):
+		"""Provision the Institution User Permission a real deployment would give this login.
+
+		Tenancy fails closed, so a login with no Institution permission and no trust-wide role sees
+		nothing at all. A counsellor gets this automatically from their Staff record
+		(`Staff.sync_institution_permission`); a manager without a Staff row has to be granted it
+		the way an administrator would.
+		"""
+		if not frappe.db.exists(
+			"User Permission", {"user": email, "allow": "Institution", "for_value": institution}
+		):
+			frappe.get_doc(
+				{
+					"doctype": "User Permission",
+					"user": email,
+					"allow": "Institution",
+					"for_value": institution,
+					"apply_to_all_doctypes": 1,
+				}
+			).insert(ignore_permissions=True)
+		return email
 
 	@classmethod
 	def make_user(cls, email, role):

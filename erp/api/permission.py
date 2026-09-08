@@ -121,27 +121,142 @@ def admission_application_has_permission(doc, ptype=None, user=None, **kwargs) -
 	return _owner_has_permission(doc, ptype, user)
 
 
-def assert_trust_in_scope(trust: str) -> None:
-	"""Apply the declarative tenant rule to a cross-doctype action.
+# --- Tenancy: the Institution boundary ----------------------------------------------------
+#
+# The tenancy boundary is Institution, NOT Trust. `Trust.assert_only_one` caps the site at one
+# Trust row, so a User Permission on Trust selects every row in the database — it is not a
+# restriction, it is a tautology. Scoping therefore keys on `institution`.
+#
+# Registered as `"*"` hooks rather than one entry per doctype. Frappe supports the wildcard for
+# both (`database/query.py:1617` and `permissions.py:490`) and passes the doctype in, so a single
+# pair of functions scopes every doctype that carries an `institution` column — including any
+# added later, which is the point. A per-doctype list would be a list somebody forgets to append to,
+# and the failure mode of forgetting is a silent cross-tenant read.
 
-	Doctype list scoping rides on User Permissions the framework ANDs into queries, but a whitelisted
-	endpoint that writes across doctypes does its own reads and so escapes that. This is the same rule
-	stated imperatively, for those call sites.
+# Roles that act for every institution. A Trust Admin holds no User Permissions at all, which is
+# precisely what makes them a superuser: `frappe.permissions` treats a user with no restriction
+# rows as unrestricted. System Manager is the bench operator and bypasses User Permissions anyway.
+TRUST_WIDE_ROLES = frozenset({"System Manager", "Trust Admin"})
 
-	System Manager acts for any tenant. Otherwise, if the caller carries Trust User Permissions,
-	the target must be among them; a caller with no such permission is unrestricted — the same model
-	the list scoping uses, where an absent restriction means "not restricted", not "restricted to
-	nothing".
+
+def allowed_institutions(user: str | None = None) -> list[str]:
+	"""The institutions this login may act for, from its User Permissions.
+
+	Memoised on `frappe.flags` because a single request triggers this once per queried doctype and
+	once per document check, and each would otherwise repeat the same lookup.
 	"""
-	if "System Manager" in frappe.get_roles():
+	user = user or frappe.session.user
+	cache = frappe.flags.setdefault("erp_allowed_institutions", {})
+	if user not in cache:
+		cache[user] = frappe.get_all(
+			"User Permission",
+			filters={"user": user, "allow": "Institution"},
+			pluck="for_value",
+		)
+	return cache[user]
+
+
+def acts_for_any_institution(user: str | None = None) -> bool:
+	"""Whether this login is unrestricted across institutions."""
+	return bool(TRUST_WIDE_ROLES & set(frappe.get_roles(user or frappe.session.user)))
+
+
+def _is_institution_scoped(doctype: str) -> bool:
+	"""Whether `doctype` carries the tenancy column. Meta is cached, so this is a dict lookup."""
+	try:
+		return bool(frappe.get_meta(doctype).has_field("institution"))
+	except Exception:
+		# During install/migrate a doctype may be mid-import. Never let a permission hook be the
+		# thing that breaks a migration; the query paths this guards are not live yet either.
+		return False
+
+
+def institution_scope_query(user: str | None = None, doctype: str | None = None) -> str:
+	"""`permission_query_conditions` for every doctype carrying `institution`.
+
+	Fails **closed**: a login that is not trust-wide and holds no Institution User Permission gets
+	`1=0` and sees nothing. The alternative — treating "no restriction rows" as "unrestricted" —
+	is what the superseded `assert_trust_in_scope` did, and it turns a half-provisioned account
+	into a trust-wide one.
+
+	For a child-table query Frappe calls this with the *parent* doctype and joins the child to it
+	(`database/query.py:1548-1560`), so emitting `` `tab{doctype}`.institution `` is correct and
+	must not be changed to assume the queried table.
+	"""
+	if not doctype or not _is_institution_scoped(doctype):
+		return ""
+
+	user = user or frappe.session.user
+	if acts_for_any_institution(user):
+		return ""
+
+	allowed = allowed_institutions(user)
+	if not allowed:
+		return "1=0"
+
+	values = ", ".join(frappe.db.escape(institution) for institution in allowed)
+	return f"`tab{doctype}`.institution in ({values})"
+
+
+def institution_has_permission(doc, ptype=None, user=None, **kwargs) -> bool:
+	"""`has_permission` for every doctype carrying `institution` — the single-record mirror.
+
+	A controller hook can only deny, never grant, so returning True defers to the checks the
+	framework already ran. Reads the *stored* institution on an existing document: a caller who
+	may not act for institution B must not be able to move a row there by posting B and having
+	the check pass against the value they just typed.
+	"""
+	if not _is_institution_scoped(doc.doctype):
+		return True
+
+	user = user or frappe.session.user
+	if acts_for_any_institution(user):
+		return True
+
+	allowed = allowed_institutions(user)
+	if not allowed:
+		return False
+
+	institution = doc.get("institution") if doc.is_new() else doc.get_db_value("institution")
+	if not institution:
+		# A blank tenancy column is the hole this whole module exists to close: Frappe's own
+		# user-permission clause is `IfNull(institution,'')='' OR institution IN (...)`
+		# (`database/query.py:1503-1506`), so a blank row is readable by everyone. Deny here
+		# rather than inherit that.
+		return False
+
+	return institution in allowed
+
+
+def assert_institution_in_scope(institution: str) -> None:
+	"""The tenant rule stated imperatively, for whitelisted endpoints that write across doctypes.
+
+	Doctype scoping rides on hooks and User Permissions the framework ANDs into queries, but an
+	endpoint that does its own reads and writes escapes all of that. These call sites are
+	cross-doctype *writes*, which is why this fails closed: an empty allow-list denies.
+	"""
+	if acts_for_any_institution():
 		return
 
-	allowed = frappe.get_all(
-		"User Permission",
-		filters={"user": frappe.session.user, "allow": "Trust"},
-		pluck="for_value",
-	)
-	if allowed and trust not in allowed:
+	if institution not in allowed_institutions():
+		frappe.throw(
+			frappe._("You are not permitted to act for {0}.").format(frappe.bold(institution)),
+			frappe.PermissionError,
+		)
+
+
+def assert_trust_in_scope(trust: str) -> None:
+	"""Deprecated shim. Scoping moved from Trust to Institution — see erp/docs/DATA-MODEL.md.
+
+	Kept for one release so a caller that still passes a trust is not silently unguarded. It
+	cannot do anything useful: under a one-Trust site every caller is in scope for the only
+	trust, which is exactly why the boundary moved. Callers must migrate to
+	`assert_institution_in_scope`.
+	"""
+	if acts_for_any_institution():
+		return
+
+	if not allowed_institutions():
 		frappe.throw(
 			frappe._("You are not permitted to act for {0}.").format(frappe.bold(trust)),
 			frappe.PermissionError,

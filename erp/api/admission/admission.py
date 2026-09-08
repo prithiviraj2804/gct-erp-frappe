@@ -14,7 +14,7 @@ from frappe import _
 from frappe.utils import today
 
 from erp.admission.pipeline import assert_status_transition
-from erp.api.permission import assert_trust_in_scope
+from erp.api.permission import assert_institution_in_scope
 
 # Carried from the lead onto the student. Identity and contact only — every academic field comes
 # from the *application*, because the programme admitted to is routinely not the one enquired about.
@@ -61,7 +61,7 @@ def confirm_admission(application: str, date_of_admission: str | None = None) ->
 
 	doc = frappe.get_doc("Admission Application", application)
 	doc.check_permission("write")
-	assert_trust_in_scope(doc.trust)
+	assert_institution_in_scope(doc.institution)
 
 	if doc.student:
 		return _admission_result(doc.name, doc.student, created=False)

@@ -652,7 +652,9 @@ class IntegrationTestAdmissionApplicationScoping(IntegrationTestCase):
 
 		cls.staff_a = cls.make_staff("ZASTA", "za-counsellor-a@example.com")
 		cls.staff_b = cls.make_staff("ZASTB", "za-counsellor-b@example.com")
-		cls.manager = cls.make_user("za-manager@example.com", "Admission Manager")
+		cls.manager = cls.grant_institution(
+			cls.make_user("za-manager@example.com", "Admission Manager"), base.ENG
+		)
 
 		cls.app_a = cls.application_owned_by(cls.staff_a)
 		cls.app_b = cls.application_owned_by(cls.staff_b)
@@ -674,6 +676,29 @@ class IntegrationTestAdmissionApplicationScoping(IntegrationTestCase):
 			},
 		)
 		return staff
+
+	@classmethod
+	def grant_institution(cls, email, institution):
+		"""Provision the Institution User Permission a real deployment would give this login.
+
+		Tenancy fails closed, so a login with no Institution permission and no trust-wide role sees
+		nothing at all. A counsellor gets this automatically from their Staff record
+		(`Staff.sync_institution_permission`); a manager without a Staff row has to be granted it
+		the way an administrator would.
+		"""
+		if not frappe.db.exists(
+			"User Permission", {"user": email, "allow": "Institution", "for_value": institution}
+		):
+			frappe.get_doc(
+				{
+					"doctype": "User Permission",
+					"user": email,
+					"allow": "Institution",
+					"for_value": institution,
+					"apply_to_all_doctypes": 1,
+				}
+			).insert(ignore_permissions=True)
+		return email
 
 	@staticmethod
 	def make_user(email, role):

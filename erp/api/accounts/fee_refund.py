@@ -16,7 +16,7 @@ import frappe
 from frappe import _
 from frappe.utils import flt
 
-from erp.api.permission import assert_trust_in_scope
+from erp.api.permission import assert_institution_in_scope
 
 
 @frappe.whitelist(methods=["POST"])
@@ -35,10 +35,10 @@ def refund_application_fee(
 	if not frappe.has_permission("Fee Refund", "create"):
 		frappe.throw(_("You are not permitted to refund a fee."), frappe.PermissionError)
 
-	payment = frappe.db.get_value("Fee Payment", fee_payment, ["trust", "admission_enquiry"], as_dict=True)
+	payment = frappe.db.get_value("Fee Payment", fee_payment, ["institution", "admission_enquiry"], as_dict=True)
 	if not payment:
 		frappe.throw(_("Fee Payment {0} was not found.").format(frappe.bold(fee_payment)))
-	assert_trust_in_scope(payment.trust)
+	assert_institution_in_scope(payment.institution)
 
 	existing = frappe.db.get_value("Fee Refund", {"fee_payment": fee_payment, "docstatus": 1}, "name")
 	if existing:

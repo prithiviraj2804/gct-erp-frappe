@@ -216,7 +216,6 @@
    "read": 1,
    "report": 1,
    "role": "Accounts Manager",
-   "share": 1,
    "submit": 1,
    "cancel": 1,
    "write": 1
@@ -228,7 +227,6 @@
    "read": 1,
    "report": 1,
    "role": "Cashier",
-   "share": 1,
    "submit": 1,
    "write": 1
   }

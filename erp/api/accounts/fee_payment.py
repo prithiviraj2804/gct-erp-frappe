@@ -14,7 +14,7 @@ import frappe
 from frappe import _
 from frappe.utils import flt
 
-from erp.api.permission import assert_trust_in_scope
+from erp.api.permission import assert_institution_in_scope
 
 
 @frappe.whitelist(methods=["POST"])
@@ -29,10 +29,10 @@ def record_application_fee(
 	if not frappe.has_permission("Fee Payment", "create"):
 		frappe.throw(_("You are not permitted to record a fee payment."), frappe.PermissionError)
 
-	trust = frappe.db.get_value("Admission Enquiry", enquiry, "trust")
-	if not trust:
+	institution = frappe.db.get_value("Admission Enquiry", enquiry, "institution")
+	if not institution:
 		frappe.throw(_("Admission Enquiry {0} was not found.").format(frappe.bold(enquiry)))
-	assert_trust_in_scope(trust)
+	assert_institution_in_scope(institution)
 
 	existing = frappe.db.get_value("Fee Payment", {"admission_enquiry": enquiry, "docstatus": 1}, "name")
 	if existing:
