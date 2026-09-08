@@ -13,7 +13,7 @@ consumes it.** Every slice below names the journey that justifies it and the ste
 | **0** | `Institution → Trust`, `College → Institution`. Behaviour-preserving; two ordered patches; 168 tests green | `3148e28` |
 | **1** | Tenancy repair A — `Trust Admin` / `Institution Admin` roles, a `"*"` scoping hook over every doctype carrying `institution`, fail-closed `assert_institution_in_scope`, Staff→User Permission provisioning, `share` dropped where it crossed the boundary. 176 tests green | `798f65b` |
 | **2** | Tenancy repair B — `institution`/`trust` `reqd: 1`, backfill, `apply_strict_user_permissions` on. Plus the child-row UUID fix and vocabulary replayed on every migrate. 184 tests green | `fd27e22` |
-| **3** | `Institution Type` as a NestedSet tree; both `!= "School"` branches deleted; DocPerms so the two tenancy roles stand alone. 199 tests green | — |
+| **3** | `Institution Type` as a NestedSet tree; both `!= "School"` branches deleted; DocPerms so the two tenancy roles stand alone; workspace links + a guard test for reachability. 200 tests green | `6786d8d` |
 
 ## Next — in this order
 

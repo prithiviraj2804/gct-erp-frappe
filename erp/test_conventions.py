@@ -165,3 +165,34 @@ class IntegrationTestUuidConvention(IntegrationTestCase):
 			"ZUI4", [{"document_type": "TC", "is_required": 1, "id": "kept-by-the-import"}]
 		)
 		self.assertEqual(intake.required_documents[0].id, "kept-by-the-import")
+
+
+class IntegrationTestWorkspaceReachability(IntegrationTestCase):
+	"""Every doctype must be reachable from a workspace.
+
+	A doctype absent from every workspace exists only to someone who knows to type its URL. The
+	feature-slice checklist has always said "workspace links added, so the feature is reachable" —
+	this is that checklist item, enforced. It was written after `Institution Type` shipped without
+	a link, and found `Admission Follow-up` had been missing one since the slice that created it.
+
+	Child tables are exempt: they are edited inside their parent and have no list view worth
+	linking to.
+	"""
+
+	def test_every_doctype_is_reachable_from_a_workspace(self):
+		modules = frappe.get_module_list("erp")
+		doctypes = frappe.get_all("DocType", filters={"module": ("in", modules), "istable": 0}, pluck="name")
+		linked = set(
+			frappe.get_all(
+				"Workspace Link",
+				filters={"link_type": "DocType", "parent": ("in", frappe.get_all("Workspace", pluck="name"))},
+				pluck="link_to",
+			)
+		)
+
+		unreachable = sorted(set(doctypes) - linked)
+		self.assertEqual(
+			unreachable,
+			[],
+			f"these doctypes are in no workspace and cannot be navigated to: {unreachable}",
+		)

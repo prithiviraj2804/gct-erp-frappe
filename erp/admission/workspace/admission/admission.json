@@ -26,6 +26,13 @@
   {
    "type": "Link",
    "link_type": "DocType",
+   "link_to": "Admission Follow-up",
+   "icon": "phone-call",
+   "label": "Admission Follow-up"
+  },
+  {
+   "type": "Link",
+   "link_type": "DocType",
    "link_to": "Admission Application",
    "icon": "clipboard-list",
    "label": "Admission Application"

@@ -39,6 +39,13 @@
   {
    "type": "Link",
    "link_type": "DocType",
+   "link_to": "Institution Type",
+   "icon": "list-tree",
+   "label": "Institution Type"
+  },
+  {
+   "type": "Link",
+   "link_type": "DocType",
    "link_to": "Department",
    "icon": "network",
    "label": "Department"
