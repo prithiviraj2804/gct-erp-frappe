@@ -1,14 +1,14 @@
 {
  "actions": [],
  "allow_rename": 1,
- "autoname": "format:{institution}-{consultancy_code}",
+ "autoname": "format:{trust}-{consultancy_code}",
  "creation": "2026-07-30 00:00:00.000000",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
   "basic_information_section",
   "id",
-  "institution",
+  "trust",
   "consultancy_code",
   "consultancy_name",
   "column_break_basic",
@@ -39,13 +39,13 @@
    "description": "Auto-generated UUID"
   },
   {
-   "fieldname": "institution",
+   "fieldname": "trust",
    "fieldtype": "Link",
-   "label": "Institution",
-   "options": "Institution",
+   "label": "Trust",
+   "options": "Trust",
    "reqd": 1,
    "in_standard_filter": 1,
-   "description": "Parent Institution — an agency serves the whole group, not one college"
+   "description": "Parent Trust — an agency serves the whole group, not one institution"
   },
   {
    "fieldname": "consultancy_code",
@@ -54,7 +54,7 @@
    "length": 20,
    "reqd": 1,
    "in_list_view": 1,
-   "description": "Short code (BRIGHTEDU, CAREERPATH, etc.) — unique within the institution, not globally"
+   "description": "Short code (BRIGHTEDU, CAREERPATH, etc.) — unique within the trust, not globally"
   },
   {
    "fieldname": "consultancy_name",

@@ -145,9 +145,9 @@ def parse_link_filters(raw: str | None) -> list[dict] | None:
 	not in Frappe and not here. Tenant scoping is `validate_same_parent` in the controllers.
 	See docs/DATA-MODEL.md.
 
-	    [["Campus","institution","=","eval:doc.institution"]]
-	        -> {"fieldname": "institution", "operator": "=", "from_field": "institution"}
-	    [["College","status","=","Active"]]
+	    [["Campus","trust","=","eval:doc.trust"]]
+	        -> {"fieldname": "trust", "operator": "=", "from_field": "trust"}
+	    [["Institution","status","=","Active"]]
 	        -> {"fieldname": "status", "operator": "=", "value": "Active"}
 	"""
 	if not raw:
@@ -175,9 +175,7 @@ def parse_link_filters(raw: str | None) -> list[dict] | None:
 				# Only `eval:doc.<field>` appears in this app. Anything richer is dropped
 				# rather than guessed at — a wrong filter silently hides valid options.
 				continue
-			filters.append(
-				{"fieldname": fieldname, "operator": operator, "from_field": condition["field"]}
-			)
+			filters.append({"fieldname": fieldname, "operator": operator, "from_field": condition["field"]})
 		else:
 			filters.append({"fieldname": fieldname, "operator": operator, "value": value})
 
@@ -277,9 +275,7 @@ def _child_schema(doctype: str) -> dict:
 	child authored without it, which would otherwise render as a table with no columns.
 	"""
 	meta = frappe.get_meta(doctype)
-	fields = [
-		_field(df) for df in meta.fields if df.fieldtype not in _LAYOUT_TYPES and not df.hidden
-	]
+	fields = [_field(df) for df in meta.fields if df.fieldtype not in _LAYOUT_TYPES and not df.hidden]
 
 	columns = [df["fieldname"] for df in fields if df["in_list_view"]]
 	if not columns:
@@ -374,9 +370,7 @@ def get_doctype_schema(doctype: str) -> dict:
 	fields = [
 		_field(df)
 		for df in meta.fields
-		if df.fieldtype in _LAYOUT_TYPES
-		or df.fieldtype in _CHILD_TYPES
-		or df.fieldname in permitted
+		if df.fieldtype in _LAYOUT_TYPES or df.fieldtype in _CHILD_TYPES or df.fieldname in permitted
 	]
 
 	# Fetched with the parent rather than on demand: a child grid is part of the record, so a

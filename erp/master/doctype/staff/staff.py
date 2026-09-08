@@ -11,8 +11,8 @@ class Staff(Document):
 		self.validate_hierarchy()
 
 	def validate_hierarchy(self):
-		"""`institution` is picked by hand here, not fetched, so it can flatly contradict
-		`college`. The Admission Gate Pass trusts a Staff record's `institution` to keep
+		"""`trust` is picked by hand here, not fetched, so it can flatly contradict
+		`institution`. The Admission Gate Pass trusts a Staff record's `trust` to keep
 		referrers inside one tenant, so this check is what makes that trust worth anything.
 		"""
-		validate_same_parent(self, "college", "institution")
+		validate_same_parent(self, "institution", "trust")

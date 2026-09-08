@@ -18,9 +18,9 @@
   {
    "type": "Link",
    "link_type": "DocType",
-   "link_to": "Institution",
+   "link_to": "Trust",
    "icon": "landmark",
-   "label": "Institution"
+   "label": "Trust"
   },
   {
    "type": "Link",
@@ -32,9 +32,9 @@
   {
    "type": "Link",
    "link_type": "DocType",
-   "link_to": "College",
+   "link_to": "Institution",
    "icon": "school",
-   "label": "College"
+   "label": "Institution"
   },
   {
    "type": "Link",

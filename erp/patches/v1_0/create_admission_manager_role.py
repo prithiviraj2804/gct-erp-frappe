@@ -1,7 +1,7 @@
 # Copyright (c) 2026, Prithivi and contributors
 # For license information, please see license.txt
 
-"""Create the Admission Manager role — the per-institution admissions admin.
+"""Create the Admission Manager role — the per-trust admissions admin.
 
 A separate patch from `create_admission_roles`, not a line added to it: that patch has already
 run on live sites and its Patch Log entry stops it re-running, so an amended tuple would never

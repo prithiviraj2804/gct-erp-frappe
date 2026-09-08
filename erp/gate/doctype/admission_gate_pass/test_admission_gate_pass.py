@@ -3,9 +3,9 @@
 
 """What a pass raised at the admission gate must not be allowed to record.
 
-Fixtures build two complete, disjoint institutions (A and B) — each with a campus, a
-college and a staff member — so every test can reach for a legitimate record and an alien
-one of the same doctype. Institution A additionally owns the open admission year and a
+Fixtures build two complete, disjoint trusts (A and B) — each with a campus, a
+institution and a staff member — so every test can reach for a legitimate record and an alien
+one of the same doctype. Trust A additionally owns the open admission year and a
 consultancy, because A is the tenant the passes are raised under.
 
 Nothing is committed: `IntegrationTestCase` rolls the connection back at class teardown.
@@ -20,12 +20,12 @@ from frappe.tests import IntegrationTestCase
 from erp.master.hierarchy import HierarchyMismatchError
 
 # Codes are prefixed `ZG` so they cannot collide with real master data on a dev site.
-INSTITUTION_A = "ZGA"
-INSTITUTION_B = "ZGB"
+TRUST_A = "ZGA"
+TRUST_B = "ZGB"
 CAMPUS_A = "ZGA-MAIN"
 CAMPUS_B = "ZGB-MAIN"
-COLLEGE_A = "ZGACOL"
-COLLEGE_B = "ZGBCOL"
+INSTITUTION_A = "ZGACOL"
+INSTITUTION_B = "ZGBCOL"
 
 IN_TIME = "2030-06-01 09:00:00"
 
@@ -39,7 +39,7 @@ STAFF_3 = "Chitra Devi"
 
 
 class IntegrationTestAdmissionGatePass(IntegrationTestCase):
-	# One admission per Aadhaar per institution per year is now enforced, and this class inserts
+	# One admission per Aadhaar per trust per year is now enforced, and this class inserts
 	# many passes that outlive one another (IntegrationTestCase rolls back once, at class teardown,
 	# not between tests). So the factory mints a fresh Aadhaar per call — real visitors never share
 	# one — and the tests that actually exercise the number override it explicitly.
@@ -49,43 +49,41 @@ class IntegrationTestAdmissionGatePass(IntegrationTestCase):
 	def setUpClass(cls):
 		super().setUpClass()
 
-		for code, name in ((INSTITUTION_A, "Alpha Institute"), (INSTITUTION_B, "Beta Institute")):
-			frappe.get_doc(
-				{"doctype": "Institution", "institution_code": code, "institution_name": name}
-			).insert()
+		for code, name in ((TRUST_A, "Alpha Institute"), (TRUST_B, "Beta Institute")):
+			frappe.get_doc({"doctype": "Trust", "trust_code": code, "trust_name": name}).insert()
 
-		for institution in (INSTITUTION_A, INSTITUTION_B):
+		for trust in (TRUST_A, TRUST_B):
 			frappe.get_doc(
 				{
 					"doctype": "Campus",
-					"institution": institution,
+					"trust": trust,
 					"campus_code": "MAIN",
-					"campus_name": f"{institution} Main Campus",
+					"campus_name": f"{trust} Main Campus",
 				}
 			).insert()
 
-		for institution, campus, code in (
-			(INSTITUTION_A, CAMPUS_A, COLLEGE_A),
-			(INSTITUTION_B, CAMPUS_B, COLLEGE_B),
+		for trust, campus, code in (
+			(TRUST_A, CAMPUS_A, INSTITUTION_A),
+			(TRUST_B, CAMPUS_B, INSTITUTION_B),
 		):
 			frappe.get_doc(
 				{
-					"doctype": "College",
-					"institution": institution,
+					"doctype": "Institution",
+					"trust": trust,
 					"campus": campus,
-					"college_code": code,
-					"college_name": f"{code} College",
+					"institution_code": code,
+					"institution_name": f"{code} Institution",
 				}
 			).insert()
 
-		# Only institution A has admissions open, so a pass raised under B leaves the year
+		# Only trust A has admissions open, so a pass raised under B leaves the year
 		# blank rather than borrowing A's.
 		year_a = frappe.get_doc(
 			{
 				"doctype": "Academic Year",
-				"institution": INSTITUTION_A,
+				"trust": TRUST_A,
 				"year_code": "2030-31",
-				"title": f"{INSTITUTION_A} 2030-31",
+				"title": f"{TRUST_A} 2030-31",
 				"start_date": "2030-06-01",
 				"end_date": "2031-05-31",
 				"is_admission_open": 1,
@@ -99,19 +97,19 @@ class IntegrationTestAdmissionGatePass(IntegrationTestCase):
 		# Two staff records are enough now that only the Staff Reference route links one:
 		# A's to be accepted, B's to be refused. The three accountable-staff slots are typed
 		# names and need no records at all.
-		cls.staff_a = cls.make_staff(INSTITUTION_A, COLLEGE_A, "ZGASTF1", "Alpha Counsellor")
-		cls.staff_b = cls.make_staff(INSTITUTION_B, COLLEGE_B, "ZGBSTF1", "Beta Counsellor")
+		cls.staff_a = cls.make_staff(TRUST_A, INSTITUTION_A, "ZGASTF1", "Alpha Counsellor")
+		cls.staff_b = cls.make_staff(TRUST_B, INSTITUTION_B, "ZGBSTF1", "Beta Counsellor")
 
-		cls.consultancy_a = cls.make_consultancy(INSTITUTION_A, "ZGACON", "Alpha Admissions Partner")
-		cls.consultancy_b = cls.make_consultancy(INSTITUTION_B, "ZGBCON", "Beta Admissions Partner")
+		cls.consultancy_a = cls.make_consultancy(TRUST_A, "ZGACON", "Alpha Admissions Partner")
+		cls.consultancy_b = cls.make_consultancy(TRUST_B, "ZGBCON", "Beta Admissions Partner")
 
 	@staticmethod
-	def make_staff(institution, college, code, name):
+	def make_staff(trust, institution, code, name):
 		staff = frappe.get_doc(
 			{
 				"doctype": "Staff",
+				"trust": trust,
 				"institution": institution,
-				"college": college,
 				"staff_code": code,
 				"staff_name": name,
 			}
@@ -120,11 +118,11 @@ class IntegrationTestAdmissionGatePass(IntegrationTestCase):
 		return staff.name
 
 	@staticmethod
-	def make_consultancy(institution, code, name):
+	def make_consultancy(trust, code, name):
 		consultancy = frappe.get_doc(
 			{
 				"doctype": "Consultancy",
-				"institution": institution,
+				"trust": trust,
 				"consultancy_code": code,
 				"consultancy_name": name,
 			}
@@ -141,7 +139,7 @@ class IntegrationTestAdmissionGatePass(IntegrationTestCase):
 			"aadhaar_number": f"{next(cls._aadhaar_counter):012d}",
 			"parent_name": "Kumar S",
 			"native_place": "Madurai",
-			"college": COLLEGE_A,
+			"institution": INSTITUTION_A,
 			"reference": "Direct Admission",
 			"reference_staff_1": STAFF_1,
 			"photo": PHOTO,
@@ -158,18 +156,18 @@ class IntegrationTestAdmissionGatePass(IntegrationTestCase):
 
 		self.assertTrue(gate_pass.name.startswith("AGP-"), gate_pass.name)
 		self.assertEqual(str(uuid.UUID(gate_pass.id)), gate_pass.id)
-		self.assertEqual(gate_pass.institution, INSTITUTION_A)
+		self.assertEqual(gate_pass.trust, TRUST_A)
 		self.assertEqual(gate_pass.status, "Inside")
 
 	def test_academic_year_comes_from_the_open_admission_year(self):
-		"""The desk never picks the year — it follows from the college's institution."""
+		"""The desk never picks the year — it follows from the institution's trust."""
 		gate_pass = self.make_pass()
 		gate_pass.insert()
 
 		self.assertEqual(gate_pass.academic_year, self.year_a)
 
-	def test_moving_the_pass_to_another_institution_redraws_the_year(self):
-		"""Correcting the college to one under a different institution has to be savable.
+	def test_moving_the_pass_to_another_trust_redraws_the_year(self):
+		"""Correcting the institution to one under a different trust has to be savable.
 
 		The year is read-only, so a stale one left on the row would be a hierarchy mismatch
 		the desk is given no way to clear — the pass would be stuck, unfixable, for as long
@@ -179,44 +177,44 @@ class IntegrationTestAdmissionGatePass(IntegrationTestCase):
 		gate_pass.insert()
 		self.assertEqual(gate_pass.academic_year, self.year_a)
 
-		gate_pass.college = COLLEGE_B
+		gate_pass.institution = INSTITUTION_B
 		gate_pass.save()
 
-		self.assertEqual(gate_pass.institution, INSTITUTION_B)
+		self.assertEqual(gate_pass.trust, TRUST_B)
 		self.assertFalse(gate_pass.academic_year)
 
 	# --- Tenant boundaries ----------------------------------------------------------
 
-	def test_rejects_college_from_another_institution(self):
-		"""`institution` is `fetch_from` college and normally rewritten from it, but
+	def test_rejects_institution_from_another_trust(self):
+		"""`trust` is `fetch_from` institution and normally rewritten from it, but
 		`flags.ignore_links` skips that rewrite — the controller has to catch it."""
-		gate_pass = self.make_pass(college=COLLEGE_B, institution=INSTITUTION_A)
+		gate_pass = self.make_pass(institution=INSTITUTION_B, trust=TRUST_A)
 		gate_pass.flags.ignore_links = True
 
 		with self.assertRaises(HierarchyMismatchError):
 			gate_pass.insert()
 
-	def test_rejects_a_referring_staff_from_another_institution(self):
+	def test_rejects_a_referring_staff_from_another_trust(self):
 		"""A Link to Staff accepts any staff member in the system; only this check stops
-		one institution's counsellor being credited with another's walk-in."""
+		one trust's counsellor being credited with another's walk-in."""
 		gate_pass = self.make_pass(reference="Staff Reference", staff_reference=self.staff_b)
 
 		with self.assertRaises(HierarchyMismatchError):
 			gate_pass.insert()
 
-	def test_accepts_a_referring_staff_from_its_own_institution(self):
+	def test_accepts_a_referring_staff_from_its_own_trust(self):
 		gate_pass = self.make_pass(reference="Staff Reference", staff_reference=self.staff_a)
 		gate_pass.insert()
 
 		self.assertEqual(gate_pass.staff_reference, self.staff_a)
 
-	def test_rejects_consultancy_from_another_institution(self):
+	def test_rejects_consultancy_from_another_trust(self):
 		gate_pass = self.make_pass(reference="Consultancy Reference", consultancy=self.consultancy_b)
 
 		with self.assertRaises(HierarchyMismatchError):
 			gate_pass.insert()
 
-	def test_accepts_consultancy_from_its_own_institution(self):
+	def test_accepts_consultancy_from_its_own_trust(self):
 		gate_pass = self.make_pass(reference="Consultancy Reference", consultancy=self.consultancy_a)
 		gate_pass.insert()
 
@@ -262,56 +260,56 @@ class IntegrationTestAdmissionGatePass(IntegrationTestCase):
 
 	def test_accepts_the_same_aadhaar_in_a_later_admission_year(self):
 		"""The rule is scoped to the cycle: a returning student is a fresh admission, not a
-		duplicate, so the same Aadhaar in a different year of the same institution is allowed."""
+		duplicate, so the same Aadhaar in a different year of the same trust is allowed."""
 		aadhaar = "700000000001"
 		first = self.make_pass(aadhaar_number=aadhaar)
 		first.insert()
 		self.assertEqual(first.academic_year, self.year_a)
 
-		# A second cycle at the same institution. Left un-opened so it never displaces the year
+		# A second cycle at the same trust. Left un-opened so it never displaces the year
 		# the desk auto-picks for every other pass in this class.
 		year_2 = frappe.get_doc(
 			{
 				"doctype": "Academic Year",
-				"institution": INSTITUTION_A,
+				"trust": TRUST_A,
 				"year_code": "2031-32",
-				"title": f"{INSTITUTION_A} 2031-32",
+				"title": f"{TRUST_A} 2031-32",
 				"start_date": "2031-06-01",
 				"end_date": "2032-05-31",
 			}
 		).insert()
 
-		# `academic_year` is read-only and auto-set, but an explicit year on the same institution
+		# `academic_year` is read-only and auto-set, but an explicit year on the same trust
 		# is kept rather than redrawn (set_academic_year), so this pins the pass to the new cycle.
 		second = self.make_pass(aadhaar_number=aadhaar, academic_year=year_2.name)
 		second.insert()
 
 		self.assertEqual(second.academic_year, year_2.name)
 
-	def test_accepts_the_same_aadhaar_at_a_different_institution(self):
-		"""Institutions are separate tenants — one student may enrol at two of them, and the
-		check must scope to the institution, not just fall open on B's blank year."""
+	def test_accepts_the_same_aadhaar_at_a_different_trust(self):
+		"""Trusts are separate tenants — one student may enrol at two of them, and the
+		check must scope to the trust, not just fall open on B's blank year."""
 		aadhaar = "700000000002"
 		self.make_pass(aadhaar_number=aadhaar).insert()
 
 		# B has no open admission year, so a B pass would otherwise land on a blank year and slip
-		# past via the blank-year guard. Give it an explicit (un-opened) cycle so the *institution*
+		# past via the blank-year guard. Give it an explicit (un-opened) cycle so the *trust*
 		# is what keeps the two apart — and so B still reads as "no year open" for other tests.
 		year_b = frappe.get_doc(
 			{
 				"doctype": "Academic Year",
-				"institution": INSTITUTION_B,
+				"trust": TRUST_B,
 				"year_code": "2030-31",
-				"title": f"{INSTITUTION_B} 2030-31",
+				"title": f"{TRUST_B} 2030-31",
 				"start_date": "2030-06-01",
 				"end_date": "2031-05-31",
 			}
 		).insert()
 
-		second = self.make_pass(college=COLLEGE_B, aadhaar_number=aadhaar, academic_year=year_b.name)
+		second = self.make_pass(institution=INSTITUTION_B, aadhaar_number=aadhaar, academic_year=year_b.name)
 		second.insert()
 
-		self.assertEqual(second.institution, INSTITUTION_B)
+		self.assertEqual(second.trust, TRUST_B)
 		self.assertEqual(second.academic_year, year_b.name)
 
 	def test_rejects_editing_an_aadhaar_onto_one_already_in_the_cycle(self):

@@ -40,7 +40,7 @@ bench --site erp.localhost console
 ```
 ```python
 # e.g. prove the UUID hook fires for a new doctype
-d = frappe.get_doc({"doctype": "Institution", "institution_code": "T-1"}).insert()
+d = frappe.get_doc({"doctype": "Trust", "trust_code": "T-1"}).insert()
 print(d.id)
 frappe.db.rollback()   # console changes persist otherwise
 ```

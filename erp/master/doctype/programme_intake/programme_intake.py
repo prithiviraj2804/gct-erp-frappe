@@ -19,14 +19,14 @@ class ProgrammeIntake(Document):
 
 	def validate_hierarchy(self):
 		"""An intake is the seat count for one programme in one academic year — both sides
-		must belong to the same institution, or the seats land in another tenant's ledger.
+		must belong to the same trust, or the seats land in another tenant's ledger.
 
-		`institution`/`college` are `fetch_from` programme and normally rewritten on save;
+		`trust`/`institution` are `fetch_from` programme and normally rewritten on save;
 		they are asserted here for the same reason as on Programme, since `flags.ignore_links`
 		skips that rewrite.
 		"""
-		validate_same_parent(self, "programme", "institution", "college")
-		validate_same_parent(self, "academic_year", "institution")
+		validate_same_parent(self, "programme", "trust", "institution")
+		validate_same_parent(self, "academic_year", "trust")
 
 	def validate_seats(self):
 		if self.total_seats is not None and self.total_seats <= 0:
@@ -42,7 +42,7 @@ class ProgrammeIntake(Document):
 		The window is how a school states an entry condition a degree programme does not have — an
 		LKG intake admits 3-to-5-year-olds as on 1 June, a B.E. intake leaves all three blank and no
 		age is ever checked. It is deliberately data on the intake rather than a rule keyed on
-		`College.college_type`: the same doctype then serves a school and a college, the way
+		`Institution.institution_type`: the same doctype then serves a school and an institution, the way
 		`Programme.required_prior_qualification` already does for the prior-qualification rule.
 
 		An age bound with no `age_as_on` is unmeasurable — "under 5" is meaningless without saying

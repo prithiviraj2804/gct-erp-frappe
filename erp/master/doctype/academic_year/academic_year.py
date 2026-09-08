@@ -39,7 +39,7 @@ class AcademicYear(Document):
 
 	def on_update(self):
 		# "Current" (running) and "Admission Open" are independent pointers, but each is
-		# a per-institution singleton: setting one here clears it on every other year.
+		# a per-trust singleton: setting one here clears it on every other year.
 		self.enforce_singleton_flag("is_current")
 		self.enforce_singleton_flag("is_admission_open")
 
@@ -50,7 +50,7 @@ class AcademicYear(Document):
 		others = frappe.get_all(
 			"Academic Year",
 			filters={
-				"institution": self.institution,
+				"trust": self.trust,
 				fieldname: 1,
 				"name": ["!=", self.name],
 			},

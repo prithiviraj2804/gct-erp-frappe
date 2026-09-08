@@ -1,15 +1,15 @@
 {
  "actions": [],
  "allow_rename": 1,
- "autoname": "format:{college}-{staff_code}",
+ "autoname": "format:{institution}-{staff_code}",
  "creation": "2026-07-30 00:00:00.000000",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
   "basic_information_section",
   "id",
+  "trust",
   "institution",
-  "college",
   "staff_code",
   "staff_name",
   "column_break_basic",
@@ -36,23 +36,23 @@
    "description": "Auto-generated UUID"
   },
   {
+   "fieldname": "trust",
+   "fieldtype": "Link",
+   "label": "Trust",
+   "options": "Trust",
+   "reqd": 1,
+   "in_standard_filter": 1,
+   "description": "Parent Trust"
+  },
+  {
    "fieldname": "institution",
    "fieldtype": "Link",
    "label": "Institution",
    "options": "Institution",
    "reqd": 1,
    "in_standard_filter": 1,
-   "description": "Parent Institution"
-  },
-  {
-   "fieldname": "college",
-   "fieldtype": "Link",
-   "label": "College",
-   "options": "College",
-   "reqd": 1,
-   "in_standard_filter": 1,
-   "link_filters": "[[\"College\",\"institution\",\"=\",\"eval:doc.institution\"]]",
-   "description": "Parent College — must belong to the Institution above"
+   "link_filters": "[[\"Institution\",\"trust\",\"=\",\"eval:doc.trust\"]]",
+   "description": "Parent Institution — must belong to the Trust above"
   },
   {
    "fieldname": "staff_code",
@@ -61,7 +61,7 @@
    "length": 20,
    "reqd": 1,
    "in_list_view": 1,
-   "description": "Employee / staff code, unique within the college"
+   "description": "Employee / staff code, unique within the institution"
   },
   {
    "fieldname": "staff_name",

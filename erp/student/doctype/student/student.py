@@ -16,22 +16,22 @@ OCCUPYING_STATUSES = frozenset({"Active"})
 
 class Student(Document):
 	def autoname(self):
-		"""Allot the admission register number: a per-institution monotonic series.
+		"""Allot the admission register number: a per-trust monotonic series.
 
 		In India the admission register is a statutory record — CBSE, ICSE, the state SSC boards and
 		UGC inspections all ask to see a numbered, chronological list of who was admitted and when —
-		so the number has to be dense and monotonic within an institution, not a random key. The
-		series is keyed on the institution because each one keeps its own register; two colleges of
+		so the number has to be dense and monotonic within a trust, not a random key. The
+		series is keyed on the trust because each one keeps its own register; two institutions of
 		the same group never share a run of numbers.
 
 		`name` *is* the register number rather than a separate column holding a second identifier:
 		one authoritative number, and the readable business key the app's naming convention asks
 		for. The UUID `id` remains the stable handle for external systems.
 		"""
-		if not self.institution:
-			frappe.throw(_("A student cannot be numbered without an Institution."))
+		if not self.trust:
+			frappe.throw(_("A student cannot be numbered without a Trust."))
 
-		self.name = make_autoname(f"{self.institution}-STU-.#####", doc=self)
+		self.name = make_autoname(f"{self.trust}-STU-.#####", doc=self)
 
 	def validate(self):
 		self.set_derived_ancestors()
@@ -52,12 +52,12 @@ class Student(Document):
 			programme = frappe.db.get_value(
 				"Programme",
 				self.programme,
-				["institution", "college", "campus", "programme_level"],
+				["trust", "institution", "campus", "programme_level"],
 				as_dict=True,
 			)
 			if programme:
+				self.trust = programme.trust
 				self.institution = programme.institution
-				self.college = programme.college
 				self.campus = programme.campus
 				self.programme_level = programme.programme_level
 
@@ -74,26 +74,26 @@ class Student(Document):
 			self.aadhaar_number = normalize_aadhaar(self.aadhaar_number)
 
 	def validate_hierarchy(self):
-		"""Keep the admitted programme, its intake and the year inside one institution."""
-		validate_same_parent(self, "college", "institution")
-		validate_same_parent(self, "department", "college", "institution")
-		validate_same_parent(self, "programme", "department", "college", "institution")
-		validate_same_parent(self, "academic_year", "institution")
-		validate_same_parent(self, "programme_intake", "programme", "college", "institution")
+		"""Keep the admitted programme, its intake and the year inside one trust."""
+		validate_same_parent(self, "institution", "trust")
+		validate_same_parent(self, "department", "institution", "trust")
+		validate_same_parent(self, "programme", "department", "institution", "trust")
+		validate_same_parent(self, "academic_year", "trust")
+		validate_same_parent(self, "programme_intake", "programme", "institution", "trust")
 
 	def validate_unique_aadhaar(self):
-		"""One student record per Aadhaar per institution per admission year.
+		"""One student record per Aadhaar per trust per admission year.
 
 		The register must not carry the same person twice in one cycle. Scoped exactly as the
 		enquiry's duplicate check is: a student may legitimately be admitted again in a later year
-		(a fresh PG admission) or at another institution of the group.
+		(a fresh PG admission) or at another trust of the group.
 		"""
-		if not (self.aadhaar_number and self.institution and self.academic_year):
+		if not (self.aadhaar_number and self.trust and self.academic_year):
 			return
 
 		filters = {
 			"aadhaar_number": self.aadhaar_number,
-			"institution": self.institution,
+			"trust": self.trust,
 			"academic_year": self.academic_year,
 		}
 		if not self.is_new():
@@ -102,7 +102,7 @@ class Student(Document):
 		duplicate = frappe.db.exists("Student", filters)
 		if duplicate:
 			frappe.throw(
-				_("A student with Aadhaar {0} is already admitted at this institution for {1} ({2}).").format(
+				_("A student with Aadhaar {0} is already admitted at this trust for {1} ({2}).").format(
 					frappe.bold(self.aadhaar_number),
 					frappe.bold(self.academic_year),
 					frappe.bold(duplicate),

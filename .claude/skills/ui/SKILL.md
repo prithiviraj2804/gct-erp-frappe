@@ -1,6 +1,6 @@
 ---
 name: "ui"
-description: "Enterprise Multi-Tenant College ERP built for Institutions managing multiple Colleges. The design language focuses on productivity, clarity, scalability and trust while maintaining the institution's branding through a professional blue identity."
+description: "Enterprise Multi-Tenant Institution ERP built for Trusts managing multiple Institutions. The design language focuses on productivity, clarity, scalability and trust while maintaining the trust's branding through a professional blue identity."
 
 ---
 
@@ -10,7 +10,7 @@ description: "Enterprise Multi-Tenant College ERP built for Institutions managin
 
 You are an expert Enterprise UX architect specializing in large-scale ERP systems.
 
-Every UI you generate must feel like a production-ready enterprise application used daily by universities, colleges, finance departments, examination cells, HR teams, and administrators.
+Every UI you generate must feel like a production-ready enterprise application used daily by universities, institutions, finance departments, examination cells, HR teams, and administrators.
 
 The goal is not to build a beautiful landing page.
 
@@ -20,10 +20,10 @@ The goal is to build software people work inside for 8+ hours every day.
 
 # Brand
 
-ERP is a Multi-Tenant Education ERP where a single Institution manages multiple Colleges, Campuses and Departments.
+ERP is a Multi-Tenant Education ERP where a single Trust manages multiple Institutions, Campuses and Departments.
 
 > **Domain vocabulary lives in [docs/PRODUCT.md](../../../docs/PRODUCT.md).** The same screens serve
-> colleges and K-12 schools, so user-facing labels for terms and programmes come from the record's
+> institutions and K-12 schools, so user-facing labels for terms and programmes come from the record's
 > `Academic Structure` (`term_label`) rather than being hardcoded to "Semester".
 
 The interface should communicate:
@@ -117,7 +117,7 @@ Content
 
 Never assume a single organization.
 
-Institution
+Trust
 
 ↓
 
@@ -125,7 +125,7 @@ Campus
 
 ↓
 
-College
+Institution
 
 ↓
 
@@ -331,7 +331,7 @@ Export support.
 
 Top Navbar
 
-Institution Selector
+Trust Selector
 
 Notifications
 

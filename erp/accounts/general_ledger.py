@@ -17,7 +17,7 @@ from frappe.utils import flt
 BALANCE_TOLERANCE = 0.005
 
 
-def make_gl_entries(gl_maps, *, institution, voucher_type, voucher_no, remark=None):
+def make_gl_entries(gl_maps, *, trust, voucher_type, voucher_no, remark=None):
 	"""Post a balanced set of GL Entries for one voucher.
 
 	`gl_maps` is a list of dicts, each `{account, posting_date, debit?, credit?, remarks?}`. Throws
@@ -43,7 +43,7 @@ def make_gl_entries(gl_maps, *, institution, voucher_type, voucher_no, remark=No
 				"account": entry["account"],
 				"debit": flt(entry.get("debit"), 2),
 				"credit": flt(entry.get("credit"), 2),
-				"institution": institution,
+				"trust": trust,
 				"voucher_type": voucher_type,
 				"voucher_no": voucher_no,
 				"remarks": entry.get("remarks") or remark,
@@ -51,7 +51,7 @@ def make_gl_entries(gl_maps, *, institution, voucher_type, voucher_no, remark=No
 		).insert(ignore_permissions=True)
 
 
-def post_reversal(voucher_type, voucher_no, *, institution, remark=None):
+def post_reversal(voucher_type, voucher_no, *, trust, remark=None):
 	"""Undo a voucher's ledger effect by posting mirror-image rows (append-only, never delete).
 
 	Swaps debit and credit on every existing entry of the voucher, so the account nets to zero while
@@ -73,7 +73,7 @@ def post_reversal(voucher_type, voucher_no, *, institution, remark=None):
 	]
 	make_gl_entries(
 		reversal,
-		institution=institution,
+		trust=trust,
 		voucher_type=voucher_type,
 		voucher_no=voucher_no,
 		remark=remark or _("Reversal of {0}").format(voucher_no),

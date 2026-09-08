@@ -3,7 +3,7 @@
 
 """Create the roles the Accounts module's doctypes name in their permission blocks.
 
-`Accounts Manager` is the per-institution finance admin (collects, cancels, reads the ledger);
+`Accounts Manager` is the per-trust finance admin (collects, cancels, reads the ledger);
 `Cashier` is the counter collector (collects, cannot cancel). Runs in `[pre_model_sync]` because a
 DocType JSON carrying a permission row for a role that does not exist yet fails to sync, so the
 roles must be in the database before `bench migrate` reaches the Accounts doctypes.

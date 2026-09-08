@@ -39,7 +39,7 @@
    "reqd": 1,
    "in_list_view": 1,
    "in_standard_filter": 1,
-   "description": "Maps the mode to a deposit account: a payment resolves the institution's Cash or Bank account from this"
+   "description": "Maps the mode to a deposit account: a payment resolves the trust's Cash or Bank account from this"
   },
   {
    "fieldname": "enabled",

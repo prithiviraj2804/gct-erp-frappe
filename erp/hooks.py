@@ -27,8 +27,8 @@ app_license = "mit"
 before_migrate = "erp.utils.ensure_module_defs"
 
 website_route_rules = [
-    {"from_route": "/erp/<path:app_path>", "to_route": "erp"},
-    {"from_route": "/erp", "to_route": "erp"},
+	{"from_route": "/erp/<path:app_path>", "to_route": "erp"},
+	{"from_route": "/erp", "to_route": "erp"},
 ]
 
 # Includes in <head>
@@ -170,12 +170,12 @@ doc_events = {
 	"*": {
 		"before_insert": "erp.utils.set_uuid_id",
 	},
-	# The sign-in screen is branded from the Institution record, and that payload is cached in
+	# The sign-in screen is branded from the Trust record, and that payload is cached in
 	# redis for anonymous callers. Without this, an admin who uploads a logo would keep seeing
 	# the old one until the TTL expired.
-	"Institution": {
+	"Trust": {
 		# A new tenant gets its minimal chart of accounts so fee collection has somewhere to post.
-		"after_insert": "erp.accounts.provisioning.setup_institution_accounts",
+		"after_insert": "erp.accounts.provisioning.setup_trust_accounts",
 		"on_update": "erp.api.branding.clear_cache",
 		"on_trash": "erp.api.branding.clear_cache",
 	},
@@ -290,4 +290,3 @@ doc_events = {
 # ------------
 # List of apps whose translatable strings should be excluded from this app's translations.
 # ignore_translatable_strings_from = []
-

@@ -12,7 +12,7 @@ because the enquiry passed months earlier.
 
 The requirement is data, not a hardcoded map: `Programme.required_prior_qualification` states it, so
 a school class and a degree express their prerequisite in the same field. A blank requirement means
-none — the case for an entry-level school class (LKG, Class 1), which no college programme hits.
+none — the case for an entry-level school class (LKG, Class 1), which no institution programme hits.
 """
 
 import frappe

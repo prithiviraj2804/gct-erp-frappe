@@ -1,16 +1,16 @@
 # Copyright (c) 2026, Prithivi and contributors
 # For license information, please see license.txt
 
-"""Ancestry rules for the Institution → Campus → College → Department → Programme chain.
+"""Ancestry rules for the Trust → Campus → Institution → Department → Programme chain.
 
 Every master in this chain stores denormalised copies of its ancestors — a Programme
-carries `college`, `institution`, `campus` and `department` side by side — because seat
+carries `institution`, `trust`, `campus` and `department` side by side — because seat
 counts, fee structures and reports filter on those columns directly rather than walking
 the tree.
 
 A Link field only proves its target exists, never that the target sits in the same branch,
 so those columns are four independent claims that nothing reconciles. Left unchecked, a
-Programme can name a Department belonging to an entirely different college, and every
+Programme can name a Department belonging to an entirely different institution, and every
 figure derived from it inherits the contradiction without a word.
 
 `validate_same_parent` is the guard: it re-reads the linked record and asserts the
@@ -28,8 +28,8 @@ class HierarchyMismatchError(frappe.ValidationError):
 def validate_same_parent(doc, link_field: str, *shared_fields: str) -> None:
 	"""Assert the record linked in `link_field` shares this document's `shared_fields`.
 
-	``validate_same_parent(self, "department", "college")`` on a Programme reads the linked
-	Department's own `college` and throws unless it matches the Programme's.
+	``validate_same_parent(self, "department", "institution")`` on a Programme reads the linked
+	Department's own `institution` and throws unless it matches the Programme's.
 
 	Stays silent when either side is blank: an empty link is nothing to compare, and an
 	empty value on this document is an omission for `reqd`/`fetch_from` to deal with rather

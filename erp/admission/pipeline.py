@@ -99,7 +99,7 @@ def assert_status_transition(enquiry, new_status, previous_status=None, *, appli
 		)
 
 	# Order matters to whoever reads the error. The allotment outcome is checked first because it is
-	# the one thing the office cannot remedy: an applicant counselling sent to another college is not
+	# the one thing the office cannot remedy: an applicant counselling sent to another institution is not
 	# going to be admitted here however many certificates are produced, so telling them to go and
 	# verify documents first would send them down a road that ends nowhere.
 	if needs_admission:
@@ -136,7 +136,7 @@ def assert_documents_verified(application, new_status) -> None:
 def assert_allotted_to_us(application) -> None:
 	"""For a government-quota seat, counselling must actually have sent this applicant to us.
 
-	Only a government-quota application is asked: a management-quota or direct seat is the college's
+	Only a government-quota application is asked: a management-quota or direct seat is the institution's
 	own to give, and no external body allots it.
 	"""
 	if application.admission_route != GOVERNMENT_QUOTA:
@@ -147,7 +147,7 @@ def assert_allotted_to_us(application) -> None:
 			_("Counselling recorded this applicant as {0}, so they cannot be admitted here.").format(
 				frappe.bold(application.counselling_outcome)
 			),
-			title=_("Not Allotted To This College"),
+			title=_("Not Allotted To This Institution"),
 		)
 
 	if application.counselling_outcome != "Allotted To Us":

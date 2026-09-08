@@ -22,9 +22,9 @@
   "new_status",
   "lead_section",
   "counsellor",
-  "institution",
+  "trust",
   "column_break_lead",
-  "college"
+  "institution"
  ],
  "fields": [
   {
@@ -145,11 +145,11 @@
    "description": "Owner of the lead, copied from the enquiry. Follow-up visibility keys on this field."
   },
   {
-   "fieldname": "institution",
+   "fieldname": "trust",
    "fieldtype": "Link",
-   "label": "Institution",
-   "options": "Institution",
-   "fetch_from": "enquiry.institution",
+   "label": "Trust",
+   "options": "Trust",
+   "fetch_from": "enquiry.trust",
    "read_only": 1,
    "in_standard_filter": 1
   },
@@ -158,11 +158,11 @@
    "fieldtype": "Column Break"
   },
   {
-   "fieldname": "college",
+   "fieldname": "institution",
    "fieldtype": "Link",
-   "label": "College",
-   "options": "College",
-   "fetch_from": "enquiry.college",
+   "label": "Institution",
+   "options": "Institution",
+   "fetch_from": "enquiry.institution",
    "read_only": 1
   }
  ],

@@ -3,8 +3,8 @@
 
 """Giving the application fee back — a cash-out voucher, not a cancelled receipt.
 
-The case: this college collects the application fee *before* counselling, and counselling then
-allots the applicant to a different college. Nothing was wrong with the receipt, so it is not
+The case: this institution collects the application fee *before* counselling, and counselling then
+allots the applicant to a different institution. Nothing was wrong with the receipt, so it is not
 cancelled; the money simply goes back. The two acts post different vouchers and mean different
 things, and the lead keeps `application_fee_paid` set because the fee genuinely was paid.
 
@@ -52,24 +52,24 @@ class IntegrationTestFeeRefund(IntegrationTestCase):
 			},
 		)
 
-		# Inserting the institution builds its chart of accounts through the after_insert hook.
-		cls.ensure("Institution", cls.INST, {"institution_code": cls.INST, "institution_name": "R Institute"})
+		# Inserting the trust builds its chart of accounts through the after_insert hook.
+		cls.ensure("Trust", cls.INST, {"trust_code": cls.INST, "trust_name": "R Institute"})
 		cls.ensure(
-			"College",
+			"Institution",
 			cls.COL,
 			{
-				"institution": cls.INST,
-				"college_code": cls.COL,
-				"college_name": "R College",
-				"college_type": "Engineering",
+				"trust": cls.INST,
+				"institution_code": cls.COL,
+				"institution_name": "R Institution",
+				"institution_type": "Engineering",
 			},
 		)
 		cls.dept = cls.ensure(
 			"Department",
 			f"{cls.COL}-CSE",
 			{
-				"institution": cls.INST,
-				"college": cls.COL,
+				"trust": cls.INST,
+				"institution": cls.COL,
 				"department_code": "CSE",
 				"department_name": "R CSE",
 			},
@@ -78,7 +78,7 @@ class IntegrationTestFeeRefund(IntegrationTestCase):
 			frappe.get_doc(
 				{
 					"doctype": "Programme",
-					"college": cls.COL,
+					"institution": cls.COL,
 					"department": cls.dept,
 					"programme_code": "ZRUG",
 					"programme_name": "R B.Tech",
@@ -96,7 +96,7 @@ class IntegrationTestFeeRefund(IntegrationTestCase):
 			frappe.get_doc(
 				{
 					"doctype": "Academic Year",
-					"institution": cls.INST,
+					"trust": cls.INST,
 					"year_code": "2060-61",
 					"title": "R 2060-61",
 					"start_date": "2060-06-01",
@@ -138,7 +138,7 @@ class IntegrationTestFeeRefund(IntegrationTestCase):
 					"doctype": "Admission Enquiry",
 					"student_name": "Refund Case",
 					"phone_number": "9876533333",
-					"college": cls.COL,
+					"institution": cls.COL,
 					"department": cls.dept,
 					"programme": cls.programme,
 					"admission_type": "REG",
@@ -169,7 +169,7 @@ class IntegrationTestFeeRefund(IntegrationTestCase):
 
 	def test_refunding_posts_the_mirror_of_the_receipt(self):
 		_enquiry, payment = self.paid()
-		result = refund_application_fee(payment, "Counselling allotted another college", "Cash")
+		result = refund_application_fee(payment, "Counselling allotted another institution", "Cash")
 
 		self.assertTrue(result["created"])
 		self.assertEqual(result["status"], "Refunded")
@@ -256,8 +256,8 @@ class IntegrationTestFeeRefund(IntegrationTestCase):
 				"student_name": "Already In",
 				"date_of_admission": today(),
 				"status": "Active",
-				"institution": self.INST,
-				"college": self.COL,
+				"trust": self.INST,
+				"institution": self.COL,
 				"department": self.dept,
 				"programme": self.programme,
 				"academic_year": self.year,

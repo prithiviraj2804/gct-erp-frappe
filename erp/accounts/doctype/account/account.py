@@ -10,16 +10,16 @@ from erp.master.hierarchy import validate_same_parent
 
 class Account(Document):
 	def validate(self):
-		self.validate_parent_in_same_institution()
+		self.validate_parent_in_same_trust()
 
-	def validate_parent_in_same_institution(self):
-		"""A parent group must belong to the same institution's chart.
+	def validate_parent_in_same_trust(self):
+		"""A parent group must belong to the same trust's chart.
 
-		The chart is per-tenant: each institution owns its own Assets/Income/... tree. A Link only
+		The chart is per-tenant: each trust owns its own Assets/Income/... tree. A Link only
 		proves the parent exists, so this reconciles the branch — an account cannot hang under
-		another institution's group.
+		another trust's group.
 		"""
-		validate_same_parent(self, "parent_account", "institution")
+		validate_same_parent(self, "parent_account", "trust")
 
 	def on_trash(self):
 		"""Never delete an account that has ledger history.

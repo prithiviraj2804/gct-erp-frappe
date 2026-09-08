@@ -37,7 +37,7 @@ class FeePayment(Document):
 
 	def on_cancel(self):
 		if flt(self.amount) > 0:
-			post_reversal("Fee Payment", self.name, institution=self.institution, remark=self.remarks)
+			post_reversal("Fee Payment", self.name, trust=self.trust, remark=self.remarks)
 		self.unflag_enquiry()
 		self.db_set("status", "Cancelled")
 
@@ -55,7 +55,7 @@ class FeePayment(Document):
 		enquiry = frappe.db.get_value(
 			"Admission Enquiry",
 			self.admission_enquiry,
-			["student_name", "programme_intake", "institution", "college"],
+			["student_name", "programme_intake", "trust", "institution"],
 			as_dict=True,
 		)
 		if not enquiry:
@@ -63,32 +63,34 @@ class FeePayment(Document):
 
 		self.student_name = enquiry.student_name
 		self.programme_intake = enquiry.programme_intake
+		self.trust = enquiry.trust
 		self.institution = enquiry.institution
-		self.college = enquiry.college
 
 		if not self.programme_intake:
 			frappe.throw(
-				_("This enquiry has no Programme Intake, so its application fee is unknown. Set the intake on the enquiry first."),
+				_(
+					"This enquiry has no Programme Intake, so its application fee is unknown. Set the intake on the enquiry first."
+				),
 				title=_("No Fee Defined"),
 			)
 		self.amount = flt(frappe.db.get_value("Programme Intake", self.programme_intake, "application_fee"))
 
 	def resolve_accounts(self):
-		"""Find the institution's income and deposit accounts by meaning, not by name.
+		"""Find the trust's income and deposit accounts by meaning, not by name.
 
 		The lookup itself is in `erp/accounts/provisioning.py` because a Fee Refund resolves the same
 		two accounts to post the mirror entry.
 		"""
-		self.income_account = resolve_account(self.institution, "Income Account")
+		self.income_account = resolve_account(self.trust, "Income Account")
 		mode_type = frappe.db.get_value("Mode of Payment", self.mode_of_payment, "type")
-		self.deposit_account = resolve_account(self.institution, mode_type)
+		self.deposit_account = resolve_account(self.trust, mode_type)
 
 	def validate_hierarchy(self):
-		"""Keep every linked record inside the one institution's books."""
-		validate_same_parent(self, "programme_intake", "institution")
-		validate_same_parent(self, "income_account", "institution")
-		validate_same_parent(self, "deposit_account", "institution")
-		validate_same_parent(self, "college", "institution")
+		"""Keep every linked record inside the one trust's books."""
+		validate_same_parent(self, "programme_intake", "trust")
+		validate_same_parent(self, "income_account", "trust")
+		validate_same_parent(self, "deposit_account", "trust")
+		validate_same_parent(self, "institution", "trust")
 
 	# --- submit / cancel effects -----------------------------------------------------
 
@@ -111,10 +113,20 @@ class FeePayment(Document):
 		"""Debit where the money landed, credit the fee income — one balanced voucher."""
 		make_gl_entries(
 			[
-				{"account": self.deposit_account, "debit": self.amount, "credit": 0, "posting_date": self.posting_date},
-				{"account": self.income_account, "debit": 0, "credit": self.amount, "posting_date": self.posting_date},
+				{
+					"account": self.deposit_account,
+					"debit": self.amount,
+					"credit": 0,
+					"posting_date": self.posting_date,
+				},
+				{
+					"account": self.income_account,
+					"debit": 0,
+					"credit": self.amount,
+					"posting_date": self.posting_date,
+				},
 			],
-			institution=self.institution,
+			trust=self.trust,
 			voucher_type="Fee Payment",
 			voucher_no=self.name,
 			remark=_("Application fee — {0}").format(self.student_name or self.admission_enquiry),
@@ -123,7 +135,9 @@ class FeePayment(Document):
 	def unflag_enquiry(self):
 		"""Clear the paid flag on cancellation — but only if this is still the receipt on record,
 		so a corrected re-collection made after this one is not clobbered."""
-		on_record = frappe.db.get_value("Admission Enquiry", self.admission_enquiry, "application_fee_payment")
+		on_record = frappe.db.get_value(
+			"Admission Enquiry", self.admission_enquiry, "application_fee_payment"
+		)
 		if on_record == self.name:
 			frappe.db.set_value(
 				"Admission Enquiry",

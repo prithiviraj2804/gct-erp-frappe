@@ -21,8 +21,8 @@ class FeeRefund(Document):
 	the fee income and crediting the cash or bank it goes out of. The Fee Payment stays submitted and
 	the lead's `application_fee_paid` flag stays set, because both are what happened.
 
-	The case this exists for: the college collects the application fee *before* counselling, and
-	counselling then allots the applicant to a different college. Nothing was wrong with the receipt;
+	The case this exists for: the institution collects the application fee *before* counselling, and
+	counselling then allots the applicant to a different institution. Nothing was wrong with the receipt;
 	the student simply never joins.
 
 	Submittable for the same reason Fee Payment is — posted money must be immutable and reversible.
@@ -43,7 +43,7 @@ class FeeRefund(Document):
 
 	def on_cancel(self):
 		if flt(self.amount) > 0:
-			post_reversal("Fee Refund", self.name, institution=self.institution, remark=self.remarks)
+			post_reversal("Fee Refund", self.name, trust=self.trust, remark=self.remarks)
 		self.unflag_enquiry()
 		self.db_set("status", "Cancelled")
 
@@ -52,9 +52,9 @@ class FeeRefund(Document):
 	def set_ancestors_and_amount(self):
 		"""Re-derive tenant, names and the ceiling on the amount from the receipt being refunded.
 
-		Derived rather than trusted for the same reason a Fee Payment derives its amount from the
+		Derived rather tha trusted for the same reason a Fee Payment derives its amount from the
 		intake: `fetch_from` is a Desk convenience `ignore_links` skips, and a posted amount must
-		never be a client's word. The amount itself *is* enterable here — a college may keep a
+		never be a client's word. The amount itself *is* enterable here — an institution may keep a
 		processing charge — but it is bounded by what was actually collected.
 		"""
 		if not self.fee_payment:
@@ -63,7 +63,7 @@ class FeeRefund(Document):
 		payment = frappe.db.get_value(
 			"Fee Payment",
 			self.fee_payment,
-			["admission_enquiry", "student_name", "institution", "college", "amount", "docstatus"],
+			["admission_enquiry", "student_name", "trust", "institution", "amount", "docstatus"],
 			as_dict=True,
 		)
 		if not payment:
@@ -71,8 +71,8 @@ class FeeRefund(Document):
 
 		self.admission_enquiry = payment.admission_enquiry
 		self.student_name = payment.student_name
+		self.trust = payment.trust
 		self.institution = payment.institution
-		self.college = payment.college
 
 		if self.amount is None or flt(self.amount) == 0:
 			self.amount = flt(payment.amount)
@@ -89,12 +89,12 @@ class FeeRefund(Document):
 
 	def resolve_accounts(self):
 		"""Debit the fee income back out; credit whatever the money physically leaves from."""
-		if not self.institution:
+		if not self.trust:
 			return
 
-		self.income_account = resolve_account(self.institution, "Income Account")
+		self.income_account = resolve_account(self.trust, "Income Account")
 		mode_type = frappe.db.get_value("Mode of Payment", self.mode_of_payment, "type")
-		self.refund_account = resolve_account(self.institution, mode_type)
+		self.refund_account = resolve_account(self.trust, mode_type)
 
 	def validate_refundable(self):
 		"""Refuse a refund that would contradict the record.
@@ -138,12 +138,12 @@ class FeeRefund(Document):
 			)
 
 	def validate_hierarchy(self):
-		"""Keep every linked record inside the one institution's books."""
-		validate_same_parent(self, "fee_payment", "institution")
-		validate_same_parent(self, "admission_enquiry", "institution")
-		validate_same_parent(self, "income_account", "institution")
-		validate_same_parent(self, "refund_account", "institution")
-		validate_same_parent(self, "college", "institution")
+		"""Keep every linked record inside the one trust's books."""
+		validate_same_parent(self, "fee_payment", "trust")
+		validate_same_parent(self, "admission_enquiry", "trust")
+		validate_same_parent(self, "income_account", "trust")
+		validate_same_parent(self, "refund_account", "trust")
+		validate_same_parent(self, "institution", "trust")
 
 	# --- submit / cancel effects -----------------------------------------------------
 
@@ -182,7 +182,7 @@ class FeeRefund(Document):
 					"posting_date": self.posting_date,
 				},
 			],
-			institution=self.institution,
+			trust=self.trust,
 			voucher_type="Fee Refund",
 			voucher_no=self.name,
 			remark=_("Application fee refund — {0}").format(self.student_name or self.admission_enquiry),

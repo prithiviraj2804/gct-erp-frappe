@@ -2,16 +2,16 @@
 // For license information, please see license.txt
 
 // Only these two are records. `student_reference` and the three `reference_staff_*` slots
-// are typed names, so they carry no institution and nothing about them can go stale.
+// are typed names, so they carry no trust and nothing about them can go stale.
 const LINKED_REFERRER_FIELDS = ["staff_reference", "consultancy"];
 const ROUTE_FIELDS = [...LINKED_REFERRER_FIELDS, "student_reference", "source_details"];
 
 frappe.ui.form.on("Admission Gate Pass", {
-	college(frm) {
-		// `institution` re-fetches itself from the new college; the two link pickers do not.
-		// They would stay pointed at the previous institution's staff and agencies and only
+	institution(frm) {
+		// `trust` re-fetches itself from the new institution; the two link pickers do not.
+		// They would stay pointed at the previous trust's staff and agencies and only
 		// fail on save, so drop them and make the desk re-pick. The typed names are left
-		// alone — re-keying a person's name because the college was corrected is busywork.
+		// alone — re-keying a person's name because the institution was corrected is busywork.
 		for (const field of LINKED_REFERRER_FIELDS) {
 			if (frm.doc[field]) {
 				frm.set_value(field, null);

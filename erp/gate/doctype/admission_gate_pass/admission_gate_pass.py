@@ -38,7 +38,7 @@ class AdmissionGatePass(Document):
 		self.set_academic_year()
 		# Before the hierarchy check, not after: a referrer belonging to a route the desk has
 		# moved off is about to be discarded, and validating it first would let a stale value
-		# nobody can see block the save — moving the college to another institution while a
+		# nobody can see block the save — moving the institution to another trust while a
 		# now-hidden consultancy still names the old one is exactly that case.
 		self.clear_unused_reference()
 		self.validate_conditionally_mandatory()
@@ -50,55 +50,55 @@ class AdmissionGatePass(Document):
 		self.validate_movement()
 
 	def set_academic_year(self):
-		"""Stamp the enquiry with the institution's open admission year.
+		"""Stamp the enquiry with the trust's open admission year.
 
 		Left blank rather than thrown on when no year is flagged open. A gate desk logs
 		whoever walks up to it; refusing the entry because an administrator forgot to tick
 		a checkbox would push security staff to invent a value or skip the log entirely.
 		"""
-		# `institution` is `fetch_from` college and filled in `_validate_links`, which
-		# `flags.ignore_links` skips — fall back to the college rather than lose the year.
-		institution = self.institution
-		if not institution and self.college:
-			institution = frappe.db.get_value("College", self.college, "institution")
+		# `trust` is `fetch_from` institution and filled in `_validate_links`, which
+		# `flags.ignore_links` skips — fall back to the institution rather than lose the year.
+		trust = self.trust
+		if not trust and self.institution:
+			trust = frappe.db.get_value("Institution", self.institution, "trust")
 
-		if not institution:
+		if not trust:
 			return
 
 		# Re-derived, not kept, once the year on the row belongs to somebody else: moving a
-		# pass to a college under another institution leaves the old tenant's year behind, and
+		# pass to an institution under another trust leaves the old tenant's year behind, and
 		# `validate_hierarchy` would then refuse a save nobody at the desk can rescue — the
 		# field is read-only, so there is no way to clear the value it is objecting to.
 		if self.academic_year:
-			year_institution = frappe.db.get_value("Academic Year", self.academic_year, "institution")
-			if year_institution == institution:
+			year_trust = frappe.db.get_value("Academic Year", self.academic_year, "trust")
+			if year_trust == trust:
 				return
 
 		self.academic_year = frappe.db.get_value(
-			"Academic Year", {"institution": institution, "is_admission_open": 1}, "name"
+			"Academic Year", {"trust": trust, "is_admission_open": 1}, "name"
 		)
 
 	def validate_hierarchy(self):
-		"""Keep the college, the year and every named referrer inside one institution.
+		"""Keep the institution, the year and every named referrer inside one trust.
 
-		The referrer links are checked for the same reason as the college: a Staff or
+		The referrer links are checked for the same reason as the institution: a Staff or
 		Consultancy Link accepts any record in the system, so a pass raised at one
-		institution's gate can name a counsellor or an agency belonging to a different
+		trust's gate can name a counsellor or an agency belonging to a different
 		tenant. Nothing downstream would notice — the referral would simply be credited
-		across the boundary, and the other institution's referral counts would move because
+		across the boundary, and the other trust's referral counts would move because
 		of a visitor it never saw.
 
 		Only the two Link referrers are checkable. `student_reference` and the three
-		`reference_staff_*` slots are typed names, not records, so there is no institution on
+		`reference_staff_*` slots are typed names, not records, so there is no trust on
 		the other end to compare — the tenant guarantee simply does not reach them.
 
-		`institution` is `fetch_from` college and normally rewritten on save; it is asserted
+		`trust` is `fetch_from` institution and normally rewritten on save; it is asserted
 		here anyway because `flags.ignore_links` skips that rewrite.
 		"""
-		validate_same_parent(self, "college", "institution")
-		validate_same_parent(self, "academic_year", "institution")
-		validate_same_parent(self, "staff_reference", "institution")
-		validate_same_parent(self, "consultancy", "institution")
+		validate_same_parent(self, "institution", "trust")
+		validate_same_parent(self, "academic_year", "trust")
+		validate_same_parent(self, "staff_reference", "trust")
+		validate_same_parent(self, "consultancy", "trust")
 
 	def validate_aadhaar(self):
 		if not self.aadhaar_number:
@@ -117,12 +117,12 @@ class AdmissionGatePass(Document):
 		self.aadhaar_number = digits
 
 	def validate_unique_aadhaar(self):
-		"""One admission per student (Aadhaar) per institution per admission year.
+		"""One admission per student (Aadhaar) per trust per admission year.
 
 		A second pass for the same visitor could name a different `reference`, so the referral
 		credit would be disputed and every count built on that column double-charged. Scoped to
-		institution + academic_year: a student may re-apply in a later year or at another
-		institution, but not twice in one cycle.
+		trust + academic_year: a student may re-apply in a later year or at another
+		trust, but not twice in one cycle.
 
 		Runs after `validate_aadhaar`, which rewrites the number to its 12-digit form — the
 		comparison must be against the normalised value, or "1234 5678 9012" would slip past the
@@ -130,12 +130,12 @@ class AdmissionGatePass(Document):
 		left unchecked on purpose: `set_academic_year` logs whoever walks up rather than refusing
 		them, and there is no cycle to be unique within.
 		"""
-		if not (self.aadhaar_number and self.institution and self.academic_year):
+		if not (self.aadhaar_number and self.trust and self.academic_year):
 			return
 
 		filters = {
 			"aadhaar_number": self.aadhaar_number,
-			"institution": self.institution,
+			"trust": self.trust,
 			"academic_year": self.academic_year,
 		}
 		# Aadhaar is not part of the `AGP-.YYYY.-.#####` autoname, so a duplicate lands on a
@@ -147,7 +147,7 @@ class AdmissionGatePass(Document):
 		duplicate = frappe.db.exists("Admission Gate Pass", filters)
 		if duplicate:
 			frappe.throw(
-				_("A gate pass for Aadhaar {0} already exists at this institution for {1} ({2}).").format(
+				_("A gate pass for Aadhaar {0} already exists at this trust for {1} ({2}).").format(
 					frappe.bold(self.aadhaar_number),
 					frappe.bold(self.academic_year),
 					frappe.bold(duplicate),

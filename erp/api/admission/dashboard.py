@@ -5,8 +5,8 @@
 
 One whitelisted read that aggregates Admission Enquiry rows. It reads them through
 `frappe.get_list`, so the same row-level scoping the SPA and Desk get applies here too — a manager
-sees their institution's numbers, a counsellor sees their own — without this endpoint re-deriving
-who-sees-what. Overdue is computed live from `next_follow_up` rather than trusting the stamped
+sees their trust's numbers, a counsellor sees their own — without this endpoint re-deriving
+who-sees-what. Overdue is computed live from `next_follow_up` rather tha trusting the stamped
 `follow_up_state`, so a lead that fell overdue since it was last touched still counts.
 """
 

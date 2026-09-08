@@ -11,8 +11,8 @@ class Department(Document):
 		self.validate_hierarchy()
 
 	def validate_hierarchy(self):
-		"""`institution` is picked by hand here, not fetched, so it can flatly contradict
-		`college`. Programme trusts a Department's `college` to place it in the tree, so
+		"""`trust` is picked by hand here, not fetched, so it can flatly contradict
+		`institution`. Programme trusts a Department's `institution` to place it in the tree, so
 		this check is what makes that trust worth anything.
 		"""
-		validate_same_parent(self, "college", "institution")
+		validate_same_parent(self, "institution", "trust")

@@ -76,11 +76,7 @@ class TestDoctypeSchema(IntegrationTestCase):
 		)
 
 	def test_every_authored_fieldtype_is_supported(self):
-		found = {
-			df.fieldtype
-			for doctype in _app_doctypes()
-			for df in frappe.get_meta(doctype).fields
-		}
+		found = {df.fieldtype for doctype in _app_doctypes() for df in frappe.get_meta(doctype).fields}
 
 		self.assertEqual(
 			found - SUPPORTED_FIELDTYPES,
@@ -137,19 +133,19 @@ class TestConditionParser(IntegrationTestCase):
 class TestLinkFilterParser(IntegrationTestCase):
 	def test_literal_value(self):
 		self.assertEqual(
-			parse_link_filters('[["College","status","=","Active"]]'),
+			parse_link_filters('[["Institution","status","=","Active"]]'),
 			[{"fieldname": "status", "operator": "=", "value": "Active"}],
 		)
 
 	def test_sibling_field_reference(self):
 		self.assertEqual(
-			parse_link_filters('[["Campus","institution","=","eval:doc.institution"]]'),
-			[{"fieldname": "institution", "operator": "=", "from_field": "institution"}],
+			parse_link_filters('[["Campus","trust","=","eval:doc.trust"]]'),
+			[{"fieldname": "trust", "operator": "=", "from_field": "trust"}],
 		)
 
 	def test_multiple_rows(self):
 		parsed = parse_link_filters(
-			'[["Staff","institution","=","eval:doc.institution"],["Staff","status","=","Active"]]'
+			'[["Staff","trust","=","eval:doc.trust"],["Staff","status","=","Active"]]'
 		)
 		self.assertEqual(len(parsed), 2)
 
@@ -158,7 +154,7 @@ class TestLinkFilterParser(IntegrationTestCase):
 
 
 class TestSchemaEndpoint(IntegrationTestCase):
-	DOCTYPE = "Institution"
+	DOCTYPE = "Trust"
 
 	def test_returns_no_document_data(self):
 		"""The endpoint publishes schema. Rows travel /api/resource with their own checks."""
@@ -170,8 +166,8 @@ class TestSchemaEndpoint(IntegrationTestCase):
 		schema = get_doctype_schema(self.DOCTYPE)
 
 		self.assertEqual(schema["doctype"], self.DOCTYPE)
-		self.assertEqual(schema["title_field"], "institution_name")
-		self.assertTrue(schema["layout"], "Institution has Section Breaks; layout must not be empty")
+		self.assertEqual(schema["title_field"], "trust_name")
+		self.assertTrue(schema["layout"], "Trust has Section Breaks; layout must not be empty")
 
 		sections = [section for tab in schema["layout"] for section in tab["sections"]]
 		self.assertIn("Basic Information", [section["label"] for section in sections])
@@ -195,7 +191,7 @@ class TestSchemaEndpoint(IntegrationTestCase):
 		sections = [section for tab in schema["layout"] for section in tab["sections"]]
 		self.assertTrue(
 			any(len(section["columns"]) > 1 for section in sections),
-			"Institution authors Column Breaks; no section reports more than one column",
+			"Trust authors Column Breaks; no section reports more than one column",
 		)
 
 	def test_child_schemas_is_present_and_empty_until_a_table_field_exists(self):
@@ -281,7 +277,7 @@ class TestSchemaEndpoint(IntegrationTestCase):
 		schema = get_doctype_schema(self.DOCTYPE)
 		columns = schema["list_columns"]
 
-		self.assertEqual(columns[0], "institution_name")
+		self.assertEqual(columns[0], "trust_name")
 		self.assertEqual(len(columns), len(set(columns)), "a column is listed twice")
 
 	def test_layout_omits_hidden_fields_but_fields_keeps_them(self):
@@ -300,7 +296,7 @@ class TestSchemaEndpoint(IntegrationTestCase):
 
 	def test_filter_fields_exclude_the_uuid_column(self):
 		"""`id` carries in_standard_filter by app convention; a UUID filter box is junk."""
-		for doctype in ("Institution", "College", "Admission Gate Pass"):
+		for doctype in ("Trust", "Institution", "Admission Gate Pass"):
 			with self.subTest(doctype=doctype):
 				self.assertNotIn("id", get_doctype_schema(doctype)["filter_fields"])
 

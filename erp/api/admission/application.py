@@ -14,7 +14,7 @@ controller, and needs no wrapper here.
 import frappe
 from frappe import _
 
-from erp.api.permission import assert_institution_in_scope
+from erp.api.permission import assert_trust_in_scope
 
 # Copied off the lead as the application's starting point. They are a *starting* point only: the
 # programme is the one the student asked about, and counselling routinely moves it. That is why the
@@ -27,7 +27,7 @@ def start_application(enquiry: str) -> dict:
 	"""Raise the Admission Application for a lead, seeded from the lead and its intake (idempotent).
 
 	Returns the existing application if one is already raised, so a repeat call never splits a lead
-	across two of them. The fee must already be collected: this college hands out its application
+	across two of them. The fee must already be collected: this institution hands out its application
 	form only after the fee is taken, and the pipeline says the same thing — an unpaid lead cannot
 	reach "Application Submitted".
 	"""
@@ -37,12 +37,12 @@ def start_application(enquiry: str) -> dict:
 	lead = frappe.db.get_value(
 		"Admission Enquiry",
 		enquiry,
-		["institution", "application_fee_paid", "date_of_birth", *SEEDED_FROM_ENQUIRY],
+		["trust", "application_fee_paid", "date_of_birth", *SEEDED_FROM_ENQUIRY],
 		as_dict=True,
 	)
 	if not lead:
 		frappe.throw(_("Admission Enquiry {0} was not found.").format(frappe.bold(enquiry)))
-	assert_institution_in_scope(lead.institution)
+	assert_trust_in_scope(lead.trust)
 
 	existing = frappe.db.get_value("Admission Application", {"admission_enquiry": enquiry}, "name")
 	if existing:
@@ -75,10 +75,10 @@ def start_application(enquiry: str) -> dict:
 def required_documents_for(programme_intake: str) -> list[dict]:
 	"""The checklist an intake publishes, as rows ready to append to an application.
 
-	The list is per-intake rather than global because it is where the school/college difference
+	The list is per-intake rather than global because it is where the school/institution difference
 	actually lives: a school class asks for a birth certificate and a transfer certificate, an
 	engineering intake for mark sheets, a community certificate and the counselling allotment order.
-	One doctype, different data — no rule keyed on the college's type.
+	One doctype, different data — no rule keyed on the institution's type.
 	"""
 	if not programme_intake:
 		return []

@@ -12,7 +12,7 @@ from erp.api.permission import LEAD_ADMIN_ROLES, staff_for_user
 # Copied from the enquiry so a follow-up carries its own scoping keys and display name. `counsellor`
 # is the one the row-level permission rides on; keeping it on the follow-up means "my follow-ups"
 # filters without a join back to the enquiry every time.
-ENQUIRY_FIELDS = ("student_name", "counsellor", "institution", "college")
+ENQUIRY_FIELDS = ("student_name", "counsellor", "trust", "institution")
 
 
 class AdmissionFollowup(Document):

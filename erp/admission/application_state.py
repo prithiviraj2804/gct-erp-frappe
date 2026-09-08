@@ -47,7 +47,7 @@ def derive_application_state(application) -> str:
 
 	Order matters and encodes the real precedence. A produced student ends it. A seat that went
 	elsewhere ends it too, and outranks any document progress — verifying certificates for a student
-	TNEA sent to another college changes nothing. Waiting on counselling outranks the offer and
+	TNEA sent to another institution changes nothing. Waiting on counselling outranks the offer and
 	document steps because none of them can conclude until the allotment is known.
 	"""
 	if application.student:

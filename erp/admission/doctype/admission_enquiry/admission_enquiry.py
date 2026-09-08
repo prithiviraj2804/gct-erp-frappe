@@ -17,7 +17,7 @@ from erp.utils import normalize_aadhaar, normalize_phone
 # duplicate check keys on, and the reference block that decides who is credited with the walk-in.
 # `read_only_depends_on` greys these in the Desk form; this re-copies them from the pass on every
 # save so the lock holds against the API and the SPA too. The other carried fields (name, phone,
-# college, …) are set once by the form script and stay the counsellor's to correct.
+# institution, …) are set once by the form script and stay the counsellor's to correct.
 GATE_PASS_LOCKED_FIELDS = (
 	"aadhaar_number",
 	"reference",
@@ -43,18 +43,20 @@ class AdmissionEnquiry(Document):
 		self.ensure_child_ids()
 
 	def set_derived_ancestors(self):
-		"""Re-derive the college's ancestors rather than trust the copies on the row.
+		"""Re-derive the institution's ancestors rather tha trust the copies on the row.
 
-		`institution`, `campus` and `programme_level` are `fetch_from` fields, filled by
+		`trust`, `campus` and `programme_level` are `fetch_from` fields, filled by
 		`_validate_links` — which `flags.ignore_links` skips. Deriving them here means the
-		hierarchy check below is comparing against the college's real parent, not a stale copy
-		left behind when someone moved the enquiry to a different college.
+		hierarchy check below is comparing against the institution's real parent, not a stale copy
+		left behind when someone moved the enquiry to a different institution.
 		"""
-		if self.college:
-			college = frappe.db.get_value("College", self.college, ["institution", "campus"], as_dict=True)
-			if college:
-				self.institution = college.institution
-				self.campus = college.campus
+		if self.institution:
+			institution = frappe.db.get_value(
+				"Institution", self.institution, ["trust", "campus"], as_dict=True
+			)
+			if institution:
+				self.trust = institution.trust
+				self.campus = institution.campus
 
 		if self.programme:
 			self.programme_level = frappe.db.get_value("Programme", self.programme, "programme_level")
@@ -78,23 +80,23 @@ class AdmissionEnquiry(Document):
 				self.set(field, pass_values.get(field))
 
 	def set_academic_year(self):
-		"""Stamp the enquiry with the institution's open admission year.
+		"""Stamp the enquiry with the trust's open admission year.
 
 		Left blank rather than thrown when no year is flagged open — the same choice the gate
 		pass makes: a counsellor logging a walk-in should not be blocked because an administrator
-		has not ticked `is_admission_open` yet. Re-derived when the institution changes so a stale
+		has not ticked `is_admission_open` yet. Re-derived when the trust changes so a stale
 		year never survives a move to another tenant.
 		"""
-		if not self.institution:
+		if not self.trust:
 			return
 
 		if self.academic_year:
-			year_institution = frappe.db.get_value("Academic Year", self.academic_year, "institution")
-			if year_institution == self.institution:
+			year_trust = frappe.db.get_value("Academic Year", self.academic_year, "trust")
+			if year_trust == self.trust:
 				return
 
 		self.academic_year = frappe.db.get_value(
-			"Academic Year", {"institution": self.institution, "is_admission_open": 1}, "name"
+			"Academic Year", {"trust": self.trust, "is_admission_open": 1}, "name"
 		)
 
 	def normalize_contact(self):
@@ -111,58 +113,62 @@ class AdmissionEnquiry(Document):
 			self.aadhaar_number = normalize_aadhaar(self.aadhaar_number)
 
 	def validate_department(self):
-		"""Require a Department for every college that is not a School.
+		"""Require a Department for every institution that is not a School.
 
 		`department` is optional on the schema because a school may admit into a class that sits
-		under no department (PRODUCT.md). A degree-awarding college always names one, so the rule
-		is enforced here, turning on the college's type, rather than with a static `reqd`.
+		under no department (PRODUCT.md). A degree-awarding institution always names one, so the rule
+		is enforced here, turning on the institution's type, rather than with a static `reqd`.
 
 		Mirrors a real `reqd` field: skipped under `ignore_mandatory`, so the `New` stub
-		`start_from_gate_pass` inserts (college known, department not yet chosen) is not blocked —
+		`start_from_gate_pass` inserts (institution known, department not yet chosen) is not blocked —
 		the counsellor supplies it when they complete the enquiry.
 		"""
 		if self.department or self.flags.ignore_mandatory:
 			return
 
-		college_type = frappe.db.get_value("College", self.college, "college_type") if self.college else None
-		if college_type != "School":
+		institution_type = (
+			frappe.db.get_value("Institution", self.institution, "institution_type")
+			if self.institution
+			else None
+		)
+		if institution_type != "School":
 			frappe.throw(
-				_("Department is required for this college."),
+				_("Department is required for this institution."),
 				title=_("Department Required"),
 			)
 
 	def validate_hierarchy(self):
-		"""Keep the whole choice — and every named referrer — inside one institution.
+		"""Keep the whole choice — and every named referrer — inside one trust.
 
 		A Link proves a record exists, never that it sits in this enquiry's branch, so each
 		denormalised ancestor is an independent claim to reconcile. The referrer and counsellor
-		Staff/Consultancy links are checked for the same reason the college is: a Link accepts any
-		record in the system, so an enquiry raised at one institution could otherwise credit a
+		Staff/Consultancy links are checked for the same reason the institution is: a Link accepts any
+		record in the system, so an enquiry raised at one trust could otherwise credit a
 		counsellor or agency belonging to another tenant.
 		"""
-		validate_same_parent(self, "college", "institution")
-		validate_same_parent(self, "department", "college", "institution")
-		validate_same_parent(self, "programme", "department", "college", "institution")
-		validate_same_parent(self, "academic_year", "institution")
-		validate_same_parent(self, "programme_intake", "programme", "college", "institution")
-		validate_same_parent(self, "consultancy", "institution")
-		validate_same_parent(self, "staff_reference", "institution")
-		validate_same_parent(self, "counsellor", "institution")
+		validate_same_parent(self, "institution", "trust")
+		validate_same_parent(self, "department", "institution", "trust")
+		validate_same_parent(self, "programme", "department", "institution", "trust")
+		validate_same_parent(self, "academic_year", "trust")
+		validate_same_parent(self, "programme_intake", "programme", "institution", "trust")
+		validate_same_parent(self, "consultancy", "trust")
+		validate_same_parent(self, "staff_reference", "trust")
+		validate_same_parent(self, "counsellor", "trust")
 
 	def validate_unique_aadhaar(self):
-		"""One enquiry per student (Aadhaar) per institution per admission year.
+		"""One enquiry per student (Aadhaar) per trust per admission year.
 
 		Aadhaar is optional here — an enquiry can be logged before the number is on hand — so the
-		check only runs once it is present. Scoped to institution + academic_year: a student may
-		re-enquire in a later cycle or at another institution, but a second live enquiry in the
+		check only runs once it is present. Scoped to trust + academic_year: a student may
+		re-enquire in a later cycle or at another trust, but a second live enquiry in the
 		same cycle is a duplicate that would split their history across two records.
 		"""
-		if not (self.aadhaar_number and self.institution and self.academic_year):
+		if not (self.aadhaar_number and self.trust and self.academic_year):
 			return
 
 		filters = {
 			"aadhaar_number": self.aadhaar_number,
-			"institution": self.institution,
+			"trust": self.trust,
 			"academic_year": self.academic_year,
 		}
 		if not self.is_new():
@@ -171,7 +177,7 @@ class AdmissionEnquiry(Document):
 		duplicate = frappe.db.exists("Admission Enquiry", filters)
 		if duplicate:
 			frappe.throw(
-				_("An enquiry for Aadhaar {0} already exists at this institution for {1} ({2}).").format(
+				_("An enquiry for Aadhaar {0} already exists at this trust for {1} ({2}).").format(
 					frappe.bold(self.aadhaar_number),
 					frappe.bold(self.academic_year),
 					frappe.bold(duplicate),

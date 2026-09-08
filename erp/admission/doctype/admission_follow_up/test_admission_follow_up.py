@@ -29,38 +29,67 @@ class IntegrationTestAdmissionFollowUp(IntegrationTestCase):
 		super().setUpClass()
 		cls._aadhaar = itertools.count(500000000001)
 
-		cls.ensure("Programme Level", "UG", {"level_code": "UG", "level_name": "Undergraduate", "level_order": 1})
-		degree = cls.ensure("Degree", "ZFDEG", {"degree_code": "ZFDEG", "degree_name": "F Bachelor", "programme_level": "UG"})
+		cls.ensure(
+			"Programme Level", "UG", {"level_code": "UG", "level_name": "Undergraduate", "level_order": 1}
+		)
+		degree = cls.ensure(
+			"Degree", "ZFDEG", {"degree_code": "ZFDEG", "degree_name": "F Bachelor", "programme_level": "UG"}
+		)
 		structure = cls.ensure(
 			"Academic Structure",
 			"ZFSEM",
-			{"structure_code": "ZFSEM", "structure_name": "F Semester", "terms_per_year": 2, "term_label": "Semester"},
-		)
-		cls.ensure("Admission Type", "REG", {"type_code": "REG", "type_name": "Regular", "default_entry_semester": 1})
-
-		cls.ensure("Institution", cls.INST, {"institution_code": cls.INST, "institution_name": "F Institute"})
-		cls.ensure("College", cls.COL, {"institution": cls.INST, "college_code": cls.COL, "college_name": "F College"})
-		cls.dept = frappe.get_doc(
-			{"doctype": "Department", "institution": cls.INST, "college": cls.COL, "department_code": "ZF1DEP", "department_name": "F Dept"}
-		).insert().name
-		cls.programme = frappe.get_doc(
 			{
-				"doctype": "Programme",
-				"college": cls.COL,
-				"department": cls.dept,
-				"degree": degree,
-				"academic_structure": structure,
-				"programme_code": "ZF1UG",
-				"programme_name": "F B.Tech",
-				"duration_years": 4,
-				"total_terms": 8,
-				"required_prior_qualification": "12th",
-			}
-		).insert().name
+				"structure_code": "ZFSEM",
+				"structure_name": "F Semester",
+				"terms_per_year": 2,
+				"term_label": "Semester",
+			},
+		)
+		cls.ensure(
+			"Admission Type", "REG", {"type_code": "REG", "type_name": "Regular", "default_entry_semester": 1}
+		)
+
+		cls.ensure("Trust", cls.INST, {"trust_code": cls.INST, "trust_name": "F Institute"})
+		cls.ensure(
+			"Institution",
+			cls.COL,
+			{"trust": cls.INST, "institution_code": cls.COL, "institution_name": "F Institution"},
+		)
+		cls.dept = (
+			frappe.get_doc(
+				{
+					"doctype": "Department",
+					"trust": cls.INST,
+					"institution": cls.COL,
+					"department_code": "ZF1DEP",
+					"department_name": "F Dept",
+				}
+			)
+			.insert()
+			.name
+		)
+		cls.programme = (
+			frappe.get_doc(
+				{
+					"doctype": "Programme",
+					"institution": cls.COL,
+					"department": cls.dept,
+					"degree": degree,
+					"academic_structure": structure,
+					"programme_code": "ZF1UG",
+					"programme_name": "F B.Tech",
+					"duration_years": 4,
+					"total_terms": 8,
+					"required_prior_qualification": "12th",
+				}
+			)
+			.insert()
+			.name
+		)
 		frappe.get_doc(
 			{
 				"doctype": "Academic Year",
-				"institution": cls.INST,
+				"trust": cls.INST,
 				"year_code": "2050-51",
 				"title": "F 2050-51",
 				"start_date": "2050-06-01",
@@ -96,9 +125,20 @@ class IntegrationTestAdmissionFollowUp(IntegrationTestCase):
 	@classmethod
 	def make_counsellor(cls, code, email):
 		cls.make_user(email, "Admission Counsellor")
-		return frappe.get_doc(
-			{"doctype": "Staff", "institution": cls.INST, "college": cls.COL, "staff_code": code, "staff_name": code, "user": email}
-		).insert().name
+		return (
+			frappe.get_doc(
+				{
+					"doctype": "Staff",
+					"trust": cls.INST,
+					"institution": cls.COL,
+					"staff_code": code,
+					"staff_name": code,
+					"user": email,
+				}
+			)
+			.insert()
+			.name
+		)
 
 	@classmethod
 	def make_enquiry(cls, counsellor=None):
@@ -107,13 +147,18 @@ class IntegrationTestAdmissionFollowUp(IntegrationTestCase):
 				"doctype": "Admission Enquiry",
 				"student_name": "Follow Up Case",
 				"phone_number": "9876511111",
-				"college": cls.COL,
+				"institution": cls.COL,
 				"department": cls.dept,
 				"programme": cls.programme,
 				"admission_type": "REG",
 				"aadhaar_number": f"{next(cls._aadhaar):012d}",
 				"previous_education": [
-					{"qualification_level": "12th", "board_university": "State Board", "year_of_passing": 2049, "percentage": 91.0}
+					{
+						"qualification_level": "12th",
+						"board_university": "State Board",
+						"year_of_passing": 2049,
+						"percentage": 91.0,
+					}
 				],
 			}
 		)
@@ -170,7 +215,12 @@ class IntegrationTestAdmissionFollowUp(IntegrationTestCase):
 		# follow-up mechanics rather than the pipeline gates — those have their own tests in
 		# test_admission_application. "Admitted" would now need a fee, an application and verified
 		# documents, none of which this test is about.
-		self.log(enquiry_name, outcome="Not Interested", new_status="Rejected", next_follow_up_on=add_days(today(), 2))
+		self.log(
+			enquiry_name,
+			outcome="Not Interested",
+			new_status="Rejected",
+			next_follow_up_on=add_days(today(), 2),
+		)
 
 		enquiry = frappe.get_doc("Admission Enquiry", enquiry_name)
 		self.assertEqual(enquiry.status, "Rejected")

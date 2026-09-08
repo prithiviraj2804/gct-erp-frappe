@@ -3,7 +3,7 @@
 
 """What an Admission Enquiry must record, refuse, and carry over from a gate pass.
 
-Fixtures build two disjoint institutions (A and B) — each with a campus, college and
+Fixtures build two disjoint trusts (A and B) — each with a campus, institution and
 department — plus, under A, an undergraduate and a postgraduate programme, an open admission
 year, and a lateral-entry admission type. That gives every test a legitimate record and an
 alien one of the same doctype, and both a UG and a PG programme to exercise the
@@ -24,15 +24,15 @@ from frappe.tests import IntegrationTestCase
 from erp.master.hierarchy import HierarchyMismatchError
 
 # `ZE` prefix keeps test codes clear of real master data on a dev site.
-INSTITUTION_A = "ZEA"
-INSTITUTION_B = "ZEB"
-COLLEGE_A = "ZEACOL"
-COLLEGE_B = "ZEBCOL"
-COLLEGE_SCHOOL = "ZESCH"
+TRUST_A = "ZEA"
+TRUST_B = "ZEB"
+INSTITUTION_A = "ZEACOL"
+INSTITUTION_B = "ZEBCOL"
+INSTITUTION_SCHOOL = "ZESCH"
 
 
 class IntegrationTestAdmissionEnquiry(IntegrationTestCase):
-	# Aadhaar is unique per institution per year and rows outlive one another (one rollback, at
+	# Aadhaar is unique per trust per year and rows outlive one another (one rollback, at
 	# class teardown), so the factory mints a fresh number per call; the dedup test pins its own.
 	_aadhaar_counter = itertools.count(1)
 
@@ -41,18 +41,31 @@ class IntegrationTestAdmissionEnquiry(IntegrationTestCase):
 		super().setUpClass()
 
 		# --- Shared globals (reuse if present) ---
-		cls.ensure("Programme Level", "UG", {"level_code": "UG", "level_name": "Undergraduate", "level_order": 1})
-		cls.ensure("Programme Level", "PG", {"level_code": "PG", "level_name": "Postgraduate", "level_order": 0})
+		cls.ensure(
+			"Programme Level", "UG", {"level_code": "UG", "level_name": "Undergraduate", "level_order": 1}
+		)
+		cls.ensure(
+			"Programme Level", "PG", {"level_code": "PG", "level_name": "Postgraduate", "level_order": 0}
+		)
 		cls.ug_degree = cls.ensure(
-			"Degree", "ZEUGDEG", {"degree_code": "ZEUGDEG", "degree_name": "Test Bachelor", "programme_level": "UG"}
+			"Degree",
+			"ZEUGDEG",
+			{"degree_code": "ZEUGDEG", "degree_name": "Test Bachelor", "programme_level": "UG"},
 		)
 		cls.pg_degree = cls.ensure(
-			"Degree", "ZEPGDEG", {"degree_code": "ZEPGDEG", "degree_name": "Test Master", "programme_level": "PG"}
+			"Degree",
+			"ZEPGDEG",
+			{"degree_code": "ZEPGDEG", "degree_name": "Test Master", "programme_level": "PG"},
 		)
 		cls.structure = cls.ensure(
 			"Academic Structure",
 			"ZESEM",
-			{"structure_code": "ZESEM", "structure_name": "Test Semester", "terms_per_year": 2, "term_label": "Semester"},
+			{
+				"structure_code": "ZESEM",
+				"structure_name": "Test Semester",
+				"terms_per_year": 2,
+				"term_label": "Semester",
+			},
 		)
 		# Regular is seeded on real sites; recreate on a bare one. Lateral is this suite's own.
 		cls.ensure(
@@ -64,28 +77,28 @@ class IntegrationTestAdmissionEnquiry(IntegrationTestCase):
 			{"type_code": "ZELAT", "type_name": "Lateral (test)", "default_entry_semester": 3},
 		)
 
-		# --- Two disjoint institutions ---
-		for code, name in ((INSTITUTION_A, "Alpha Institute"), (INSTITUTION_B, "Beta Institute")):
-			frappe.get_doc({"doctype": "Institution", "institution_code": code, "institution_name": name}).insert()
+		# --- Two disjoint trusts ---
+		for code, name in ((TRUST_A, "Alpha Institute"), (TRUST_B, "Beta Institute")):
+			frappe.get_doc({"doctype": "Trust", "trust_code": code, "trust_name": name}).insert()
 
-		for institution, code in ((INSTITUTION_A, COLLEGE_A), (INSTITUTION_B, COLLEGE_B)):
+		for trust, code in ((TRUST_A, INSTITUTION_A), (TRUST_B, INSTITUTION_B)):
 			frappe.get_doc(
 				{
-					"doctype": "College",
-					"institution": institution,
-					"college_code": code,
-					"college_name": f"{code} College",
+					"doctype": "Institution",
+					"trust": trust,
+					"institution_code": code,
+					"institution_name": f"{code} Institution",
 				}
 			).insert()
 
-		cls.dept_a = cls.make_department(INSTITUTION_A, COLLEGE_A, "ZEACSE")
-		cls.dept_b = cls.make_department(INSTITUTION_B, COLLEGE_B, "ZEBCSE")
+		cls.dept_a = cls.make_department(TRUST_A, INSTITUTION_A, "ZEACSE")
+		cls.dept_b = cls.make_department(TRUST_B, INSTITUTION_B, "ZEBCSE")
 
 		cls.programme_a_ug = cls.make_programme(
-			COLLEGE_A, cls.dept_a, cls.ug_degree, "ZEAUG", required_prior_qualification="12th"
+			INSTITUTION_A, cls.dept_a, cls.ug_degree, "ZEAUG", required_prior_qualification="12th"
 		)
 		cls.programme_a_pg = cls.make_programme(
-			COLLEGE_A, cls.dept_a, cls.pg_degree, "ZEAPG", required_prior_qualification="Undergraduate"
+			INSTITUTION_A, cls.dept_a, cls.pg_degree, "ZEAPG", required_prior_qualification="Undergraduate"
 		)
 
 		# --- A school under A: no degree, no department, a school-flavoured level ---
@@ -94,29 +107,34 @@ class IntegrationTestAdmissionEnquiry(IntegrationTestCase):
 		)
 		frappe.get_doc(
 			{
-				"doctype": "College",
-				"institution": INSTITUTION_A,
-				"college_code": COLLEGE_SCHOOL,
-				"college_name": f"{COLLEGE_SCHOOL} School",
-				"college_type": "School",
+				"doctype": "Institution",
+				"trust": TRUST_A,
+				"institution_code": INSTITUTION_SCHOOL,
+				"institution_name": f"{INSTITUTION_SCHOOL} School",
+				"institution_type": "School",
 			}
 		).insert()
 		# Class 10 — an entry-level class here: no prior qualification is required, so it may be
 		# admitted with an empty Previous Education table.
 		cls.programme_class_10 = cls.make_programme(
-			COLLEGE_SCHOOL, None, None, "ZECL10", programme_level="SEC"
+			INSTITUTION_SCHOOL, None, None, "ZECL10", programme_level="SEC"
 		)
 		# Class 11 — asks for the Class-10 board result, expressed as a "10th" requirement.
 		cls.programme_class_11 = cls.make_programme(
-			COLLEGE_SCHOOL, None, None, "ZECL11", programme_level="SEC", required_prior_qualification="10th"
+			INSTITUTION_SCHOOL,
+			None,
+			None,
+			"ZECL11",
+			programme_level="SEC",
+			required_prior_qualification="10th",
 		)
 
 		year_a = frappe.get_doc(
 			{
 				"doctype": "Academic Year",
-				"institution": INSTITUTION_A,
+				"trust": TRUST_A,
 				"year_code": "2030-31",
-				"title": f"{INSTITUTION_A} 2030-31",
+				"title": f"{TRUST_A} 2030-31",
 				"start_date": "2030-06-01",
 				"end_date": "2031-05-31",
 				"is_admission_open": 1,
@@ -134,26 +152,30 @@ class IntegrationTestAdmissionEnquiry(IntegrationTestCase):
 		return frappe.get_doc({"doctype": doctype, **values}).insert().name
 
 	@staticmethod
-	def make_department(institution, college, code):
-		return frappe.get_doc(
-			{
-				"doctype": "Department",
-				"institution": institution,
-				"college": college,
-				"department_code": code,
-				"department_name": f"{code} Department",
-			}
-		).insert().name
+	def make_department(trust, institution, code):
+		return (
+			frappe.get_doc(
+				{
+					"doctype": "Department",
+					"trust": trust,
+					"institution": institution,
+					"department_code": code,
+					"department_name": f"{code} Department",
+				}
+			)
+			.insert()
+			.name
+		)
 
 	@classmethod
 	def make_programme(
-		cls, college, department, degree, code, programme_level=None, required_prior_qualification=None
+		cls, institution, department, degree, code, programme_level=None, required_prior_qualification=None
 	):
 		# The previous-education requirement now rides on the Programme, and the migrate-time backfill
 		# never touches a row a test mints in a rolled-back transaction — so the fixture states it.
 		values = {
 			"doctype": "Programme",
-			"college": college,
+			"institution": institution,
 			"department": department,
 			"degree": degree,
 			"academic_structure": cls.structure,
@@ -173,12 +195,17 @@ class IntegrationTestAdmissionEnquiry(IntegrationTestCase):
 			"doctype": "Admission Enquiry",
 			"student_name": "Arun Kumar",
 			"phone_number": "9876543210",
-			"college": COLLEGE_A,
+			"institution": INSTITUTION_A,
 			"department": cls.dept_a,
 			"programme": cls.programme_a_ug,
 			"admission_type": "REG",
 			"previous_education": [
-				{"qualification_level": "12th", "board_university": "State Board", "year_of_passing": 2029, "percentage": 92.0}
+				{
+					"qualification_level": "12th",
+					"board_university": "State Board",
+					"year_of_passing": 2029,
+					"percentage": 92.0,
+				}
 			],
 		}
 		values.update(overrides)
@@ -193,8 +220,8 @@ class IntegrationTestAdmissionEnquiry(IntegrationTestCase):
 		self.assertTrue(enquiry.name.startswith("AENQ-"), enquiry.name)
 		self.assertEqual(str(uuid.UUID(enquiry.id)), enquiry.id)
 		self.assertEqual(enquiry.status, "New")
-		# Ancestors are re-derived from the college, and the year from the open admission cycle.
-		self.assertEqual(enquiry.institution, INSTITUTION_A)
+		# Ancestors are re-derived from the institution, and the year from the open admission cycle.
+		self.assertEqual(enquiry.trust, TRUST_A)
 		self.assertEqual(enquiry.programme_level, "UG")
 		self.assertEqual(enquiry.academic_year, self.year_a)
 		# Child rows carry the UUID convention too.
@@ -229,7 +256,9 @@ class IntegrationTestAdmissionEnquiry(IntegrationTestCase):
 
 		ok = self.make_enquiry(
 			programme=self.programme_a_pg,
-			previous_education=[{"qualification_level": "Undergraduate", "board_university": "Anna University"}],
+			previous_education=[
+				{"qualification_level": "Undergraduate", "board_university": "Anna University"}
+			],
 		)
 		ok.insert()
 		self.assertEqual(ok.programme_level, "PG")
@@ -250,10 +279,10 @@ class IntegrationTestAdmissionEnquiry(IntegrationTestCase):
 	# --- School admission (same doctype, different words) ----------------------------
 
 	def test_school_entry_class_admits_with_no_department_or_previous_education(self):
-		# A Class 10 admission at a School college: no department, and no prior qualification is
-		# required, so an empty Previous Education table is fine — the college rule does not apply.
+		# A Class 10 admission at a School institution: no department, and no prior qualification is
+		# required, so an empty Previous Education table is fine — the institution rule does not apply.
 		enquiry = self.make_enquiry(
-			college=COLLEGE_SCHOOL,
+			institution=INSTITUTION_SCHOOL,
 			department=None,
 			programme=self.programme_class_10,
 			previous_education=[],
@@ -261,7 +290,7 @@ class IntegrationTestAdmissionEnquiry(IntegrationTestCase):
 		)
 		enquiry.insert()
 
-		self.assertEqual(enquiry.institution, INSTITUTION_A)
+		self.assertEqual(enquiry.trust, TRUST_A)
 		self.assertFalse(enquiry.department)
 		self.assertEqual(enquiry.programme_level, "SEC")
 
@@ -270,14 +299,14 @@ class IntegrationTestAdmissionEnquiry(IntegrationTestCase):
 		# with it it saves — the requirement read straight off the Programme.
 		with self.assertRaises(frappe.ValidationError):
 			self.make_enquiry(
-				college=COLLEGE_SCHOOL,
+				institution=INSTITUTION_SCHOOL,
 				department=None,
 				programme=self.programme_class_11,
 				previous_education=[],
 			).insert()
 
 		ok = self.make_enquiry(
-			college=COLLEGE_SCHOOL,
+			institution=INSTITUTION_SCHOOL,
 			department=None,
 			programme=self.programme_class_11,
 			previous_education=[{"qualification_level": "10th", "board_university": "State Board"}],
@@ -285,14 +314,14 @@ class IntegrationTestAdmissionEnquiry(IntegrationTestCase):
 		)
 		ok.insert()
 
-	def test_department_is_still_required_for_a_non_school_college(self):
-		# The department is optional only for schools; a degree-awarding college without one is refused.
+	def test_department_is_still_required_for_a_non_school_institution(self):
+		# The department is optional only for schools; a degree-awarding institution without one is refused.
 		with self.assertRaises(frappe.ValidationError):
 			self.make_enquiry(department=None).insert()
 
 	# --- Tenant boundaries -----------------------------------------------------------
 
-	def test_rejects_department_from_another_college(self):
+	def test_rejects_department_from_another_institution(self):
 		enquiry = self.make_enquiry(department=self.dept_b)
 		with self.assertRaises(HierarchyMismatchError):
 			enquiry.insert()
@@ -319,7 +348,7 @@ class IntegrationTestAdmissionEnquiry(IntegrationTestCase):
 				"aadhaar_number": f"{next(self._aadhaar_counter):012d}",
 				"parent_name": "Ramesh K",
 				"native_place": "Salem",
-				"college": COLLEGE_A,
+				"institution": INSTITUTION_A,
 				"reference": "Direct Admission",
 				"reference_staff_1": "Front Desk",
 				"photo": "/private/files/ze-test.png",
@@ -334,8 +363,8 @@ class IntegrationTestAdmissionEnquiry(IntegrationTestCase):
 		self.assertEqual(enquiry.gate_pass, gate_pass.name)
 		self.assertEqual(enquiry.student_name, "Divya Ramesh")
 		self.assertEqual(enquiry.phone_number, "9000011111")
-		self.assertEqual(enquiry.college, COLLEGE_A)
 		self.assertEqual(enquiry.institution, INSTITUTION_A)
+		self.assertEqual(enquiry.trust, TRUST_A)
 		self.assertEqual(enquiry.academic_year, self.year_a)
 		self.assertEqual(enquiry.status, "New")
 
@@ -356,7 +385,7 @@ class IntegrationTestAdmissionEnquiry(IntegrationTestCase):
 				"aadhaar_number": aadhaar,
 				"parent_name": "Ravi K",
 				"native_place": "Erode",
-				"college": COLLEGE_A,
+				"institution": INSTITUTION_A,
 				"reference": "Direct Admission",
 				"reference_staff_1": "Front Desk",
 				"photo": "/private/files/ze-test.png",
@@ -376,7 +405,9 @@ class IntegrationTestAdmissionEnquiry(IntegrationTestCase):
 		enquiry.department = self.dept_a
 		enquiry.programme = self.programme_a_ug
 		enquiry.admission_type = "REG"
-		enquiry.append("previous_education", {"qualification_level": "12th", "board_university": "State Board"})
+		enquiry.append(
+			"previous_education", {"qualification_level": "12th", "board_university": "State Board"}
+		)
 		enquiry.save()
 
 		self.assertEqual(enquiry.aadhaar_number, aadhaar)
@@ -388,7 +419,7 @@ class IntegrationTestAdmissionEnquiryScoping(IntegrationTestCase):
 	"""Slice 1 authorization: who sees, and who may reassign, a lead.
 
 	A counsellor sees and touches only the enquiries they own; an Admission Manager sees every
-	lead (narrowed to their institution by a User Permission); and the `counsellor` field is
+	lead (narrowed to their trust by a User Permission); and the `counsellor` field is
 	permlevel-locked so a counsellor cannot hand a lead to someone else. Own fixtures under a `ZP`
 	prefix so this stands apart from the validation suite above — IntegrationTestCase rolls it all
 	back at teardown, the Users and User Permissions included.
@@ -406,7 +437,7 @@ class IntegrationTestAdmissionEnquiryScoping(IntegrationTestCase):
 	def setUpClass(cls):
 		super().setUpClass()
 
-		# Aadhaar is unique per institution per year; a counter keeps every enquiry distinct across
+		# Aadhaar is unique per trust per year; a counter keeps every enquiry distinct across
 		# the shared class transaction.
 		cls._aadhaar = itertools.count(400000000001)
 
@@ -414,52 +445,69 @@ class IntegrationTestAdmissionEnquiryScoping(IntegrationTestCase):
 			"Programme Level", "UG", {"level_code": "UG", "level_name": "Undergraduate", "level_order": 1}
 		)
 		degree = cls.ensure(
-			"Degree", "ZPDEG", {"degree_code": "ZPDEG", "degree_name": "Scope Bachelor", "programme_level": "UG"}
+			"Degree",
+			"ZPDEG",
+			{"degree_code": "ZPDEG", "degree_name": "Scope Bachelor", "programme_level": "UG"},
 		)
 		structure = cls.ensure(
 			"Academic Structure",
 			"ZPSEM",
-			{"structure_code": "ZPSEM", "structure_name": "Scope Semester", "terms_per_year": 2, "term_label": "Semester"},
+			{
+				"structure_code": "ZPSEM",
+				"structure_name": "Scope Semester",
+				"terms_per_year": 2,
+				"term_label": "Semester",
+			},
 		)
 		cls.ensure(
 			"Admission Type", "REG", {"type_code": "REG", "type_name": "Regular", "default_entry_semester": 1}
 		)
 
-		# Two institutions: the second only has to exist, as a User Permission target that proves an
-		# institution-scoped manager sees none of the first institution's leads.
+		# Two trusts: the second only has to exist, as a User Permission target that proves an
+		# trust-scoped manager sees none of the first trust's leads.
 		for code, name in ((cls.INST_1, "Scope One"), (cls.INST_2, "Scope Two")):
-			cls.ensure("Institution", code, {"institution_code": code, "institution_name": name})
+			cls.ensure("Trust", code, {"trust_code": code, "trust_name": name})
 
 		cls.ensure(
-			"College", cls.COL_1, {"institution": cls.INST_1, "college_code": cls.COL_1, "college_name": "Scope College"}
+			"Institution",
+			cls.COL_1,
+			{"trust": cls.INST_1, "institution_code": cls.COL_1, "institution_name": "Scope Institution"},
 		)
-		cls.dept = frappe.get_doc(
-			{
-				"doctype": "Department",
-				"institution": cls.INST_1,
-				"college": cls.COL_1,
-				"department_code": "ZP1DEP",
-				"department_name": "Scope Dept",
-			}
-		).insert().name
-		cls.programme = frappe.get_doc(
-			{
-				"doctype": "Programme",
-				"college": cls.COL_1,
-				"department": cls.dept,
-				"degree": degree,
-				"academic_structure": structure,
-				"programme_code": "ZP1UG",
-				"programme_name": "Scope UG",
-				"duration_years": 4,
-				"total_terms": 8,
-				"required_prior_qualification": "12th",
-			}
-		).insert().name
+		cls.dept = (
+			frappe.get_doc(
+				{
+					"doctype": "Department",
+					"trust": cls.INST_1,
+					"institution": cls.COL_1,
+					"department_code": "ZP1DEP",
+					"department_name": "Scope Dept",
+				}
+			)
+			.insert()
+			.name
+		)
+		cls.programme = (
+			frappe.get_doc(
+				{
+					"doctype": "Programme",
+					"institution": cls.COL_1,
+					"department": cls.dept,
+					"degree": degree,
+					"academic_structure": structure,
+					"programme_code": "ZP1UG",
+					"programme_name": "Scope UG",
+					"duration_years": 4,
+					"total_terms": 8,
+					"required_prior_qualification": "12th",
+				}
+			)
+			.insert()
+			.name
+		)
 		frappe.get_doc(
 			{
 				"doctype": "Academic Year",
-				"institution": cls.INST_1,
+				"trust": cls.INST_1,
 				"year_code": "2040-41",
 				"title": "Scope 2040-41",
 				"start_date": "2040-06-01",
@@ -500,16 +548,20 @@ class IntegrationTestAdmissionEnquiryScoping(IntegrationTestCase):
 	@classmethod
 	def make_counsellor(cls, code, email):
 		cls.make_user(email, "Admission Counsellor")
-		return frappe.get_doc(
-			{
-				"doctype": "Staff",
-				"institution": cls.INST_1,
-				"college": cls.COL_1,
-				"staff_code": code,
-				"staff_name": code,
-				"user": email,
-			}
-		).insert().name
+		return (
+			frappe.get_doc(
+				{
+					"doctype": "Staff",
+					"trust": cls.INST_1,
+					"institution": cls.COL_1,
+					"staff_code": code,
+					"staff_name": code,
+					"user": email,
+				}
+			)
+			.insert()
+			.name
+		)
 
 	@classmethod
 	def make_enquiry(cls, counsellor):
@@ -519,13 +571,18 @@ class IntegrationTestAdmissionEnquiryScoping(IntegrationTestCase):
 				"doctype": "Admission Enquiry",
 				"student_name": f"Scope {counsellor or 'pool'}",
 				"phone_number": "9876500000",
-				"college": cls.COL_1,
+				"institution": cls.COL_1,
 				"department": cls.dept,
 				"programme": cls.programme,
 				"admission_type": "REG",
 				"aadhaar_number": f"{next(cls._aadhaar):012d}",
 				"previous_education": [
-					{"qualification_level": "12th", "board_university": "State Board", "year_of_passing": 2039, "percentage": 90.0}
+					{
+						"qualification_level": "12th",
+						"board_university": "State Board",
+						"year_of_passing": 2039,
+						"percentage": 90.0,
+					}
 				],
 			}
 		)
@@ -604,12 +661,12 @@ class IntegrationTestAdmissionEnquiryScoping(IntegrationTestCase):
 
 	# --- Manager tenant isolation via User Permission --------------------------------
 
-	def test_manager_scoped_to_another_institution_sees_no_leads_here(self):
-		# The manager hook returns "" (all rows); a User Permission on Institution is what pins a
+	def test_manager_scoped_to_another_trust_sees_no_leads_here(self):
+		# The manager hook returns "" (all rows); a User Permission on Trust is what pins a
 		# manager to their tenant. Scoped to INST_2, they see none of INST_1's leads.
 		email = self.make_user("ze-scope-mgr-inst2@example.com", "Admission Manager")
 		frappe.get_doc(
-			{"doctype": "User Permission", "user": email, "allow": "Institution", "for_value": self.INST_2}
+			{"doctype": "User Permission", "user": email, "allow": "Trust", "for_value": self.INST_2}
 		).insert(ignore_permissions=True)
 
 		visible = self._visible_to(email)

@@ -60,23 +60,23 @@ from frappe import _
 
 
 @frappe.whitelist(methods=["GET"])
-def get_active_institutions(institution_type: str | None = None) -> list[dict]:
-	"""Active institutions, optionally narrowed by type.
+def get_active_trusts(trust_type: str | None = None) -> list[dict]:
+	"""Active trusts, optionally narrowed by type.
 
 	Every whitelisted function is a public HTTP endpoint reachable by any logged-in
 	user. Permission is never implied by the caller — check it here.
 	"""
-	if not frappe.has_permission("Institution", "read"):
+	if not frappe.has_permission("Trust", "read"):
 		frappe.throw(_("Not permitted"), frappe.PermissionError)
 
 	filters = {"status": "Active"}
-	if institution_type:
-		filters["institution_type"] = institution_type
+	if trust_type:
+		filters["trust_type"] = trust_type
 
 	return frappe.get_all(
-		"Institution",
+		"Trust",
 		filters=filters,
-		fields=["name", "id", "institution_name", "short_name"],
+		fields=["name", "id", "trust_name", "short_name"],
 		limit_page_length=100,
 	)
 ```
@@ -101,11 +101,11 @@ Use the shared handles from `src/lib/frappe.ts` — never construct a new `Frapp
 import { call } from '@/lib/frappe'
 
 // call.get / post / put / delete → (path, params)
-const res = await call.get<{ message: Institution[] }>(
-  'erp.api.master.get_active_institutions',
-  { institution_type: 'University' },
+const res = await call.get<{ message: Trust[] }>(
+  'erp.api.master.get_active_trusts',
+  { trust_type: 'University' },
 )
-const institutions = res.message
+const trusts = res.message
 ```
 
 Frappe wraps every whitelisted return value in a `message` key — unwrap it. Pair with
@@ -113,10 +113,10 @@ TanStack Query rather than calling in an effect:
 
 ```ts
 useQuery({
-  queryKey: ['active-institutions', institutionType],
+  queryKey: ['active-trusts', trustType],
   queryFn: () =>
-    call.get<{ message: Institution[] }>('erp.api.master.get_active_institutions', {
-      institution_type: institutionType,
+    call.get<{ message: Trust[] }>('erp.api.master.get_active_trusts', {
+      trust_type: trustType,
     }),
   select: (r) => r.message,
 })
@@ -132,7 +132,7 @@ usually staleness rather than a wrong path:
 ```bash
 bench --site erp.localhost clear-cache
 curl -s -H "Host: erp.localhost" \
-  "http://127.0.0.1:8000/api/method/erp.api.master.get_active_institutions"
+  "http://127.0.0.1:8000/api/method/erp.api.master.get_active_trusts"
 ```
 
 A 403 from an unauthenticated curl is the correct result — it proves the endpoint exists

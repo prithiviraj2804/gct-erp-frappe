@@ -3,14 +3,14 @@
 
 """Seed the document checklist vocabulary an Indian admission is verified against.
 
-These are not a tenant's own data — every college and school in the country asks for the same core
+These are not a tenant's own data — every institution and school in the country asks for the same core
 set — so they are seeded once here rather than keyed in on every site. *Which* of them a given
 intake requires is per-tenant configuration and lives on `Programme Intake.required_documents`; this
 patch only supplies the names to choose from.
 
 The set spans both halves of the app deliberately: a birth certificate and a transfer certificate
 are what a school asks a five-year-old for, mark sheets and a counselling allotment order are what an
-engineering college asks a TNEA candidate for, and they sit in one list because one
+engineering institution asks a TNEA candidate for, and they sit in one list because one
 `Admission Application` serves both.
 
 Runs in `[post_model_sync]`: the doctype must exist before rows can be written. Idempotent — each

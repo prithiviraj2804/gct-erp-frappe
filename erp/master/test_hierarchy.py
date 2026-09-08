@@ -1,13 +1,13 @@
 # Copyright (c) 2026, Prithivi and Contributors
 # See license.txt
 
-"""Ancestry integrity across Institution → Campus → College → Department → Programme.
+"""Ancestry integrity across Trust → Campus → Institution → Department → Programme.
 
 The rule under test is one rule, not four, so it lives in one module rather than being
 split across the doctype test files: a document may only name ancestors that sit in its
 own branch of the tree.
 
-Fixtures build two complete, disjoint institution trees (A and B) so every test can reach
+Fixtures build two complete, disjoint trust trees (A and B) so every test can reach
 for a valid record and an alien one of the same doctype. They are created in `setUpClass`
 and never committed — `IntegrationTestCase` rolls the connection back at class teardown.
 """
@@ -18,12 +18,12 @@ from frappe.tests import IntegrationTestCase
 from erp.master.hierarchy import HierarchyMismatchError
 
 # Codes are prefixed `ZT` so they cannot collide with real master data on a dev site.
-INSTITUTION_A = "ZTA"
-INSTITUTION_B = "ZTB"
+TRUST_A = "ZTA"
+TRUST_B = "ZTB"
 CAMPUS_A = "ZTA-MAIN"
 CAMPUS_B = "ZTB-MAIN"
-COLLEGE_A = "ZTACOL"
-COLLEGE_B = "ZTBCOL"
+INSTITUTION_A = "ZTACOL"
+INSTITUTION_B = "ZTBCOL"
 DEPARTMENT_A = "ZTACOL-CSE"
 DEPARTMENT_B = "ZTBCOL-MEC"
 DEGREE = "ZTBE"
@@ -37,44 +37,42 @@ class IntegrationTestHierarchy(IntegrationTestCase):
 	def setUpClass(cls):
 		super().setUpClass()
 
-		for code, name in ((INSTITUTION_A, "Alpha Institute"), (INSTITUTION_B, "Beta Institute")):
-			frappe.get_doc(
-				{"doctype": "Institution", "institution_code": code, "institution_name": name}
-			).insert()
+		for code, name in ((TRUST_A, "Alpha Institute"), (TRUST_B, "Beta Institute")):
+			frappe.get_doc({"doctype": "Trust", "trust_code": code, "trust_name": name}).insert()
 
-		for institution in (INSTITUTION_A, INSTITUTION_B):
+		for trust in (TRUST_A, TRUST_B):
 			frappe.get_doc(
 				{
 					"doctype": "Campus",
-					"institution": institution,
+					"trust": trust,
 					"campus_code": "MAIN",
-					"campus_name": f"{institution} Main Campus",
+					"campus_name": f"{trust} Main Campus",
 				}
 			).insert()
 
-		for institution, campus, code in (
-			(INSTITUTION_A, CAMPUS_A, COLLEGE_A),
-			(INSTITUTION_B, CAMPUS_B, COLLEGE_B),
+		for trust, campus, code in (
+			(TRUST_A, CAMPUS_A, INSTITUTION_A),
+			(TRUST_B, CAMPUS_B, INSTITUTION_B),
 		):
 			frappe.get_doc(
 				{
-					"doctype": "College",
-					"institution": institution,
+					"doctype": "Institution",
+					"trust": trust,
 					"campus": campus,
-					"college_code": code,
-					"college_name": f"{code} College",
+					"institution_code": code,
+					"institution_name": f"{code} Institution",
 				}
 			).insert()
 
-		for institution, college, code in (
-			(INSTITUTION_A, COLLEGE_A, "CSE"),
-			(INSTITUTION_B, COLLEGE_B, "MEC"),
+		for trust, institution, code in (
+			(TRUST_A, INSTITUTION_A, "CSE"),
+			(TRUST_B, INSTITUTION_B, "MEC"),
 		):
 			frappe.get_doc(
 				{
 					"doctype": "Department",
+					"trust": trust,
 					"institution": institution,
-					"college": college,
 					"department_code": code,
 					"department_name": f"{code} Department",
 				}
@@ -101,13 +99,13 @@ class IntegrationTestHierarchy(IntegrationTestCase):
 			}
 		).insert()
 
-		for institution in (INSTITUTION_A, INSTITUTION_B):
+		for trust in (TRUST_A, TRUST_B):
 			frappe.get_doc(
 				{
 					"doctype": "Academic Year",
-					"institution": institution,
+					"trust": trust,
 					"year_code": "2030-31",
-					"title": f"{institution} 2030-31",
+					"title": f"{trust} 2030-31",
 					"start_date": "2030-06-01",
 					"end_date": "2031-05-31",
 				}
@@ -117,7 +115,7 @@ class IntegrationTestHierarchy(IntegrationTestCase):
 	def make_programme(code, **overrides):
 		values = {
 			"doctype": "Programme",
-			"college": COLLEGE_A,
+			"institution": INSTITUTION_A,
 			"department": DEPARTMENT_A,
 			"programme_code": code,
 			"programme_name": f"Programme {code}",
@@ -131,14 +129,14 @@ class IntegrationTestHierarchy(IntegrationTestCase):
 
 	# --- Programme: the reported bug ------------------------------------------------
 
-	def test_rejects_department_from_another_college(self):
-		"""The reported bug: a department sitting in a different college than the record."""
+	def test_rejects_department_from_another_institution(self):
+		"""The reported bug: a department sitting in a different institution than the record."""
 		programme = self.make_programme("CROSS", department=DEPARTMENT_B)
 
 		with self.assertRaises(HierarchyMismatchError):
 			programme.insert()
 
-	def test_rejects_department_moved_to_another_college_on_update(self):
+	def test_rejects_department_moved_to_another_institution_on_update(self):
 		"""The hole has to close on update too, not just on insert."""
 		programme = self.make_programme("MOVED")
 		programme.insert()
@@ -147,46 +145,46 @@ class IntegrationTestHierarchy(IntegrationTestCase):
 		with self.assertRaises(HierarchyMismatchError):
 			programme.save()
 
-	def test_accepts_department_from_its_own_college(self):
+	def test_accepts_department_from_its_own_institution(self):
 		programme = self.make_programme("VALID")
 		programme.insert()
 
-		# ... and the ancestry columns agree with the college they were derived from.
-		self.assertEqual(programme.institution, INSTITUTION_A)
+		# ... and the ancestry columns agree with the institution they were derived from.
+		self.assertEqual(programme.trust, TRUST_A)
 		self.assertEqual(programme.campus, CAMPUS_A)
 
-	def test_rejects_forced_institution_when_link_fetching_is_skipped(self):
-		"""`institution` is `fetch_from` college, which normally rewrites any hostile value —
+	def test_rejects_forced_trust_when_link_fetching_is_skipped(self):
+		"""`trust` is `fetch_from` institution, which normally rewrites any hostile value —
 		but `flags.ignore_links` skips that rewrite, so the controller must catch it."""
-		programme = self.make_programme("FORCEDINST", institution=INSTITUTION_B)
+		programme = self.make_programme("FORCEDINST", trust=TRUST_B)
 		programme.flags.ignore_links = True
 
 		with self.assertRaises(HierarchyMismatchError):
 			programme.insert()
 
 	def test_rejects_forced_campus_when_link_fetching_is_skipped(self):
-		programme = self.make_programme("FORCEDCAMP", institution=INSTITUTION_A, campus=CAMPUS_B)
+		programme = self.make_programme("FORCEDCAMP", trust=TRUST_A, campus=CAMPUS_B)
 		programme.flags.ignore_links = True
 
 		with self.assertRaises(HierarchyMismatchError):
 			programme.insert()
 
-	def test_fetch_from_still_repairs_a_hostile_institution_and_campus(self):
-		"""Normal path: the framework rewrites both from the college before validate runs."""
-		programme = self.make_programme("REPAIRED", institution=INSTITUTION_B, campus=CAMPUS_B)
+	def test_fetch_from_still_repairs_a_hostile_trust_and_campus(self):
+		"""Normal path: the framework rewrites both from the institution before validate runs."""
+		programme = self.make_programme("REPAIRED", trust=TRUST_B, campus=CAMPUS_B)
 		programme.insert()
 
-		self.assertEqual(programme.institution, INSTITUTION_A)
+		self.assertEqual(programme.trust, TRUST_A)
 		self.assertEqual(programme.campus, CAMPUS_A)
 
 	# --- Department: what Programme's check rests on --------------------------------
 
-	def test_department_rejects_college_from_another_institution(self):
+	def test_department_rejects_institution_from_another_trust(self):
 		department = frappe.get_doc(
 			{
 				"doctype": "Department",
-				"institution": INSTITUTION_B,
-				"college": COLLEGE_A,
+				"trust": TRUST_B,
+				"institution": INSTITUTION_A,
 				"department_code": "XDEP",
 				"department_name": "Cross Department",
 			}
@@ -195,47 +193,47 @@ class IntegrationTestHierarchy(IntegrationTestCase):
 		with self.assertRaises(HierarchyMismatchError):
 			department.insert()
 
-	def test_department_accepts_college_from_its_own_institution(self):
+	def test_department_accepts_institution_from_its_own_trust(self):
 		frappe.get_doc(
 			{
 				"doctype": "Department",
+				"trust": TRUST_A,
 				"institution": INSTITUTION_A,
-				"college": COLLEGE_A,
 				"department_code": "OKDEP",
-				"department_name": "Same Institution Department",
+				"department_name": "Same Trust Department",
 			}
 		).insert()
 
-	# --- College: where Programme's campus comes from -------------------------------
+	# --- Institution: where Programme's campus comes from -------------------------------
 
-	def test_college_rejects_campus_from_another_institution(self):
-		college = frappe.get_doc(
+	def test_institution_rejects_campus_from_another_trust(self):
+		institution = frappe.get_doc(
 			{
-				"doctype": "College",
-				"institution": INSTITUTION_A,
+				"doctype": "Institution",
+				"trust": TRUST_A,
 				"campus": CAMPUS_B,
-				"college_code": "ZTXCOL",
-				"college_name": "Cross Campus College",
+				"institution_code": "ZTXCOL",
+				"institution_name": "Cross Campus Institution",
 			}
 		)
 
 		with self.assertRaises(HierarchyMismatchError):
-			college.insert()
+			institution.insert()
 
-	def test_college_accepts_a_blank_campus(self):
+	def test_institution_accepts_a_blank_campus(self):
 		"""Campus is optional — an omission is not a contradiction."""
 		frappe.get_doc(
 			{
-				"doctype": "College",
-				"institution": INSTITUTION_A,
-				"college_code": "ZTNOCAMP",
-				"college_name": "Single Location College",
+				"doctype": "Institution",
+				"trust": TRUST_A,
+				"institution_code": "ZTNOCAMP",
+				"institution_name": "Single Location Institution",
 			}
 		).insert()
 
 	# --- Programme Intake: the seat count downstream --------------------------------
 
-	def test_intake_rejects_academic_year_from_another_institution(self):
+	def test_intake_rejects_academic_year_from_another_trust(self):
 		programme = self.make_programme("INTAKEX")
 		programme.insert()
 
@@ -251,7 +249,7 @@ class IntegrationTestHierarchy(IntegrationTestCase):
 		with self.assertRaises(HierarchyMismatchError):
 			intake.insert()
 
-	def test_intake_accepts_academic_year_from_its_own_institution(self):
+	def test_intake_accepts_academic_year_from_its_own_trust(self):
 		programme = self.make_programme("INTAKEOK")
 		programme.insert()
 
@@ -268,5 +266,5 @@ class IntegrationTestHierarchy(IntegrationTestCase):
 		)
 		intake.insert()
 
+		self.assertEqual(intake.trust, TRUST_A)
 		self.assertEqual(intake.institution, INSTITUTION_A)
-		self.assertEqual(intake.college, COLLEGE_A)

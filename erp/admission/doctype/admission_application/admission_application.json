@@ -25,8 +25,8 @@
   "programme_intake",
   "column_break_choice",
   "programme_changed_reason",
+  "trust",
   "institution",
-  "college",
   "campus",
   "academic_year",
   "admission_type",
@@ -128,7 +128,7 @@
    "default": "Government Quota",
    "reqd": 1,
    "in_standard_filter": 1,
-   "description": "Government Quota seats are allotted by an external counselling body; the others are the college's own decision"
+   "description": "Government Quota seats are allotted by an external counselling body; the others are the institution's own decision"
   },
   {
    "fieldname": "counselling_outcome",
@@ -206,18 +206,18 @@
    "description": "Why the admitted programme differs from what was enquired about, e.g. 'TNEA Round 1 allotted ECE'"
   },
   {
-   "fieldname": "institution",
+   "fieldname": "trust",
    "fieldtype": "Link",
-   "label": "Institution",
-   "options": "Institution",
+   "label": "Trust",
+   "options": "Trust",
    "read_only": 1,
    "in_standard_filter": 1
   },
   {
-   "fieldname": "college",
+   "fieldname": "institution",
    "fieldtype": "Link",
-   "label": "College",
-   "options": "College",
+   "label": "Institution",
+   "options": "Institution",
    "read_only": 1,
    "in_standard_filter": 1
   },
@@ -247,7 +247,7 @@
    "fieldname": "preferences_section",
    "fieldtype": "Section Break",
    "label": "Preferred Courses",
-   "description": "The ranked choices the applicant filled on the college's form, before counselling"
+   "description": "The ranked choices the applicant filled on the institution's form, before counselling"
   },
   {
    "fieldname": "preferences",
@@ -271,7 +271,7 @@
    "fieldname": "transfer_certificate_no",
    "fieldtype": "Data",
    "label": "Transfer Certificate No",
-   "description": "TC from the school or college last attended"
+   "description": "TC from the school or institution last attended"
   },
   {
    "fieldname": "allotment_section",
@@ -321,7 +321,7 @@
    "fieldname": "documents_section",
    "fieldtype": "Section Break",
    "label": "Documents",
-   "description": "Originals are verified in the applicant's presence and handed back immediately — UGC and AICTE forbid an institution retaining them"
+   "description": "Originals are verified in the applicant's presence and handed back immediately — UGC and AICTE forbid a trust retaining them"
   },
   {
    "fieldname": "documents",

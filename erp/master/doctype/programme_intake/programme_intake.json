@@ -10,8 +10,8 @@
   "id",
   "academic_year",
   "programme",
+  "trust",
   "institution",
-  "college",
   "column_break_offering",
   "status",
   "total_seats",
@@ -66,20 +66,20 @@
    "description": "Programme open for admission"
   },
   {
+   "fieldname": "trust",
+   "fieldtype": "Link",
+   "label": "Trust",
+   "options": "Trust",
+   "fetch_from": "programme.trust",
+   "read_only": 1,
+   "in_standard_filter": 1
+  },
+  {
    "fieldname": "institution",
    "fieldtype": "Link",
    "label": "Institution",
    "options": "Institution",
    "fetch_from": "programme.institution",
-   "read_only": 1,
-   "in_standard_filter": 1
-  },
-  {
-   "fieldname": "college",
-   "fieldtype": "Link",
-   "label": "College",
-   "options": "College",
-   "fetch_from": "programme.college",
    "read_only": 1,
    "in_standard_filter": 1
   },

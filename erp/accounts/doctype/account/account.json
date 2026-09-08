@@ -1,7 +1,7 @@
 {
  "actions": [],
  "allow_rename": 1,
- "autoname": "format:{institution}-{account_name}",
+ "autoname": "format:{trust}-{account_name}",
  "creation": "2026-08-24 00:00:00.000000",
  "doctype": "DocType",
  "engine": "InnoDB",
@@ -9,7 +9,7 @@
   "basic_section",
   "id",
   "account_name",
-  "institution",
+  "trust",
   "column_break_basic",
   "is_group",
   "parent_account",
@@ -43,13 +43,13 @@
    "in_list_view": 1
   },
   {
-   "fieldname": "institution",
+   "fieldname": "trust",
    "fieldtype": "Link",
-   "label": "Institution",
-   "options": "Institution",
+   "label": "Trust",
+   "options": "Trust",
    "reqd": 1,
    "in_standard_filter": 1,
-   "description": "The institution whose books this account belongs to. Tenant scoping keys on this field."
+   "description": "The trust whose books this account belongs to. Tenant scoping keys on this field."
   },
   {
    "fieldname": "column_break_basic",
@@ -68,8 +68,8 @@
    "fieldtype": "Link",
    "label": "Parent Account",
    "options": "Account",
-   "link_filters": "[[\"Account\",\"is_group\",\"=\",1],[\"Account\",\"institution\",\"=\",\"eval:doc.institution\"]]",
-   "description": "Parent group in the chart, within the same institution"
+   "link_filters": "[[\"Account\",\"is_group\",\"=\",1],[\"Account\",\"trust\",\"=\",\"eval:doc.trust\"]]",
+   "description": "Parent group in the chart, within the same trust"
   },
   {
    "fieldname": "classification_section",

@@ -7,11 +7,11 @@ The case this slice was built for runs through the whole suite: a student walks 
 branch and counselling allots them another. The application owns the programme it admits to, the
 lead keeps what was asked for, and the two are allowed to disagree forever.
 
-Also proved here: one Admission Application serves an engineering college and an LKG class, with the
+Also proved here: one Admission Application serves an engineering institution and an LKG class, with the
 difference carried as data on the intake — an age window and a document checklist — and no rule
-anywhere keyed on `College.college_type`. Plus the three pipeline gates, through both status-writers.
+anywhere keyed on `Institution.institution_type`. Plus the three pipeline gates, through both status-writers.
 
-Own fixtures under a `ZA` prefix, in two disjoint institutions so every test has a legitimate record
+Own fixtures under a `ZA` prefix, in two disjoint trusts so every test has a legitimate record
 and an alien one. Nothing is committed: IntegrationTestCase rolls the connection back at class
 teardown, which is also why identity columns come from counters rather than literals.
 """
@@ -72,29 +72,27 @@ class IntegrationTestAdmissionApplication(IntegrationTestCase):
 			},
 		)
 
-		# Inserting an institution builds its chart of accounts through the after_insert hook.
-		cls.ensure("Institution", cls.INST, {"institution_code": cls.INST, "institution_name": "A Institute"})
+		# Inserting a trust builds its chart of accounts through the after_insert hook.
+		cls.ensure("Trust", cls.INST, {"trust_code": cls.INST, "trust_name": "A Institute"})
+		cls.ensure("Trust", cls.OTHER_INST, {"trust_code": cls.OTHER_INST, "trust_name": "A Rival"})
 		cls.ensure(
-			"Institution", cls.OTHER_INST, {"institution_code": cls.OTHER_INST, "institution_name": "A Rival"}
-		)
-		cls.ensure(
-			"College",
+			"Institution",
 			cls.ENG,
 			{
-				"institution": cls.INST,
-				"college_code": cls.ENG,
-				"college_name": "A Engineering",
-				"college_type": "Engineering",
+				"trust": cls.INST,
+				"institution_code": cls.ENG,
+				"institution_name": "A Engineering",
+				"institution_type": "Engineering",
 			},
 		)
 		cls.ensure(
-			"College",
+			"Institution",
 			cls.SCHOOL,
 			{
-				"institution": cls.INST,
-				"college_code": cls.SCHOOL,
-				"college_name": "A School",
-				"college_type": "School",
+				"trust": cls.INST,
+				"institution_code": cls.SCHOOL,
+				"institution_name": "A School",
+				"institution_type": "School",
 			},
 		)
 
@@ -102,7 +100,7 @@ class IntegrationTestAdmissionApplication(IntegrationTestCase):
 			"Academic Year",
 			f"{cls.INST}-2060-61",
 			{
-				"institution": cls.INST,
+				"trust": cls.INST,
 				"year_code": "2060-61",
 				"title": "A 2060-61",
 				"start_date": "2060-06-01",
@@ -136,17 +134,17 @@ class IntegrationTestAdmissionApplication(IntegrationTestCase):
 
 	@classmethod
 	def make_offering(
-		cls, code, college, level, prior, *, seats, documents=("MARK12", "ALLOTMENT"), **intake
+		cls, code, institution, level, prior, *, seats, documents=("MARK12", "ALLOTMENT"), **intake
 	):
 		"""A programme plus the intake that publishes its seats, checklist and entry conditions."""
 		department = None
-		if college != cls.SCHOOL:
+		if institution != cls.SCHOOL:
 			department = cls.ensure(
 				"Department",
-				f"{college}-{code}",
+				f"{institution}-{code}",
 				{
-					"institution": cls.INST,
-					"college": college,
+					"trust": cls.INST,
+					"institution": institution,
 					"department_code": code,
 					"department_name": code,
 				},
@@ -155,7 +153,7 @@ class IntegrationTestAdmissionApplication(IntegrationTestCase):
 			frappe.get_doc(
 				{
 					"doctype": "Programme",
-					"college": college,
+					"institution": institution,
 					"department": department,
 					"programme_code": code,
 					"programme_name": code,
@@ -189,7 +187,7 @@ class IntegrationTestAdmissionApplication(IntegrationTestCase):
 
 	@classmethod
 	def make_lead(
-		cls, programme, intake, *, college=None, date_of_birth=None, education=("12th",), **overrides
+		cls, programme, intake, *, institution=None, date_of_birth=None, education=("12th",), **overrides
 	):
 		"""A lead at the point the counsellor has taken the details but no fee yet."""
 		values = {
@@ -199,7 +197,7 @@ class IntegrationTestAdmissionApplication(IntegrationTestCase):
 			"student_name": f"A Applicant {next(cls._aadhaar) % 10000}",
 			"phone_number": str(next(cls._phone)),
 			"aadhaar_number": f"{next(cls._aadhaar):012d}",
-			"college": college or frappe.db.get_value("Programme", programme, "college"),
+			"institution": institution or frappe.db.get_value("Programme", programme, "institution"),
 			"department": frappe.db.get_value("Programme", programme, "department"),
 			"programme": programme,
 			"programme_intake": intake,
@@ -237,7 +235,7 @@ class IntegrationTestAdmissionApplication(IntegrationTestCase):
 	# --- Raising the application ----------------------------------------------------
 
 	def test_application_needs_the_fee_first(self):
-		"""This college hands out its form only after the fee is taken, and so does the pipeline."""
+		"""This institution hands out its form only after the fee is taken, and so does the pipeline."""
 		enquiry = self.make_lead(self.cse, self.cse_intake)
 		with self.assertRaises(frappe.ValidationError) as caught:
 			start_application(enquiry)
@@ -335,7 +333,7 @@ class IntegrationTestAdmissionApplication(IntegrationTestCase):
 			doc.save()
 		self.assertIn("cannot be changed", str(caught.exception))
 
-	# --- One doctype for a school and a college -------------------------------------
+	# --- One doctype for a school and an institution -------------------------------------
 
 	def test_school_intake_enforces_its_age_window(self):
 		too_young = self.paid_lead(self.lkg, self.lkg_intake, date_of_birth="2058-01-01", education=())
@@ -352,19 +350,21 @@ class IntegrationTestAdmissionApplication(IntegrationTestCase):
 
 	def test_a_degree_intake_sets_no_age_window_so_none_is_checked(self):
 		"""The same date of birth that fails LKG is irrelevant to a B.E. — the rule is data, not a
-		branch on the college's type."""
+		branch on the institution's type."""
 		enquiry = self.paid_lead(self.cse, self.cse_intake, date_of_birth="2058-01-01")
 		self.assertTrue(start_application(enquiry)["created"])
 
 	def test_the_checklist_is_the_intake_s_own(self):
 		school = self.paid_lead(self.lkg, self.lkg_intake, date_of_birth="2056-02-02", education=())
-		college = self.paid_lead(self.cse, self.cse_intake)
+		institution = self.paid_lead(self.cse, self.cse_intake)
 
 		school_docs = frappe.get_doc("Admission Application", start_application(school)["name"]).documents
-		college_docs = frappe.get_doc("Admission Application", start_application(college)["name"]).documents
+		institution_docs = frappe.get_doc(
+			"Admission Application", start_application(institution)["name"]
+		).documents
 
 		self.assertEqual([r.document_type for r in school_docs], ["BIRTH"])
-		self.assertEqual({r.document_type for r in college_docs}, {"MARK12", "ALLOTMENT"})
+		self.assertEqual({r.document_type for r in institution_docs}, {"MARK12", "ALLOTMENT"})
 
 	# --- Derived state ---------------------------------------------------------------
 
@@ -545,7 +545,7 @@ class IntegrationTestAdmissionApplication(IntegrationTestCase):
 		self.assertFalse(again["created"])
 		self.assertEqual(again["student"], student)
 
-	def test_admission_numbers_the_register_per_institution(self):
+	def test_admission_numbers_the_register_per_trust(self):
 		application = self.admitted_application()
 		student = frappe.get_doc(
 			"Student", frappe.db.get_value("Admission Application", application, "student")
@@ -562,29 +562,29 @@ class IntegrationTestAdmissionApplication(IntegrationTestCase):
 
 	# --- Tenancy ----------------------------------------------------------------------
 
-	def test_an_application_cannot_admit_into_another_institution(self):
+	def test_an_application_cannot_admit_into_another_trust(self):
 		"""A Link accepts any programme in the system; only the hierarchy check rejects a rival's.
 
-		The application derives its institution from the programme, so pointing it at another
+		The application derives its trust from the programme, so pointing it at another
 		tenant's branch makes the lead it came from the odd one out — which is exactly what
 		`validate_same_parent` on `admission_enquiry` is there to catch.
 		"""
-		rival_college = self.ensure(
-			"College",
+		rival_institution = self.ensure(
+			"Institution",
 			f"{self.OTHER_INST}COL",
 			{
-				"institution": self.OTHER_INST,
-				"college_code": f"{self.OTHER_INST}COL",
-				"college_name": "Rival College",
-				"college_type": "Engineering",
+				"trust": self.OTHER_INST,
+				"institution_code": f"{self.OTHER_INST}COL",
+				"institution_name": "Rival Institution",
+				"institution_type": "Engineering",
 			},
 		)
 		rival_department = self.ensure(
 			"Department",
-			f"{rival_college}-CSE",
+			f"{rival_institution}-CSE",
 			{
-				"institution": self.OTHER_INST,
-				"college": rival_college,
+				"trust": self.OTHER_INST,
+				"institution": rival_institution,
 				"department_code": "CSE",
 				"department_name": "Rival CSE",
 			},
@@ -593,7 +593,7 @@ class IntegrationTestAdmissionApplication(IntegrationTestCase):
 			frappe.get_doc(
 				{
 					"doctype": "Programme",
-					"college": rival_college,
+					"institution": rival_institution,
 					"department": rival_department,
 					"programme_code": "RCSE",
 					"programme_name": "Rival CSE",
@@ -665,8 +665,8 @@ class IntegrationTestAdmissionApplicationScoping(IntegrationTestCase):
 			"Staff",
 			f"{base.ENG}-{code}",
 			{
-				"institution": cls.INST,
-				"college": base.ENG,
+				"trust": cls.INST,
+				"institution": base.ENG,
 				"staff_code": code,
 				"staff_name": code,
 				"user": user,
@@ -685,7 +685,7 @@ class IntegrationTestAdmissionApplicationScoping(IntegrationTestCase):
 		user.flags.no_welcome_mail = True
 		user.insert(ignore_permissions=True)
 		frappe.get_doc(
-			{"doctype": "User Permission", "user": email, "allow": "Institution", "for_value": "ZA1"}
+			{"doctype": "User Permission", "user": email, "allow": "Trust", "for_value": "ZA1"}
 		).insert(ignore_permissions=True)
 		return email
 
@@ -707,7 +707,7 @@ class IntegrationTestAdmissionApplicationScoping(IntegrationTestCase):
 		self.assertIn(self.app_a, visible)
 		self.assertNotIn(self.app_b, visible)
 
-	def test_a_manager_sees_every_application_in_their_institution(self):
+	def test_a_manager_sees_every_application_in_their_trust(self):
 		visible = self._visible_to("za-manager@example.com")
 		self.assertIn(self.app_a, visible)
 		self.assertIn(self.app_b, visible)

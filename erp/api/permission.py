@@ -1,7 +1,7 @@
 import frappe
 
-# Roles that see every lead, not just their own. The per-institution scoping for an Admission
-# Manager is not done here — it rides on a User Permission (Institution = X) that the framework
+# Roles that see every lead, not just their own. The per-trust scoping for an Admission
+# Manager is not done here — it rides on a User Permission (Trust = X) that the framework
 # ANDs into the query independently, so this hook only has to decide "own rows" vs "all rows".
 # System Manager is the bench-wide super-admin and bypasses User Permissions entirely.
 LEAD_ADMIN_ROLES = frozenset({"System Manager", "Admission Manager"})
@@ -35,7 +35,7 @@ def staff_for_user(user: str | None = None) -> str | None:
 def _owner_scope_condition(user: str | None, table: str) -> str:
 	"""Shared row filter for the counsellor-owned doctypes (Enquiry, Follow-up).
 
-	An admin/manager gets `""` (every row, narrowed to their institution by their User Permission);
+	An admin/manager gets `""` (every row, narrowed to their trust by their User Permission);
 	a counsellor is pinned to `counsellor = <their staff>`; a login with the role but no Staff link
 	fails closed to `1=0` — sees nothing, never everything.
 	"""
@@ -121,14 +121,14 @@ def admission_application_has_permission(doc, ptype=None, user=None, **kwargs) -
 	return _owner_has_permission(doc, ptype, user)
 
 
-def assert_institution_in_scope(institution: str) -> None:
+def assert_trust_in_scope(trust: str) -> None:
 	"""Apply the declarative tenant rule to a cross-doctype action.
 
 	Doctype list scoping rides on User Permissions the framework ANDs into queries, but a whitelisted
 	endpoint that writes across doctypes does its own reads and so escapes that. This is the same rule
 	stated imperatively, for those call sites.
 
-	System Manager acts for any tenant. Otherwise, if the caller carries Institution User Permissions,
+	System Manager acts for any tenant. Otherwise, if the caller carries Trust User Permissions,
 	the target must be among them; a caller with no such permission is unrestricted — the same model
 	the list scoping uses, where an absent restriction means "not restricted", not "restricted to
 	nothing".
@@ -138,11 +138,11 @@ def assert_institution_in_scope(institution: str) -> None:
 
 	allowed = frappe.get_all(
 		"User Permission",
-		filters={"user": frappe.session.user, "allow": "Institution"},
+		filters={"user": frappe.session.user, "allow": "Trust"},
 		pluck="for_value",
 	)
-	if allowed and institution not in allowed:
+	if allowed and trust not in allowed:
 		frappe.throw(
-			frappe._("You are not permitted to act for {0}.").format(frappe.bold(institution)),
+			frappe._("You are not permitted to act for {0}.").format(frappe.bold(trust)),
 			frappe.PermissionError,
 		)

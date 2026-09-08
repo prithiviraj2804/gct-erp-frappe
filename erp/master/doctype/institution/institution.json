@@ -2,32 +2,39 @@
  "actions": [],
  "allow_rename": 1,
  "autoname": "field:institution_code",
- "creation": "2026-07-15 13:34:50.852804",
+ "creation": "2026-07-17 00:00:00.000000",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
   "basic_information_section",
   "id",
+  "trust",
+  "campus",
   "institution_code",
   "institution_name",
   "short_name",
-  "legal_name",
   "column_break_basic",
   "institution_type",
-  "registration_number",
-  "affiliated_university",
+  "established_year",
+  "autonomous",
   "status",
-  "branding_section",
+  "leadership_section",
+  "principal",
+  "dean",
+  "approval_section",
+  "approval_number",
+  "affiliation_number",
+  "column_break_approval",
   "accreditation",
-  "column_break_branding",
+  "branding_section",
   "logo",
-  "favicon",
+  "column_break_branding",
+  "color_theme",
   "contact_information_section",
-  "website",
   "email",
+  "website",
   "column_break_contact",
   "phone",
-  "alternate_phone",
   "address_section",
   "address_line1",
   "address_line2",
@@ -37,17 +44,6 @@
   "state",
   "country",
   "pincode",
-  "geo_location_section",
-  "latitude",
-  "longitude",
-  "column_break_geo",
-  "timezone",
-  "configuration_section",
-  "default_currency",
-  "financial_year_start",
-  "academic_year_start",
-  "column_break_config",
-  "admission_start_month",
   "remarks_section",
   "remarks"
  ],
@@ -68,6 +64,25 @@
    "description": "Auto-generated UUID"
   },
   {
+   "fieldname": "trust",
+   "fieldtype": "Link",
+   "label": "Trust",
+   "options": "Trust",
+   "reqd": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "description": "Parent Trust"
+  },
+  {
+   "fieldname": "campus",
+   "fieldtype": "Link",
+   "label": "Campus",
+   "options": "Campus",
+   "in_standard_filter": 1,
+   "link_filters": "[[\"Campus\",\"trust\",\"=\",\"eval:doc.trust\"]]",
+   "description": "Parent Campus (optional — leave blank for single-location trusts)"
+  },
+  {
    "fieldname": "institution_code",
    "fieldtype": "Data",
    "label": "Institution Code",
@@ -76,7 +91,7 @@
    "unique": 1,
    "in_list_view": 1,
    "in_standard_filter": 1,
-   "description": "Short code (SUCCEDEX, LOYOLA, MIT, etc.)"
+   "description": "Short code (ENG, ASC, LAW, etc.)"
   },
   {
    "fieldname": "institution_name",
@@ -91,14 +106,8 @@
    "fieldname": "short_name",
    "fieldtype": "Data",
    "label": "Short Name",
-   "length": 100
-  },
-  {
-   "fieldname": "legal_name",
-   "fieldtype": "Data",
-   "label": "Legal Name",
-   "length": 255,
-   "description": "Registered legal name"
+   "length": 100,
+   "description": "Display Name (LICET)"
   },
   {
    "fieldname": "column_break_basic",
@@ -108,23 +117,21 @@
    "fieldname": "institution_type",
    "fieldtype": "Select",
    "label": "Institution Type",
-   "options": "\nUniversity\nAutonomous\nTrust\nCollege Group\nSchool Group",
+   "options": "\nEngineering\nArts & Science\nMedical\nPolytechnic\nSchool\nMBA\nLaw",
    "in_list_view": 1,
    "in_standard_filter": 1
   },
   {
-   "fieldname": "registration_number",
-   "fieldtype": "Data",
-   "label": "Registration Number",
-   "length": 100,
-   "description": "Government Registration No"
+   "fieldname": "established_year",
+   "fieldtype": "Int",
+   "label": "Established Year",
+   "description": "Year the institution was established"
   },
   {
-   "fieldname": "affiliated_university",
-   "fieldtype": "Link",
-   "label": "Affiliated University",
-   "options": "Institution",
-   "description": "University this institution is affiliated to"
+   "fieldname": "autonomous",
+   "fieldtype": "Check",
+   "label": "Autonomous",
+   "default": "0"
   },
   {
    "fieldname": "status",
@@ -136,19 +143,59 @@
    "in_standard_filter": 1
   },
   {
-   "fieldname": "branding_section",
+   "fieldname": "leadership_section",
    "fieldtype": "Section Break",
-   "label": "Accreditation & Branding"
+   "label": "Leadership",
+   "collapsible": 1
+  },
+  {
+   "fieldname": "principal",
+   "fieldtype": "Data",
+   "label": "Principal",
+   "length": 255
+  },
+  {
+   "fieldname": "dean",
+   "fieldtype": "Data",
+   "label": "Dean",
+   "length": 255,
+   "description": "Optional"
+  },
+  {
+   "fieldname": "approval_section",
+   "fieldtype": "Section Break",
+   "label": "Approval & Accreditation",
+   "collapsible": 1
+  },
+  {
+   "fieldname": "approval_number",
+   "fieldtype": "Data",
+   "label": "Approval Number",
+   "length": 100,
+   "description": "AICTE Approval"
+  },
+  {
+   "fieldname": "affiliation_number",
+   "fieldtype": "Data",
+   "label": "Affiliation Number",
+   "length": 100,
+   "description": "University Code"
+  },
+  {
+   "fieldname": "column_break_approval",
+   "fieldtype": "Column Break"
   },
   {
    "fieldname": "accreditation",
    "fieldtype": "JSON",
    "label": "Accreditation",
-   "description": "NAAC, NBA, AICTE, UGC, ISO"
+   "description": "NBA, NAAC, etc."
   },
   {
-   "fieldname": "column_break_branding",
-   "fieldtype": "Column Break"
+   "fieldname": "branding_section",
+   "fieldtype": "Section Break",
+   "label": "Branding",
+   "collapsible": 1
   },
   {
    "fieldname": "logo",
@@ -156,15 +203,27 @@
    "label": "Logo"
   },
   {
-   "fieldname": "favicon",
-   "fieldtype": "Attach Image",
-   "label": "Favicon",
-   "description": "Small logo"
+   "fieldname": "column_break_branding",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "color_theme",
+   "fieldtype": "Color",
+   "label": "Color Theme",
+   "description": "UI branding color"
   },
   {
    "fieldname": "contact_information_section",
    "fieldtype": "Section Break",
-   "label": "Contact Information"
+   "label": "Contact Information",
+   "collapsible": 1
+  },
+  {
+   "fieldname": "email",
+   "fieldtype": "Data",
+   "label": "Email",
+   "length": 255,
+   "options": "Email"
   },
   {
    "fieldname": "website",
@@ -172,14 +231,6 @@
    "label": "Website",
    "length": 255,
    "options": "URL"
-  },
-  {
-   "fieldname": "email",
-   "fieldtype": "Data",
-   "label": "Email",
-   "length": 255,
-   "options": "Email",
-   "description": "Official Email"
   },
   {
    "fieldname": "column_break_contact",
@@ -193,16 +244,10 @@
    "options": "Phone"
   },
   {
-   "fieldname": "alternate_phone",
-   "fieldtype": "Data",
-   "label": "Alternate Phone",
-   "length": 30,
-   "options": "Phone"
-  },
-  {
    "fieldname": "address_section",
    "fieldtype": "Section Break",
-   "label": "Address"
+   "label": "Address",
+   "collapsible": 1
   },
   {
    "fieldname": "address_line1",
@@ -251,72 +296,10 @@
    "length": 15
   },
   {
-   "fieldname": "geo_location_section",
-   "fieldtype": "Section Break",
-   "label": "Geo Location",
-   "collapsible": 1
-  },
-  {
-   "fieldname": "latitude",
-   "fieldtype": "Float",
-   "label": "Latitude",
-   "precision": "7"
-  },
-  {
-   "fieldname": "longitude",
-   "fieldtype": "Float",
-   "label": "Longitude",
-   "precision": "7"
-  },
-  {
-   "fieldname": "column_break_geo",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "timezone",
-   "fieldtype": "Data",
-   "label": "Timezone",
-   "length": 100,
-   "default": "Asia/Kolkata"
-  },
-  {
-   "fieldname": "configuration_section",
-   "fieldtype": "Section Break",
-   "label": "Configuration"
-  },
-  {
-   "fieldname": "default_currency",
-   "fieldtype": "Link",
-   "options": "Currency",
-   "label": "Default Currency",
-   "default": "INR",
-   "description": "The currency the institution keeps its books and prints receipts in. One source of truth for the currency symbol shown on money."
-  },
-  {
-   "fieldname": "financial_year_start",
-   "fieldtype": "Date",
-   "label": "Financial Year Start"
-  },
-  {
-   "fieldname": "academic_year_start",
-   "fieldtype": "Date",
-   "label": "Academic Year Start"
-  },
-  {
-   "fieldname": "column_break_config",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "admission_start_month",
-   "fieldtype": "Int",
-   "label": "Admission Start Month",
-   "default": "6",
-   "description": "Month number (1-12), usually 6"
-  },
-  {
    "fieldname": "remarks_section",
    "fieldtype": "Section Break",
-   "label": "Remarks"
+   "label": "Remarks",
+   "collapsible": 1
   },
   {
    "fieldname": "remarks",
@@ -327,7 +310,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-07-15 13:34:50.852804",
+ "modified": "2026-07-17 00:00:00.000000",
  "modified_by": "Administrator",
  "module": "Master",
  "name": "Institution",
@@ -355,7 +338,7 @@
  ],
  "row_format": "Dynamic",
  "rows_threshold_for_grid_search": 20,
- "search_fields": "institution_name,short_name,institution_type",
+ "search_fields": "institution_name,short_name,institution_code",
  "sort_field": "creation",
  "sort_order": "DESC",
  "states": [],

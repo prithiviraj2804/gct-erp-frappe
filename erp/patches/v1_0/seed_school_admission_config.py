@@ -1,15 +1,15 @@
 # Copyright (c) 2026, Prithivi and contributors
 # For license information, please see license.txt
 
-"""Seed the shared vocabulary a school admission needs, and preserve the college rule it replaces.
+"""Seed the shared vocabulary a school admission needs, and preserve the institution rule it replaces.
 
-Schools reuse the college admission doctypes with different words (docs/PRODUCT.md): a "Class 10"
+Schools reuse the institution admission doctypes with different words (docs/PRODUCT.md): a "Class 10"
 is a Programme, a school level is a Programme Level, "Term" is an Academic Structure's `term_label`.
 None of that vocabulary is a tenant's own data — it is the same shared set every school group would
 add — so it is seeded here rather than left for each site to key in by hand.
 
 The previous-education requirement moved off a hardcoded UG→12th / PG→Undergraduate map and onto
-`Programme.required_prior_qualification`, which defaults blank. Left blank, existing college
+`Programme.required_prior_qualification`, which defaults blank. Left blank, existing institution
 programmes would silently stop requiring a school-leaving record, so the same patch backfills that
 field from each programme's level, keeping the rule exactly where it was.
 
@@ -21,7 +21,7 @@ installed site is a no-op.
 import frappe
 
 # Primary → Higher Secondary, the K-12 counterpart of UG/PG. `level_code` is the business key
-# (Programme Level autonames by it); `level_order` sorts them the way UG=1/PG=2 sorts college levels.
+# (Programme Level autonames by it); `level_order` sorts them the way UG=1/PG=2 sorts institution levels.
 SCHOOL_PROGRAMME_LEVELS = (
 	{"level_code": "PRI", "level_name": "Primary", "level_order": 1},
 	{"level_code": "MID", "level_name": "Middle", "level_order": 2},
@@ -38,7 +38,7 @@ SCHOOL_ACADEMIC_STRUCTURE = {
 	"term_label": "Term",
 }
 
-# The straight-through college rule, now expressed as data so it survives the move off the map.
+# The straight-through institution rule, now expressed as data so it survives the move off the map.
 PRIOR_QUALIFICATION_BY_LEVEL = {
 	"UG": "12th",
 	"PG": "Undergraduate",

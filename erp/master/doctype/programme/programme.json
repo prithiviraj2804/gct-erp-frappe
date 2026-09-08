@@ -1,15 +1,15 @@
 {
  "actions": [],
  "allow_rename": 1,
- "autoname": "format:{college}-{programme_code}",
+ "autoname": "format:{institution}-{programme_code}",
  "creation": "2026-07-19 00:00:00.000000",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
   "basic_information_section",
   "id",
-  "college",
   "institution",
+  "trust",
   "department",
   "campus",
   "programme_code",
@@ -49,25 +49,25 @@
    "description": "Auto-generated UUID"
   },
   {
-   "fieldname": "college",
-   "fieldtype": "Link",
-   "label": "College",
-   "options": "College",
-   "reqd": 1,
-   "in_list_view": 1,
-   "in_standard_filter": 1,
-   "description": "Parent College"
-  },
-  {
    "fieldname": "institution",
    "fieldtype": "Link",
    "label": "Institution",
    "options": "Institution",
    "reqd": 1,
-   "read_only": 1,
-   "fetch_from": "college.institution",
+   "in_list_view": 1,
    "in_standard_filter": 1,
-   "description": "Parent Institution (auto-filled from College)"
+   "description": "Parent Institution"
+  },
+  {
+   "fieldname": "trust",
+   "fieldtype": "Link",
+   "label": "Trust",
+   "options": "Trust",
+   "reqd": 1,
+   "read_only": 1,
+   "fetch_from": "institution.trust",
+   "in_standard_filter": 1,
+   "description": "Parent Trust (auto-filled from Institution)"
   },
   {
    "fieldname": "department",
@@ -76,8 +76,8 @@
    "options": "Department",
    "in_list_view": 1,
    "in_standard_filter": 1,
-   "link_filters": "[[\"Department\",\"college\",\"=\",\"eval:doc.college\"]]",
-   "description": "Parent Department — must belong to the College above. Optional for schools, which may have no department."
+   "link_filters": "[[\"Department\",\"institution\",\"=\",\"eval:doc.institution\"]]",
+   "description": "Parent Department — must belong to the Institution above. Optional for schools, which may have no department."
   },
   {
    "fieldname": "campus",
@@ -85,9 +85,9 @@
    "label": "Campus",
    "options": "Campus",
    "read_only": 1,
-   "fetch_from": "college.campus",
+   "fetch_from": "institution.campus",
    "in_standard_filter": 1,
-   "description": "Parent Campus (auto-filled from College)"
+   "description": "Parent Campus (auto-filled from Institution)"
   },
   {
    "fieldname": "programme_code",
@@ -97,7 +97,7 @@
    "reqd": 1,
    "in_list_view": 1,
    "in_standard_filter": 1,
-   "description": "Short code (BE-CSE, BCOM, MBA) — unique within the college"
+   "description": "Short code (BE-CSE, BCOM, MBA) — unique within the institution"
   },
   {
    "fieldname": "programme_name",

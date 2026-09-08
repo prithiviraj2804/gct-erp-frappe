@@ -24,8 +24,8 @@
   "income_account",
   "deposit_account",
   "column_break_posting",
+  "trust",
   "institution",
-  "college",
   "remarks_section",
   "remarks"
  ],
@@ -136,7 +136,7 @@
    "fieldtype": "Section Break",
    "label": "Posting",
    "collapsible": 1,
-   "description": "Accounts this receipt posts to, resolved from the institution's chart"
+   "description": "Accounts this receipt posts to, resolved from the trust's chart"
   },
   {
    "fieldname": "income_account",
@@ -157,21 +157,21 @@
    "fieldtype": "Column Break"
   },
   {
-   "fieldname": "institution",
+   "fieldname": "trust",
    "fieldtype": "Link",
-   "label": "Institution",
-   "options": "Institution",
-   "fetch_from": "admission_enquiry.institution",
+   "label": "Trust",
+   "options": "Trust",
+   "fetch_from": "admission_enquiry.trust",
    "read_only": 1,
    "in_standard_filter": 1,
    "description": "Tenant the receipt belongs to; scoping keys on this field"
   },
   {
-   "fieldname": "college",
+   "fieldname": "institution",
    "fieldtype": "Link",
-   "label": "College",
-   "options": "College",
-   "fetch_from": "admission_enquiry.college",
+   "label": "Institution",
+   "options": "Institution",
+   "fetch_from": "admission_enquiry.institution",
    "read_only": 1
   },
   {

@@ -56,7 +56,7 @@ expensive to remove once real data sits in them.
 The record of what happened. Validation goes on the controller (`validate` / `before_save` /
 `on_submit`), not in the caller.
 
-If the doctype denormalises an ancestor (`institution`, `college`, `campus`, `department`), call
+If the doctype denormalises an ancestor (`trust`, `institution`, `campus`, `department`), call
 `validate_same_parent` from `erp/master/hierarchy.py` in `validate`:
 
 ```python
@@ -64,7 +64,7 @@ from erp.master.hierarchy import validate_same_parent
 
 class GatePass(Document):
 	def validate(self):
-		validate_same_parent(self, "college", "institution")
+		validate_same_parent(self, "institution", "trust")
 ```
 
 A Link proves existence, not branch membership. Do not hand-roll a second version of this check —
@@ -96,10 +96,10 @@ the page renders. Then:
 
 ## Every slice must work for a mixed group
 
-An engineering college, an arts & science college and a school under one institution is the normal
+An engineering institution, an arts & science institution and a school under one trust is the normal
 case ([docs/PRODUCT.md](../../../docs/PRODUCT.md)). Vocabulary comes from `Academic Structure`
-(`term_label`, `terms_per_year`) and `College.college_type` — read those rather than assuming
-semesters. Never add a school-only doctype that duplicates a college concept; add a conditional
+(`term_label`, `terms_per_year`) and `Institution.institution_type` — read those rather than assuming
+semesters. Never add a school-only doctype that duplicates an institution concept; add a conditional
 field instead.
 
 ## Checklist

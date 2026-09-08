@@ -21,7 +21,7 @@ class GLEntry(Document):
 		if not self.is_new():
 			frappe.throw(_("GL Entries are immutable and cannot be edited. Post a reversing entry instead."))
 		self.validate_debit_or_credit()
-		validate_same_parent(self, "account", "institution")
+		validate_same_parent(self, "account", "trust")
 
 	def validate_debit_or_credit(self):
 		"""Exactly one side, non-negative: a ledger row is a debit or a credit, never both or neither."""

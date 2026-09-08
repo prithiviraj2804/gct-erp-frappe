@@ -5,13 +5,13 @@ Guidance for Claude Code when working in this app. Bench-level facts (sites, the
 
 ## What this is
 
-A multi-tenant Frappe v16 app (Python 3.14) for education groups: one Institution running many
-Campuses and many Colleges, covering engineering, arts & science, polytechnic, medical, law and
-MBA colleges **and** K-12 schools through one model. See [docs/PRODUCT.md](docs/PRODUCT.md).
+A multi-tenant Frappe v16 app (Python 3.14) for education groups: one Trust running many
+Campuses and many Institutions, covering engineering, arts & science, polytechnic, medical, law and
+MBAn institutions **and** K-12 schools through one model. See [docs/PRODUCT.md](docs/PRODUCT.md).
 
-The app has no product name in its UI. Screens identify the *institution*, from the Institution
+The app has no product name in its UI. Screens identify the *trust*, from the Trust
 record — see [erp/api/branding.py](erp/api/branding.py). `APP_NAME` ("ERP") is a last-resort
-fallback for a bench with no Institution row yet, not a brand to put on screen.
+fallback for a bench with no Trust row yet, not a brand to put on screen.
 
 Two halves: the Frappe app (`erp/` — Python + doctypes) and a React/Vite SPA (`frontend/`) that
 Frappe serves at `/erp`.
@@ -30,7 +30,7 @@ a doctype and cannot name the journey that requires it, don't create it. The pro
 | Doc | For |
 |---|---|
 | [docs/METHOD.md](docs/METHOD.md) | How a slice gets built, start to finish |
-| [docs/PRODUCT.md](docs/PRODUCT.md) | The domain — institution types, the college/school vocabulary map, personas |
+| [docs/PRODUCT.md](docs/PRODUCT.md) | The domain — trust types, the institution/school vocabulary map, personas |
 | [docs/DATA-MODEL.md](docs/DATA-MODEL.md) | What exists today, the hierarchy contract, the unbuilt-masters backlog |
 | [docs/ROADMAP.md](docs/ROADMAP.md) | Slice order |
 | [docs/MODULES.md](docs/MODULES.md) | Modules and how SPA navigation is generated |
@@ -81,7 +81,7 @@ are the standard invocations — see `/workspace/development/frappe-bench/CLAUDE
 ### The `id` UUID column
 
 Every doctype carries a separate `id` field holding an auto-generated UUID, distinct from Frappe's
-primary key `name`. `name` stays the readable business key (e.g. `college_code`) and Links reference
+primary key `name`. `name` stays the readable business key (e.g. `institution_code`) and Links reference
 it; `id` is a stable identifier for external systems.
 
 ```json
@@ -99,7 +99,7 @@ define the field and never overwrites an explicit value — just add the field t
 
 ### Hierarchy validation
 
-Doctypes denormalise their ancestors (`institution`, `college`, `campus`, `department`) so reports can
+Doctypes denormalise their ancestors (`trust`, `institution`, `campus`, `department`) so reports can
 filter without walking the tree. A Link proves existence, not branch membership, so those columns are
 independent claims that must be reconciled. Any doctype carrying them calls `validate_same_parent`
 from [erp/master/hierarchy.py](erp/master/hierarchy.py) in `validate`. Do not write a second version

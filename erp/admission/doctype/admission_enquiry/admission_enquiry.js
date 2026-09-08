@@ -2,16 +2,16 @@
 // For license information, please see license.txt
 
 // The visitor's details the gate desk already captured, pulled onto the enquiry when a pass is
-// picked. `institution`, `campus` and `academic_year` are left out on purpose: `institution` and
-// `campus` re-fetch themselves from the college, and `academic_year` is stamped on the server from
-// the institution's open admission cycle.
+// picked. `trust`, `campus` and `academic_year` are left out on purpose: `trust` and
+// `campus` re-fetch themselves from the institution, and `academic_year` is stamped on the server from
+// the trust's open admission cycle.
 const GATE_PASS_CARRY_FIELDS = [
 	"student_name",
 	"phone_number",
 	"aadhaar_number",
 	"parent_name",
 	"native_place",
-	"college",
+	"institution",
 	"reference",
 	"staff_reference",
 	"consultancy",
@@ -28,10 +28,10 @@ frappe.ui.form.on("Admission Enquiry", {
 		}
 
 		// Fetch the desk's record and lay it onto the enquiry so its details show at once. Name,
-		// phone and college are a starting point the counsellor may correct; the Aadhaar and the
+		// phone and institution are a starting point the counsellor may correct; the Aadhaar and the
 		// reference block are greyed by `read_only_depends_on` and re-enforced on the server, so
-		// setting them here only fills what the form then shows read-only. Setting `college` lets
-		// its own `fetch_from` fill institution and campus; `academic_year` follows on save.
+		// setting them here only fills what the form then shows read-only. Setting `institution` lets
+		// its own `fetch_from` fill trust and campus; `academic_year` follows on save.
 		frappe.db
 			.get_value("Admission Gate Pass", frm.doc.gate_pass, GATE_PASS_CARRY_FIELDS)
 			.then((r) => {

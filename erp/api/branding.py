@@ -1,15 +1,15 @@
 # Copyright (c) 2026, Prithivi and contributors
 # For license information, please see license.txt
 
-"""Institution branding for the sign-in screen.
+"""Trust branding for the sign-in screen.
 
 The SPA renders `/login` to an anonymous visitor, so every fact it shows has to be readable
 by Guest. That makes this module a deliberate, narrow hole in an otherwise closed app: it
-publishes a hand-picked subset of one Institution record — the same facts that already sit on
-that institution's letterhead, prospectus and public website — and nothing else.
+publishes a hand-picked subset of one Trust record — the same facts that already sit on
+that trust's letterhead, prospectus and public website — and nothing else.
 
 What is NOT published, and must not be added: `registration_number`, `remarks`, the geo
-coordinates, and the financial/academic year configuration. Nor any *names* of colleges,
+coordinates, and the financial/academic year configuration. Nor any *names* of institutions,
 campuses or departments — only how many there are.
 """
 
@@ -19,8 +19,8 @@ import frappe
 from frappe.utils import cstr
 
 CACHE_KEY = "erp:login_branding"
-# Short enough that a new College shows up in the scope strip within a coffee break, long
-# enough that hammering /login never reaches the database. Institution edits bypass it
+# Short enough that a new Institution shows up in the scope strip within a coffee break, long
+# enough that hammering /login never reaches the database. Trust edits bypass it
 # entirely — see `clear_cache`, wired to doc_events in hooks.py.
 CACHE_TTL = 300
 
@@ -30,9 +30,9 @@ MAX_ACCREDITATION_LEN = 40
 # The allow-list. Adding a fieldname here makes it world-readable to anyone who can reach
 # /login, which is the entire internet in a production deployment.
 _PUBLIC_FIELDS = (
-	"institution_name",
+	"trust_name",
 	"short_name",
-	"institution_type",
+	"trust_type",
 	"logo",
 	"favicon",
 	"accreditation",
@@ -46,7 +46,7 @@ _PUBLIC_FIELDS = (
 # Counted, never listed. Key is the client-facing name; value is the doctype.
 _SCOPE_DOCTYPES = {
 	"campuses": "Campus",
-	"colleges": "College",
+	"institutions": "Institution",
 	"departments": "Department",
 	"programmes": "Programme",
 }
@@ -54,10 +54,10 @@ _SCOPE_DOCTYPES = {
 
 @frappe.whitelist(allow_guest=True, methods=["GET"])
 def get_login_branding() -> dict:
-	"""Identity for the sign-in screen: which institution this bench belongs to.
+	"""Identity for the sign-in screen: which trust this bench belongs to.
 
-	Always answers 200 with the same shape. `institution` is None on a fresh bench that has no
-	Institution record yet — the client falls back to the product's own mark rather than
+	Always answers 200 with the same shape. `trust` is None on a fresh bench that has no
+	Trust record yet — the client falls back to the product's own mark rather than
 	treating it as an error, because a sign-in form must render whatever branding does.
 	"""
 	cached = frappe.cache.get_value(CACHE_KEY)
@@ -70,28 +70,28 @@ def get_login_branding() -> dict:
 
 
 def clear_cache(doc=None, method=None) -> None:
-	"""Drop the cached payload so an Institution edit is visible on the next page load.
+	"""Drop the cached payload so a Trust edit is visible on the next page load.
 
-	Wired to Institution writes in hooks.py. The TTL covers everything else: adding a College
+	Wired to Trust writes in hooks.py. The TTL covers everything else: adding an Institution
 	moves a count, and being five minutes stale about that is fine.
 	"""
 	frappe.cache.delete_value(CACHE_KEY)
 
 
 def _build() -> dict:
-	name = _resolve_institution()
+	name = _resolve_trust()
 	if not name:
-		return {"institution": None, "scope": None}
+		return {"trust": None, "scope": None}
 
-	doc = frappe.db.get_value("Institution", name, _PUBLIC_FIELDS, as_dict=True)
+	doc = frappe.db.get_value("Trust", name, _PUBLIC_FIELDS, as_dict=True)
 	if not doc:
-		return {"institution": None, "scope": None}
+		return {"trust": None, "scope": None}
 
 	return {
-		"institution": {
-			"name": doc.institution_name,
+		"trust": {
+			"name": doc.trust_name,
 			"short_name": doc.short_name or None,
-			"type": doc.institution_type or None,
+			"type": doc.trust_type or None,
 			"logo": _guest_readable(doc.logo),
 			"favicon": _guest_readable(doc.favicon),
 			"accreditations": _accreditations(doc.accreditation),
@@ -104,30 +104,30 @@ def _build() -> dict:
 	}
 
 
-def _resolve_institution() -> str | None:
-	"""Which Institution brands the sign-in screen.
+def _resolve_trust() -> str | None:
+	"""Which Trust brands the sign-in screen.
 
-	One bench can hold several Institution rows: the doctype links to itself through
-	`affiliated_university`, so a college group and the university it answers to are both
+	One bench can hold several Trust rows: the doctype links to itself through
+	`affiliated_university`, so an institution group and the university it answers to are both
 	stored here. The screen needs exactly one, picked the same way on every request:
 
-	1. `erp_login_institution` in site_config.json, when it names a real record — the escape
+	1. `erp_login_trust` in site_config.json, when it names a real record — the escape
 	   hatch for a bench that genuinely holds more than one root.
-	2. The oldest Active institution affiliated to nobody, i.e. the top of the tree.
-	3. The oldest Active institution, for the degenerate case where every row is affiliated.
+	2. The oldest Active trust affiliated to nobody, i.e. the top of the tree.
+	3. The oldest Active trust, for the degenerate case where every row is affiliated.
 
 	`get_all` (not `get_list`) is load-bearing: it ignores permissions, and a Guest has no
-	read access to Institution.
+	read access to Trust.
 	"""
-	override = frappe.conf.get("erp_login_institution")
-	if override and frappe.db.exists("Institution", override):
+	override = frappe.conf.get("erp_login_trust")
+	if override and frappe.db.exists("Trust", override):
 		return override
 
 	for filters in (
 		{"status": "Active", "affiliated_university": ["is", "not set"]},
 		{"status": "Active"},
 	):
-		found = frappe.get_all("Institution", filters=filters, pluck="name", order_by="creation asc", limit=1)
+		found = frappe.get_all("Trust", filters=filters, pluck="name", order_by="creation asc", limit=1)
 		if found:
 			return found[0]
 
@@ -188,13 +188,13 @@ def _accreditation_label(entry) -> str:
 	return f"{body} {grade}".strip()
 
 
-def _scope(institution: str) -> dict:
-	"""How large this institution is, as four counts.
+def _scope(trust: str) -> dict:
+	"""How large this trust is, as four counts.
 
-	Counts only — no names and no codes. That a group runs eleven colleges is on its own
+	Counts only — no names and no codes. That a group runs eleven institutions is on its own
 	prospectus; which eleven is not something a signed-out visitor needs to learn.
 	"""
 	return {
-		key: frappe.db.count(doctype, {"institution": institution, "status": "Active"})
+		key: frappe.db.count(doctype, {"trust": trust, "status": "Active"})
 		for key, doctype in _SCOPE_DOCTYPES.items()
 	}

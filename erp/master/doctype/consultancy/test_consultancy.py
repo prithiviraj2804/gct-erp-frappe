@@ -1,12 +1,12 @@
 # Copyright (c) 2026, Prithivi and Contributors
 # See license.txt
 
-"""Consultancy: institution scoping and what the format naming buys.
+"""Consultancy: trust scoping and what the format naming buys.
 
 A Consultancy has no ancestry to reconcile, so there is nothing here for
 `test_hierarchy.py` to cover. What is worth pinning is the scoping of the code:
-`consultancy_code` is deliberately not `unique`, so two institutions may reuse a code —
-and within one institution they may not. The institution prefix in `autoname` covers only
+`consultancy_code` is deliberately not `unique`, so two trusts may reuse a code —
+and within one trust they may not. The trust prefix in `autoname` covers only
 half of that (inserts), so both halves are asserted here, including the edit that walks
 straight past the naming.
 
@@ -20,8 +20,8 @@ import frappe
 from frappe.tests import IntegrationTestCase
 
 # Codes are prefixed `ZC` so they cannot collide with real master data on a dev site.
-INSTITUTION_A = "ZCA"
-INSTITUTION_B = "ZCB"
+TRUST_A = "ZCA"
+TRUST_B = "ZCB"
 
 
 class IntegrationTestConsultancy(IntegrationTestCase):
@@ -29,16 +29,14 @@ class IntegrationTestConsultancy(IntegrationTestCase):
 	def setUpClass(cls):
 		super().setUpClass()
 
-		for code, name in ((INSTITUTION_A, "Gamma Institute"), (INSTITUTION_B, "Delta Institute")):
-			frappe.get_doc(
-				{"doctype": "Institution", "institution_code": code, "institution_name": name}
-			).insert()
+		for code, name in ((TRUST_A, "Gamma Institute"), (TRUST_B, "Delta Institute")):
+			frappe.get_doc({"doctype": "Trust", "trust_code": code, "trust_name": name}).insert()
 
 	@staticmethod
 	def make_consultancy(code, **overrides):
 		values = {
 			"doctype": "Consultancy",
-			"institution": INSTITUTION_A,
+			"trust": TRUST_A,
 			"consultancy_code": code,
 			"consultancy_name": f"{code} Educational Services",
 			"contact_person": "Ravi Kumar",
@@ -56,11 +54,11 @@ class IntegrationTestConsultancy(IntegrationTestCase):
 		self.assertTrue(frappe.db.exists("Consultancy", consultancy.name))
 		self.assertEqual(consultancy.status, "Active")
 
-	def test_name_is_the_institution_and_code(self):
+	def test_name_is_the_trust_and_code(self):
 		consultancy = self.make_consultancy("NAMED")
 		consultancy.insert()
 
-		self.assertEqual(consultancy.name, f"{INSTITUTION_A}-NAMED")
+		self.assertEqual(consultancy.name, f"{TRUST_A}-NAMED")
 
 	def test_id_is_a_uuid(self):
 		"""Filled by the global `before_insert` hook, not by this controller."""
@@ -71,28 +69,28 @@ class IntegrationTestConsultancy(IntegrationTestCase):
 		# Parses or raises — asserts a real UUID rather than merely a non-empty string.
 		uuid.UUID(consultancy.id)
 
-	def test_two_institutions_may_share_a_consultancy_code(self):
-		"""The point of the format naming: the code is unique per institution, not globally."""
+	def test_two_trusts_may_share_a_consultancy_code(self):
+		"""The point of the format naming: the code is unique per trust, not globally."""
 		first = self.make_consultancy("SHARED")
 		first.insert()
 
-		second = self.make_consultancy("SHARED", institution=INSTITUTION_B)
+		second = self.make_consultancy("SHARED", trust=TRUST_B)
 		second.insert()
 
-		self.assertEqual(first.name, f"{INSTITUTION_A}-SHARED")
-		self.assertEqual(second.name, f"{INSTITUTION_B}-SHARED")
+		self.assertEqual(first.name, f"{TRUST_A}-SHARED")
+		self.assertEqual(second.name, f"{TRUST_B}-SHARED")
 		# Both rows survive under one code — the assertion a `unique` constraint would break.
 		self.assertTrue(frappe.db.exists("Consultancy", first.name))
 		self.assertTrue(frappe.db.exists("Consultancy", second.name))
 
-	def test_rejects_a_second_agency_with_the_same_code_in_one_institution(self):
+	def test_rejects_a_second_agency_with_the_same_code_in_one_trust(self):
 		self.make_consultancy("TWICE").insert()
 
 		duplicate = self.make_consultancy("TWICE")
 		with self.assertRaises(frappe.ValidationError):
 			duplicate.insert()
 
-	def test_rejects_a_code_edited_onto_one_already_in_the_institution(self):
+	def test_rejects_a_code_edited_onto_one_already_in_the_trust(self):
 		"""The hole the format naming leaves open: `name` is computed once, so an edit to
 		`consultancy_code` never re-collides with the key that was supposed to guard it."""
 		self.make_consultancy("KEEP").insert()

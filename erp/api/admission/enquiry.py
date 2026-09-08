@@ -20,8 +20,8 @@ CARRIED_FIELDS = (
 	"aadhaar_number",
 	"parent_name",
 	"native_place",
-	"college",
 	"institution",
+	"trust",
 	"academic_year",
 	"reference",
 	"consultancy",
@@ -35,7 +35,7 @@ def start_from_gate_pass(gate_pass: str) -> dict:
 
 	Idempotent: a pass already worked into an enquiry returns that enquiry rather than raising a
 	second one — the same walk-in must not split across two records. The new enquiry is a stub at
-	status `New`, pre-filled with the visitor's details and chosen college; its mandatory choice
+	status `New`, pre-filled with the visitor's details and chosen institution; its mandatory choice
 	fields (programme, admission type) are left for the counsellor and so are allowed to be blank
 	at creation.
 	"""

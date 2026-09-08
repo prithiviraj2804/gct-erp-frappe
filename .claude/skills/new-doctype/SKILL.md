@@ -85,10 +85,10 @@ Prefer a readable business key so `name` stays human-meaningful and Links read w
 
 ```json
 "naming_rule": "By fieldname",
-"autoname": "field:institution_code"
+"autoname": "field:trust_code"
 ```
 
-`Institution` follows this and is the pattern to copy.
+`Trust` follows this and is the pattern to copy.
 
 Avoid `"autoname": "UUID"`. It makes `name` itself a UUID, which duplicates exactly what the
 `id` column exists to provide and leaves list views showing an opaque string. A doctype that

@@ -1,14 +1,14 @@
 {
  "actions": [],
  "allow_rename": 1,
- "autoname": "format:{institution}-{campus_code}",
+ "autoname": "format:{trust}-{campus_code}",
  "creation": "2026-07-17 00:00:00.000000",
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
   "basic_information_section",
   "id",
-  "institution",
+  "trust",
   "campus_code",
   "campus_name",
   "short_name",
@@ -54,14 +54,14 @@
    "description": "Auto-generated UUID"
   },
   {
-   "fieldname": "institution",
+   "fieldname": "trust",
    "fieldtype": "Link",
-   "label": "Institution",
-   "options": "Institution",
+   "label": "Trust",
+   "options": "Trust",
    "reqd": 1,
    "in_list_view": 1,
    "in_standard_filter": 1,
-   "description": "Parent Institution"
+   "description": "Parent Trust"
   },
   {
    "fieldname": "campus_code",
@@ -71,7 +71,7 @@
    "reqd": 1,
    "in_list_view": 1,
    "in_standard_filter": 1,
-   "description": "Short code (CHN, CBE, etc.) — unique within the institution"
+   "description": "Short code (CHN, CBE, etc.) — unique within the trust"
   },
   {
    "fieldname": "campus_name",

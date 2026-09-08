@@ -48,8 +48,8 @@
   "state",
   "pincode",
   "choice_section",
-  "college",
   "institution",
+  "trust",
   "campus",
   "department",
   "programme",
@@ -125,7 +125,7 @@
    "fieldtype": "Link",
    "label": "Counsellor",
    "options": "Staff",
-   "link_filters": "[[\"Staff\",\"institution\",\"=\",\"eval:doc.institution\"],[\"Staff\",\"status\",\"=\",\"Active\"]]",
+   "link_filters": "[[\"Staff\",\"trust\",\"=\",\"eval:doc.trust\"],[\"Staff\",\"status\",\"=\",\"Active\"]]",
    "in_standard_filter": 1,
    "permlevel": 1,
    "description": "Staff member who owns this enquiry. permlevel 1: an Admission Manager assigns it; a Counsellor can see who owns a lead but cannot reassign it (or grab someone else's). Row visibility keys on this field."
@@ -236,7 +236,7 @@
    "fieldtype": "Link",
    "label": "Reference Staff",
    "options": "Staff",
-   "link_filters": "[[\"Staff\",\"institution\",\"=\",\"eval:doc.institution\"],[\"Staff\",\"status\",\"=\",\"Active\"]]",
+   "link_filters": "[[\"Staff\",\"trust\",\"=\",\"eval:doc.trust\"],[\"Staff\",\"status\",\"=\",\"Active\"]]",
    "depends_on": "eval:doc.reference=='Staff Reference'",
    "read_only_depends_on": "eval:doc.gate_pass"
   },
@@ -245,7 +245,7 @@
    "fieldtype": "Link",
    "label": "Consultancy",
    "options": "Consultancy",
-   "link_filters": "[[\"Consultancy\",\"institution\",\"=\",\"eval:doc.institution\"],[\"Consultancy\",\"status\",\"=\",\"Active\"]]",
+   "link_filters": "[[\"Consultancy\",\"trust\",\"=\",\"eval:doc.trust\"],[\"Consultancy\",\"status\",\"=\",\"Active\"]]",
    "depends_on": "eval:doc.reference=='Consultancy Reference'",
    "read_only_depends_on": "eval:doc.gate_pass"
   },
@@ -357,22 +357,22 @@
    "label": "Admission Choice"
   },
   {
-   "fieldname": "college",
-   "fieldtype": "Link",
-   "label": "College",
-   "options": "College",
-   "link_filters": "[[\"College\",\"status\",\"=\",\"Active\"]]",
-   "reqd": 1,
-   "in_list_view": 1,
-   "in_standard_filter": 1,
-   "description": "College the student is seeking admission to"
-  },
-  {
    "fieldname": "institution",
    "fieldtype": "Link",
    "label": "Institution",
    "options": "Institution",
-   "fetch_from": "college.institution",
+   "link_filters": "[[\"Institution\",\"status\",\"=\",\"Active\"]]",
+   "reqd": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "description": "Institution the student is seeking admission to"
+  },
+  {
+   "fieldname": "trust",
+   "fieldtype": "Link",
+   "label": "Trust",
+   "options": "Trust",
+   "fetch_from": "institution.trust",
    "read_only": 1,
    "in_standard_filter": 1
   },
@@ -381,7 +381,7 @@
    "fieldtype": "Link",
    "label": "Campus",
    "options": "Campus",
-   "fetch_from": "college.campus",
+   "fetch_from": "institution.campus",
    "read_only": 1
   },
   {
@@ -389,7 +389,7 @@
    "fieldtype": "Link",
    "label": "Department",
    "options": "Department",
-   "link_filters": "[[\"Department\",\"college\",\"=\",\"eval:doc.college\"]]",
+   "link_filters": "[[\"Department\",\"institution\",\"=\",\"eval:doc.institution\"]]",
    "in_standard_filter": 1,
    "description": "Department offering the programme. Optional for schools, which may have no department."
   },
@@ -411,7 +411,7 @@
    "options": "Programme Level",
    "fetch_from": "programme.programme_level",
    "read_only": 1,
-   "description": "Programme level, derived from the chosen programme (UG / PG for a college, Primary / Secondary for a school)"
+   "description": "Programme level, derived from the chosen programme (UG / PG for an institution, Primary / Secondary for a school)"
   },
   {
    "fieldname": "column_break_choice",
@@ -424,7 +424,7 @@
    "options": "Academic Year",
    "read_only": 1,
    "in_standard_filter": 1,
-   "description": "Admission year — set automatically from the institution's open admission year"
+   "description": "Admission year — set automatically from the trust's open admission year"
   },
   {
    "fieldname": "admission_type",

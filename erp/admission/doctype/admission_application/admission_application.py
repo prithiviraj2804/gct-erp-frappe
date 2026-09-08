@@ -16,7 +16,7 @@ from erp.master.hierarchy import validate_same_parent
 # Read off the lead once and held read-only here: the applicant's identity and the cycle they are
 # applying in. The *choice* fields are deliberately absent — the programme this application admits
 # to is its own, because a counselling allotment routinely differs from what was enquired about.
-ENQUIRY_FIELDS = ("student_name", "counsellor", "institution", "campus", "academic_year")
+ENQUIRY_FIELDS = ("student_name", "counsellor", "trust", "campus", "academic_year")
 
 # Fields that decide which seat is being taken. Locked once a student exists: moving an admitted
 # student to another branch is a transfer, a different journey with its own approvals.
@@ -58,19 +58,19 @@ class AdmissionApplication(Document):
 
 		The lead's ancestors are not reusable here: a student who walked in asking for CSE and was
 		allotted ECE has an application under a different department, and possibly a different
-		college. Deriving from `self.programme` is what makes the hierarchy check below compare
+		institution. Deriving from `self.programme` is what makes the hierarchy check below compare
 		against the real parents of the branch actually being taken.
 		"""
 		if self.programme:
 			programme = frappe.db.get_value(
 				"Programme",
 				self.programme,
-				["institution", "college", "campus", "department", "programme_level"],
+				["trust", "institution", "campus", "department", "programme_level"],
 				as_dict=True,
 			)
 			if programme:
+				self.trust = programme.trust
 				self.institution = programme.institution
-				self.college = programme.college
 				self.campus = programme.campus
 				self.department = programme.department
 				self.programme_level = programme.programme_level
@@ -139,13 +139,13 @@ class AdmissionApplication(Document):
 			)
 
 	def validate_hierarchy(self):
-		"""Keep the application, its intake and the lead it came from inside one institution."""
-		validate_same_parent(self, "college", "institution")
-		validate_same_parent(self, "department", "college", "institution")
-		validate_same_parent(self, "programme", "department", "college", "institution")
-		validate_same_parent(self, "academic_year", "institution")
-		validate_same_parent(self, "programme_intake", "programme", "college", "institution")
-		validate_same_parent(self, "admission_enquiry", "institution")
+		"""Keep the application, its intake and the lead it came from inside one trust."""
+		validate_same_parent(self, "institution", "trust")
+		validate_same_parent(self, "department", "institution", "trust")
+		validate_same_parent(self, "programme", "department", "institution", "trust")
+		validate_same_parent(self, "academic_year", "trust")
+		validate_same_parent(self, "programme_intake", "programme", "institution", "trust")
+		validate_same_parent(self, "admission_enquiry", "trust")
 
 	def validate_eligibility(self):
 		"""Re-check entry conditions against the programme actually being admitted to.

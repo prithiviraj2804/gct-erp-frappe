@@ -1,10 +1,10 @@
 # Copyright (c) 2026, Prithivi and Contributors
 # See license.txt
 
-"""What a Programme must accept and derive across a college and a school.
+"""What a Programme must accept and derive across an institution and a school.
 
-A college programme names a Degree and rides its level; a school programme has no Degree and no
-department and states its level by hand. Fixtures give both a School college and an ordinary one so
+An institution programme names a Degree and rides its level; a school programme has no Degree and no
+department and states its level by hand. Fixtures give both a School institution and an ordinary one so
 the department-required rule can be exercised from each side. Globals not this test's to own
 (Programme Level, Degree, Academic Structure) are reused if present and created otherwise, so the
 suite runs on a bare site as well as a seeded one.
@@ -13,15 +13,14 @@ suite runs on a bare site as well as a seeded one.
 import frappe
 from frappe.tests import IntegrationTestCase
 
-
 # On IntegrationTestCase, the doctype test records and all
 # link-field test record dependencies are recursively loaded
 # Use these module variables to add/remove to/from that list
 EXTRA_TEST_RECORD_DEPENDENCIES = []  # eg. ["User"]
 IGNORE_TEST_RECORD_DEPENDENCIES = []  # eg. ["User"]
 
-INSTITUTION = "ZPINST"
-COLLEGE = "ZPCOL"
+TRUST = "ZPINST"
+INSTITUTION = "ZPCOL"
 SCHOOL = "ZPSCH"
 
 
@@ -39,36 +38,45 @@ class IntegrationTestProgramme(IntegrationTestCase):
 			"Programme Level", "SEC", {"level_code": "SEC", "level_name": "Secondary", "level_order": 3}
 		)
 		cls.degree = cls.ensure(
-			"Degree", "ZPDEG", {"degree_code": "ZPDEG", "degree_name": "Test Bachelor", "programme_level": "UG"}
+			"Degree",
+			"ZPDEG",
+			{"degree_code": "ZPDEG", "degree_name": "Test Bachelor", "programme_level": "UG"},
 		)
 		cls.structure = cls.ensure(
 			"Academic Structure",
 			"ZPSEM",
-			{"structure_code": "ZPSEM", "structure_name": "Test Semester", "terms_per_year": 2, "term_label": "Semester"},
+			{
+				"structure_code": "ZPSEM",
+				"structure_name": "Test Semester",
+				"terms_per_year": 2,
+				"term_label": "Semester",
+			},
 		)
 
-		frappe.get_doc(
-			{"doctype": "Institution", "institution_code": INSTITUTION, "institution_name": "Prog Institute"}
-		).insert()
-		for code, college_type in ((COLLEGE, "Engineering"), (SCHOOL, "School")):
+		frappe.get_doc({"doctype": "Trust", "trust_code": TRUST, "trust_name": "Prog Institute"}).insert()
+		for code, institution_type in ((INSTITUTION, "Engineering"), (SCHOOL, "School")):
 			frappe.get_doc(
 				{
-					"doctype": "College",
-					"institution": INSTITUTION,
-					"college_code": code,
-					"college_name": f"{code} College",
-					"college_type": college_type,
+					"doctype": "Institution",
+					"trust": TRUST,
+					"institution_code": code,
+					"institution_name": f"{code} Institution",
+					"institution_type": institution_type,
 				}
 			).insert()
-		cls.department = frappe.get_doc(
-			{
-				"doctype": "Department",
-				"institution": INSTITUTION,
-				"college": COLLEGE,
-				"department_code": "ZPCSE",
-				"department_name": "ZPCSE Department",
-			}
-		).insert().name
+		cls.department = (
+			frappe.get_doc(
+				{
+					"doctype": "Department",
+					"trust": TRUST,
+					"institution": INSTITUTION,
+					"department_code": "ZPCSE",
+					"department_name": "ZPCSE Department",
+				}
+			)
+			.insert()
+			.name
+		)
 
 	@staticmethod
 	def ensure(doctype, name, values):
@@ -79,7 +87,7 @@ class IntegrationTestProgramme(IntegrationTestCase):
 	def make_programme(self, **overrides):
 		values = {
 			"doctype": "Programme",
-			"college": COLLEGE,
+			"institution": INSTITUTION,
 			"department": self.department,
 			"degree": self.degree,
 			"academic_structure": self.structure,
@@ -91,7 +99,7 @@ class IntegrationTestProgramme(IntegrationTestCase):
 		values.update(overrides)
 		return frappe.get_doc(values)
 
-	def test_college_programme_derives_level_from_degree(self):
+	def test_institution_programme_derives_level_from_degree(self):
 		programme = self.make_programme(programme_code="ZPPUG")
 		programme.insert()
 		self.assertEqual(programme.programme_level, "UG")
@@ -104,7 +112,7 @@ class IntegrationTestProgramme(IntegrationTestCase):
 
 	def test_school_programme_needs_no_degree_or_department(self):
 		programme = self.make_programme(
-			college=SCHOOL,
+			institution=SCHOOL,
 			department=None,
 			degree=None,
 			programme_level="SEC",
