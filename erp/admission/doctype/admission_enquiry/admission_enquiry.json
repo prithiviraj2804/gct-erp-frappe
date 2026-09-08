@@ -60,6 +60,12 @@
   "programme_intake",
   "education_section",
   "previous_education",
+  "entrance_section",
+  "entrance_exam",
+  "entrance_registration_no",
+  "column_break_entrance",
+  "cutoff_marks",
+  "entrance_rank",
   "remarks_section",
   "remarks"
  ],
@@ -455,6 +461,39 @@
    "label": "Previous Education",
    "options": "Admission Enquiry Education",
    "description": "Prior qualifications. The programme's Required Prior Qualification decides which record must appear (blank = none required, e.g. entry-level school classes); a lateral entry needs a Diploma."
+  },
+  {
+   "fieldname": "entrance_section",
+   "fieldtype": "Section Break",
+   "label": "Entrance & Merit",
+   "description": "Collected where an entrance exam decides admission. A Field Policy hides this for institution types that admit without one"
+  },
+  {
+   "fieldname": "entrance_exam",
+   "fieldtype": "Data",
+   "label": "Entrance Exam",
+   "description": "TNEA, NEET, CAT, CLAT and so on"
+  },
+  {
+   "fieldname": "entrance_registration_no",
+   "fieldtype": "Data",
+   "label": "Entrance Registration No"
+  },
+  {
+   "fieldname": "column_break_entrance",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "cutoff_marks",
+   "fieldtype": "Float",
+   "label": "Cut-off Marks",
+   "precision": "3"
+  },
+  {
+   "fieldname": "entrance_rank",
+   "fieldtype": "Int",
+   "label": "Entrance Rank",
+   "non_negative": 1
   },
   {
    "fieldname": "remarks_section",

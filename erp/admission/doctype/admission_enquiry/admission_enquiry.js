@@ -19,7 +19,68 @@ const GATE_PASS_CARRY_FIELDS = [
 	"source_details",
 ];
 
+// Fields this form may be told to hide, require or relabel, depending on the institution. The
+// answer comes from the server (`erp.api.field_policy.get_policy`) because it is composed from the
+// trust, the institution type and its ancestors, and the institution — none of which the browser
+// can work out for itself.
+//
+// This is presentation only. The same policy is applied again in `validate()`, so a field hidden
+// here is also refused on the server, and a field this script fails to hide is still refused there.
+// Nothing below is a security boundary.
+function apply_field_policy(frm) {
+	if (!frm.doc.institution) {
+		return;
+	}
+
+	frappe.call({
+		method: "erp.api.field_policy.get_policy",
+		args: {
+			document_type: frm.doctype,
+			institution: frm.doc.institution,
+		},
+		callback(r) {
+			const policy = r.message || {};
+
+			for (const [fieldname, rule] of Object.entries(policy)) {
+				const field = frm.get_field(fieldname);
+				if (!field) {
+					continue;
+				}
+
+				const hidden = rule.requirement === "Hidden";
+				frm.set_df_property(fieldname, "hidden", hidden ? 1 : 0);
+				frm.set_df_property(fieldname, "reqd", rule.requirement === "Required" ? 1 : 0);
+				frm.set_df_property(
+					fieldname,
+					"read_only",
+					rule.requirement === "Read Only" ? 1 : field.df.read_only || 0,
+				);
+
+				if (rule.label) {
+					frm.set_df_property(fieldname, "label", rule.label);
+				}
+				if (rule.description) {
+					frm.set_df_property(fieldname, "description", rule.description);
+				}
+			}
+
+			frm.refresh_fields();
+		},
+	});
+}
+
 frappe.ui.form.on("Admission Enquiry", {
+	refresh(frm) {
+		apply_field_policy(frm);
+	},
+
+	// The institution is what selects the policy, so changing it redraws the form. A counsellor
+	// who picks the school after typing an entrance rank sees the field go away, and the server
+	// then declines to store what they typed.
+	institution(frm) {
+		apply_field_policy(frm);
+	},
+
 	gate_pass(frm) {
 		// Clearing the pass leaves whatever was already typed — the counsellor may have corrected
 		// a value and should not lose it because they detached the pass.

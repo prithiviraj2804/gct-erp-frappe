@@ -10,6 +10,7 @@ from frappe.model.document import Document
 from erp.admission.eligibility import assert_prior_qualification
 from erp.admission.follow_up_state import derive_follow_up_state
 from erp.admission.pipeline import assert_status_transition
+from erp.field_policy import apply_field_policy
 from erp.master.doctype.institution_type.institution_type import institution_requires_department
 from erp.master.hierarchy import validate_same_parent
 from erp.utils import normalize_aadhaar, normalize_phone
@@ -37,6 +38,9 @@ class AdmissionEnquiry(Document):
 		self.normalize_contact()
 		self.validate_department()
 		self.validate_hierarchy()
+		# After the ancestors are settled, because the policy is resolved from `institution` and
+		# would otherwise be read off a stale copy when an enquiry is moved between institutions.
+		apply_field_policy(self)
 		self.validate_unique_aadhaar()
 		self.validate_previous_education()
 		self.enforce_pipeline_gates()

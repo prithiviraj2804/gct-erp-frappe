@@ -1,0 +1,94 @@
+{
+ "actions": [],
+ "creation": "2026-09-08 00:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "istable": 1,
+ "field_order": [
+  "id",
+  "fieldname",
+  "requirement",
+  "label_override",
+  "column_break_rule",
+  "display_order",
+  "min_value",
+  "max_value",
+  "description_override"
+ ],
+ "fields": [
+  {
+   "fieldname": "id",
+   "fieldtype": "Data",
+   "label": "ID",
+   "unique": 1,
+   "read_only": 1,
+   "no_copy": 1,
+   "hidden": 1,
+   "description": "Auto-generated UUID"
+  },
+  {
+   "fieldname": "fieldname",
+   "fieldtype": "Data",
+   "label": "Fieldname",
+   "reqd": 1,
+   "in_list_view": 1,
+   "columns": 3,
+   "description": "The fieldname on the governed doctype, exactly as it appears in the schema"
+  },
+  {
+   "fieldname": "requirement",
+   "fieldtype": "Select",
+   "label": "Requirement",
+   "options": "\nRequired\nOptional\nHidden\nRead Only",
+   "in_list_view": 1,
+   "columns": 2,
+   "description": "Blank inherits from the less specific scope. Only a stated value overrides"
+  },
+  {
+   "fieldname": "label_override",
+   "fieldtype": "Data",
+   "label": "Label",
+   "in_list_view": 1,
+   "columns": 3,
+   "description": "What this institution calls the field. Blank keeps the schema label"
+  },
+  {
+   "fieldname": "column_break_rule",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "display_order",
+   "fieldtype": "Int",
+   "label": "Display Order",
+   "description": "Zero means unstated, so a more specific scope may still set it"
+  },
+  {
+   "fieldname": "min_value",
+   "fieldtype": "Data",
+   "label": "Minimum Value",
+   "description": "Blank means no bound. Data rather than Float on purpose: a Float column is NOT NULL DEFAULT 0, so it could not tell a bound of zero from no bound at all"
+  },
+  {
+   "fieldname": "max_value",
+   "fieldtype": "Data",
+   "label": "Maximum Value",
+   "description": "Blank means no bound. Data rather than Float on purpose: a Float column is NOT NULL DEFAULT 0, so it could not tell a bound of zero from no bound at all"
+  },
+  {
+   "fieldname": "description_override",
+   "fieldtype": "Small Text",
+   "label": "Help Text"
+  }
+ ],
+ "links": [],
+ "modified": "2026-09-08 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Master",
+ "name": "Field Policy Rule",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "idx",
+ "sort_order": "ASC",
+ "states": []
+}

@@ -1,0 +1,152 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "",
+ "creation": "2026-09-08 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "naming_rule": "By script",
+ "track_changes": 1,
+ "field_order": [
+  "basic_information_section",
+  "id",
+  "document_type",
+  "enabled",
+  "column_break_basic",
+  "scope_institution_type",
+  "scope_institution",
+  "is_standard",
+  "rules_section",
+  "rules",
+  "notes_section",
+  "description"
+ ],
+ "fields": [
+  {
+   "fieldname": "basic_information_section",
+   "fieldtype": "Section Break",
+   "label": "What This Governs"
+  },
+  {
+   "fieldname": "id",
+   "fieldtype": "Data",
+   "label": "ID",
+   "unique": 1,
+   "read_only": 1,
+   "no_copy": 1,
+   "in_standard_filter": 1,
+   "description": "Auto-generated UUID"
+  },
+  {
+   "fieldname": "document_type",
+   "fieldtype": "Link",
+   "label": "Document Type",
+   "options": "DocType",
+   "reqd": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "description": "The doctype whose fields this policy governs, e.g. Admission Enquiry"
+  },
+  {
+   "default": "1",
+   "fieldname": "enabled",
+   "fieldtype": "Check",
+   "label": "Enabled",
+   "description": "Turn a policy off without deleting it, to see what it was doing"
+  },
+  {
+   "fieldname": "column_break_basic",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "scope_institution_type",
+   "fieldtype": "Link",
+   "label": "Institution Type",
+   "options": "Institution Type",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "description": "Applies to every institution of this kind, and every kind under it"
+  },
+  {
+   "fieldname": "scope_institution",
+   "fieldtype": "Link",
+   "label": "Institution",
+   "options": "Institution",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "description": "Applies to this one institution, overriding whatever its type says"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_standard",
+   "fieldtype": "Check",
+   "label": "Is Standard",
+   "read_only": 1,
+   "no_copy": 1,
+   "description": "Shipped with the app. Standard policies may be edited or disabled but not deleted"
+  },
+  {
+   "fieldname": "rules_section",
+   "fieldtype": "Section Break",
+   "label": "Rules"
+  },
+  {
+   "fieldname": "rules",
+   "fieldtype": "Table",
+   "label": "Rules",
+   "options": "Field Policy Rule",
+   "description": "One row per field that behaves differently at this scope. Fields with no row keep whatever a less specific scope said, or the schema default"
+  },
+  {
+   "fieldname": "notes_section",
+   "fieldtype": "Section Break",
+   "label": "Notes"
+  },
+  {
+   "fieldname": "description",
+   "fieldtype": "Small Text",
+   "label": "Description",
+   "description": "Why this policy exists. Whoever reads it in two years will need this"
+  }
+ ],
+ "links": [],
+ "modified": "2026-09-08 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Master",
+ "name": "Field Policy",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Trust Admin",
+   "write": 1
+  },
+  {
+   "read": 1,
+   "report": 1,
+   "export": 1,
+   "role": "Institution Admin"
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

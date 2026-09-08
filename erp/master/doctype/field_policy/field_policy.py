@@ -1,0 +1,142 @@
+# Copyright (c) 2026, Prithivi and contributors
+# For license information, please see license.txt
+
+"""Which fields a doctype collects, stated per scope instead of per deployment.
+
+A school enquiry collects the previous school and its marks. An engineering enquiry collects the
+entrance exam, the rank and the cut-off. A medical one collects NEET. They are one doctype and one
+table, because a counsellor's list, the registrar's report and every filter in the app have to work
+across all of them — and because the alternative, a doctype per institution type, multiplies every
+future change by the number of types.
+
+So the *superset* of fields lives in the schema, and a Field Policy says which of them this
+institution actually collects, which are required, and what it calls them.
+
+**This is the only validation boundary.** Frappe has no per-row form customization: `depends_on`
+and `mandatory_depends_on` are evaluated in the browser (`frappe/public/js/frappe/form/save.js`)
+while the server checks only `reqd` (`frappe/model/base_document.py`), so anything expressed there
+is advice, not a rule. `apply_field_policy` runs inside `validate()`, which means it holds for Desk,
+`/api/resource`, Data Import, a console script and any client that has not been written yet.
+"""
+
+import frappe
+from frappe import _
+from frappe.model.document import Document
+
+from erp.field_policy import clear_cache
+
+REQUIREMENTS = ("Required", "Optional", "Hidden", "Read Only")
+
+
+class FieldPolicy(Document):
+	def autoname(self):
+		"""Readable, and unique on exactly what must be unique: one policy per doctype per scope.
+
+		A second policy for the same scope would be an unresolvable contradiction — the merge is
+		ordered across scopes, not within one — so the collision is the guard.
+		"""
+		self.name = f"{self.document_type}-{self.scope()}"
+
+	def validate(self):
+		self.validate_one_scope()
+		self.validate_fields_exist()
+		self.validate_not_statically_required()
+		self.validate_no_duplicate_rules()
+
+	def on_update(self):
+		clear_cache()
+
+	def after_delete(self):
+		clear_cache()
+
+	def on_trash(self):
+		if self.is_standard:
+			frappe.throw(
+				_("{0} ships with the app. Disable it instead of deleting it.").format(
+					frappe.bold(self.name)
+				),
+				title=_("Standard Field Policy"),
+			)
+
+	def scope(self) -> str:
+		"""The record this policy applies to. The institution wins when both are set — but
+		`validate_one_scope` refuses that, so in practice exactly one is present."""
+		return self.scope_institution or self.scope_institution_type
+
+	def validate_one_scope(self):
+		"""Exactly one scope, because two would make "which is more specific" a question with no
+		answer on a single row. Specificity is expressed *between* policies, not inside one.
+
+		Only two scopes exist today because only two have a consumer: configure the kind, override
+		the one institution that differs. Programme and intake scopes are a schema change away, and
+		will be made when a journey asks for them rather than in anticipation.
+		"""
+		if bool(self.scope_institution_type) == bool(self.scope_institution):
+			frappe.throw(
+				_("Set either an Institution Type or an Institution as the scope, not both and not neither."),
+				title=_("One Scope"),
+			)
+
+	def validate_fields_exist(self):
+		"""A rule naming a field that does not exist does nothing, silently, for ever.
+
+		The commonest way to write one is a typo, and the second commonest is a field that was
+		renamed. Both look identical to a working policy from the outside, which is why this is a
+		hard error rather than a warning.
+		"""
+		if not self.document_type:
+			return
+
+		meta = frappe.get_meta(self.document_type)
+		for rule in self.rules:
+			if not meta.has_field(rule.fieldname):
+				frappe.throw(
+					_("Row {0}: {1} has no field {2}.").format(
+						rule.idx, frappe.bold(self.document_type), frappe.bold(rule.fieldname)
+					),
+					title=_("Unknown Field"),
+				)
+
+	def validate_not_statically_required(self):
+		"""A policy-governed field may not also be `reqd: 1` in the doctype JSON.
+
+		The two say different things and the JSON always wins: `_validate_mandatory` runs after
+		`validate`, so a policy saying "Optional" or "Hidden" for a school would be overruled by a
+		static `reqd` and the school could never save the form. The failure is confusing precisely
+		because the policy looks correct.
+
+		Fields that genuinely every institution type needs — `institution`, `programme`,
+		`student_name` — stay `reqd: 1` in the JSON and are simply not governed here.
+		"""
+		if not self.document_type:
+			return
+
+		meta = frappe.get_meta(self.document_type)
+		clashes = [
+			rule.fieldname
+			for rule in self.rules
+			if rule.requirement and (field := meta.get_field(rule.fieldname)) and field.reqd
+		]
+		if clashes:
+			frappe.throw(
+				_(
+					"{0} is mandatory in the {1} schema, so a policy cannot govern it. "
+					"Either drop the rule, or make the field optional in the doctype and let "
+					"policy decide."
+				).format(frappe.bold(", ".join(clashes)), frappe.bold(self.document_type)),
+				title=_("Field Is Always Required"),
+			)
+
+	def validate_no_duplicate_rules(self):
+		"""One rule per field per policy. Two rows for one field is an unresolvable contradiction —
+		the merge is ordered across *scopes*, not within one."""
+		seen = set()
+		for rule in self.rules:
+			if rule.fieldname in seen:
+				frappe.throw(
+					_("Row {0}: {1} already has a rule in this policy.").format(
+						rule.idx, frappe.bold(rule.fieldname)
+					),
+					title=_("Duplicate Rule"),
+				)
+			seen.add(rule.fieldname)

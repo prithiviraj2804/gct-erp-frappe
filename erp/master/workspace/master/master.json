@@ -8,7 +8,7 @@
  "public": 1,
  "is_hidden": 0,
  "sequence_id": 1,
- "content": "[{\"id\":\"master_organisation_card\",\"type\":\"card\",\"data\":{\"card_name\":\"Organisation\",\"col\":4}},{\"id\":\"master_academic_card\",\"type\":\"card\",\"data\":{\"card_name\":\"Academic\",\"col\":4}},{\"id\":\"master_admissions_card\",\"type\":\"card\",\"data\":{\"card_name\":\"Admissions\",\"col\":4}},{\"id\":\"master_people_card\",\"type\":\"card\",\"data\":{\"card_name\":\"People\",\"col\":4}}]",
+ "content": "[{\"id\":\"master_organisation_card\",\"type\":\"card\",\"data\":{\"card_name\":\"Organisation\",\"col\":4}},{\"id\":\"master_academic_card\",\"type\":\"card\",\"data\":{\"card_name\":\"Academic\",\"col\":4}},{\"id\":\"master_admissions_card\",\"type\":\"card\",\"data\":{\"card_name\":\"Admissions\",\"col\":4}},{\"id\":\"master_people_card\",\"type\":\"card\",\"data\":{\"card_name\":\"People\",\"col\":4}},{\"id\":\"master_configuration_card\",\"type\":\"card\",\"data\":{\"card_name\":\"Configuration\",\"col\":4}}]",
  "links": [
   {
    "type": "Card Break",
@@ -134,6 +134,18 @@
    "link_to": "Staff",
    "icon": "contact",
    "label": "Staff"
+  },
+  {
+   "type": "Card Break",
+   "label": "Configuration",
+   "icon": "sliders-horizontal"
+  },
+  {
+   "type": "Link",
+   "link_type": "DocType",
+   "link_to": "Field Policy",
+   "icon": "list-checks",
+   "label": "Field Policy"
   }
  ]
 }
