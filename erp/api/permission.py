@@ -228,6 +228,33 @@ def institution_has_permission(doc, ptype=None, user=None, **kwargs) -> bool:
 	return institution in allowed
 
 
+def institution_sql_clause(alias: str, *, column: str = "institution") -> str:
+	"""The one supported way to scope hand-written report SQL to the caller's institutions.
+
+	A Query Report runs `frappe.db.sql(self.query, filters)` raw — `frappe/core/doctype/report/
+	report.py:181` — so it bypasses `permission_query_conditions`, the `"*"` hook and User
+	Permissions entirely. Reporting is the sanctioned escape hatch for analytics the list view
+	cannot express, and without this it is also the escape hatch out of tenancy.
+
+	Returns `1=1` for a caller who acts for every institution, `` `alias`.`column` IN (...) `` for a
+	scoped one, and `1=0` for a login with no grant — the same fail-closed rule as the list filter,
+	stated for SQL.
+
+	Prefer `frappe.get_list`, which applies the hook for you and needs none of this. Reach for raw
+	SQL only when an aggregate genuinely cannot be expressed otherwise, and then interpolate this
+	into the WHERE clause.
+	"""
+	if acts_for_any_institution():
+		return "1=1"
+
+	allowed = allowed_institutions()
+	if not allowed:
+		return "1=0"
+
+	values = ", ".join(frappe.db.escape(institution) for institution in allowed)
+	return f"`{alias}`.`{column}` in ({values})"
+
+
 def assert_institution_in_scope(institution: str) -> None:
 	"""The tenant rule stated imperatively, for whitelisted endpoints that write across doctypes.
 

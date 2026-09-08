@@ -27,6 +27,30 @@ from erp.field_policy import clear_cache
 
 REQUIREMENTS = ("Required", "Optional", "Hidden", "Read Only")
 
+# The reporting spine: fields a trust-level rollup reads, which therefore mean the same thing in
+# every institution and may not be governed by a policy.
+#
+# The trust's question is "how many admissions across all institutions, and how many each" — and
+# that only has an answer while every institution records the *same* things in the *same* columns.
+# Configuration is what makes an engineering enquiry differ from a school one; the spine is what
+# keeps them countable together. Hiding `institution` would drop a row from every rollup;
+# relabelling `status` would make one institution's funnel incomparable with the next.
+#
+# Most of these are `reqd: 1` and so already refused by `validate_not_statically_required`. They
+# are listed anyway, because "it happens to be mandatory" is an accident and "the trust counts on
+# it" is a reason — and the next spine field may not be mandatory.
+REPORTING_SPINE = {
+	"Admission Enquiry": frozenset(
+		{"institution", "trust", "status", "enquiry_date", "academic_year", "programme"}
+	),
+	"Admission Application": frozenset(
+		{"institution", "trust", "application_state", "application_date", "programme", "programme_intake"}
+	),
+	"Student": frozenset(
+		{"institution", "trust", "status", "date_of_admission", "programme", "academic_year"}
+	),
+}
+
 
 class FieldPolicy(Document):
 	def autoname(self):
@@ -40,6 +64,7 @@ class FieldPolicy(Document):
 	def validate(self):
 		self.validate_one_scope()
 		self.validate_fields_exist()
+		self.validate_not_reporting_spine()
 		self.validate_not_statically_required()
 		self.validate_no_duplicate_rules()
 
@@ -125,6 +150,23 @@ class FieldPolicy(Document):
 					"policy decide."
 				).format(frappe.bold(", ".join(clashes)), frappe.bold(self.document_type)),
 				title=_("Field Is Always Required"),
+			)
+
+	def validate_not_reporting_spine(self):
+		"""Refuse to govern a field the trust counts on.
+
+		An institution may run its own process; what it may not do is stop being countable
+		alongside the others. This is the line between the two.
+		"""
+		spine = REPORTING_SPINE.get(self.document_type, frozenset())
+		governed = sorted({rule.fieldname for rule in self.rules} & spine)
+		if governed:
+			frappe.throw(
+				_(
+					"{0} is part of the trust-wide reporting spine and means the same thing in every "
+					"institution, so a policy cannot change it. Configure the process around it."
+				).format(frappe.bold(", ".join(governed))),
+				title=_("Reporting Spine"),
 			)
 
 	def validate_no_duplicate_rules(self):

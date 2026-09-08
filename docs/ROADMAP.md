@@ -14,7 +14,8 @@ consumes it.** Every slice below names the journey that justifies it and the ste
 | **1** | Tenancy repair A — `Trust Admin` / `Institution Admin` roles, a `"*"` scoping hook over every doctype carrying `institution`, fail-closed `assert_institution_in_scope`, Staff→User Permission provisioning, `share` dropped where it crossed the boundary. 176 tests green | `798f65b` |
 | **2** | Tenancy repair B — `institution`/`trust` `reqd: 1`, backfill, `apply_strict_user_permissions` on. Plus the child-row UUID fix and vocabulary replayed on every migrate. 184 tests green | `fd27e22` |
 | **3** | `Institution Type` as a NestedSet tree; both `!= "School"` branches deleted; DocPerms so the two tenancy roles stand alone; workspace links + a guard test for reachability. 200 tests green | `6786d8d` |
-| **6** | `Field Policy` — a configurable Admission Enquiry. Brought forward ahead of slices 4-5 because it is the feature the ERP exists for. 213 tests green | — |
+| **6** | `Field Policy` — a configurable Admission Enquiry. Brought forward ahead of slices 4-5 because it is the feature the ERP exists for. 213 tests green | `5decfc5` |
+| **6b** | Trust-wide rollups: the Admission Funnel report (one report, scoped by who runs it), the reporting spine that configuration may not touch, and a CI gate so no future report bypasses tenancy. 223 tests green | — |
 
 ## Next — in this order
 

@@ -9,7 +9,7 @@
  "is_hidden": 0,
  "sequence_id": 3,
  "icon": "users",
- "content": "[{\"id\":\"admission_enquiries_card\",\"type\":\"card\",\"data\":{\"card_name\":\"Enquiries\",\"col\":4}},{\"id\":\"admission_intake_card\",\"type\":\"card\",\"data\":{\"card_name\":\"Intake\",\"col\":4}}]",
+ "content": "[{\"id\":\"admission_enquiries_card\",\"type\":\"card\",\"data\":{\"card_name\":\"Enquiries\",\"col\":4}},{\"id\":\"admission_intake_card\",\"type\":\"card\",\"data\":{\"card_name\":\"Intake\",\"col\":4}},{\"id\":\"admission_reports_card\",\"type\":\"card\",\"data\":{\"card_name\":\"Reports\",\"col\":4}}]",
  "links": [
   {
    "type": "Card Break",
@@ -48,6 +48,20 @@
    "link_to": "Admission Gate Pass",
    "icon": "ticket",
    "label": "Admission Gate Pass"
+  },
+  {
+   "type": "Card Break",
+   "label": "Reports",
+   "icon": "chart-no-axes-column"
+  },
+  {
+   "type": "Link",
+   "link_type": "Report",
+   "link_to": "Admission Funnel",
+   "is_query_report": 1,
+   "icon": "chart-no-axes-column",
+   "label": "Admission Funnel",
+   "dependencies": "Admission Enquiry"
   }
  ]
 }

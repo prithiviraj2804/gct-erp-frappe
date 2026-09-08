@@ -130,7 +130,56 @@ Both are real columns on one table, so `WHERE education_board = 'CBSE'` and
 `GROUP BY cutoff_band` work in Report Builder with no code. That is the point of keeping the
 superset typed rather than reaching for an attribute store.
 
-## 7. The promotion boundary
+## 7. The bound on configuration: the trust must still be able to count
+
+A trust runs institutions that admit differently, and what it needs back from all that variation is
+**one comparable set of numbers** — total admissions across every institution, and each institution
+separately. Those two requirements pull against each other, and the resolution is a line drawn on
+purpose:
+
+> **An institution configures its process. It never changes the columns a rollup reads.**
+
+That line is the **reporting spine** — declared per doctype in
+`erp/master/doctype/field_policy/field_policy.py:REPORTING_SPINE`, and refused by
+`Field Policy.validate`. Hiding `institution` would drop a row from every total; relabelling
+`status` would make one institution's funnel incomparable with the next. Everything outside the
+spine is yours to configure.
+
+This is also why the superset stays **typed columns on one table** rather than an attribute store.
+`WHERE institution_type = 'Engineering'`, `GROUP BY institution` and a Report Builder filter all
+keep working precisely because a school enquiry and an engineering enquiry are rows in the same
+table with the same spine.
+
+### One report, two readers
+
+The trust-wide view and the institution's view are **the same report**, not two:
+
+| Runs it | Sees |
+|---|---|
+| Trust Admin | every institution, plus a Total |
+| Institution Admin | their own institution, and a Total equal to their own numbers |
+
+Nothing branches on the role. It falls out of the row filter, because every count goes through
+`frappe.get_list`. Two reports would eventually disagree; one cannot.
+
+> **Rule for every module from here: a report reads rows through `frappe.get_list`.**
+
+- `frappe.get_all` sets `ignore_permissions=True` (`frappe/__init__.py:1400`) — it counts other
+  institutions' rows.
+- `frappe.db.count` builds its own query and never reaches the permission layer.
+- A **Query Report** cannot be scoped at all: `frappe/core/doctype/report/report.py:181` runs
+  `frappe.db.sql(self.query, filters)` raw, and a static SQL string cannot call a helper. Write a
+  Script Report.
+- Where raw SQL is genuinely unavoidable, `erp.api.permission.institution_sql_clause` is the one
+  supported way to scope it — `1=1` for a trust-wide caller, `IN (…)` for a scoped one, `1=0` for
+  an ungranted one.
+
+Both rules are enforced by `erp/test_conventions.py:IntegrationTestReportTenancy`, so the next
+module's report cannot quietly get this wrong.
+
+Worked example: `erp/admission/report/admission_funnel/`.
+
+## 8. The promotion boundary
 
 A new field is a **DocField and a `bench migrate`** — not an attribute row — until *both* hold:
 

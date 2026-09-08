@@ -9,6 +9,9 @@ one, and a `unique: 1` index full of NULLs raised nothing. These tests exist bec
 was invisible: nothing errored, nothing logged, and the JSON said the field was unique.
 """
 
+import json
+import pathlib
+
 import frappe
 from frappe.tests import IntegrationTestCase
 
@@ -195,4 +198,57 @@ class IntegrationTestWorkspaceReachability(IntegrationTestCase):
 			unreachable,
 			[],
 			f"these doctypes are in no workspace and cannot be navigated to: {unreachable}",
+		)
+
+
+class IntegrationTestReportTenancy(IntegrationTestCase):
+	"""Reports must not be the way out of tenancy.
+
+	A report is the sanctioned escape hatch for analytics a list view cannot express. Written
+	carelessly it is also the escape hatch out of the row filter, and nothing about the resulting
+	number looks wrong — it is simply larger than it should be. Ten years of reports written by
+	whoever was on shift is how a multi-tenant system leaks.
+
+	Two rules, both checkable:
+
+	1. **No Query Reports.** `frappe/core/doctype/report/report.py:181` runs
+	   `frappe.db.sql(self.query, filters)` raw, and a static SQL string cannot call the scoping
+	   helper, so a Query Report cannot be tenant-scoped at all. Write a Script Report.
+	2. **A Script Report reaches rows through `frappe.get_list`**, which applies the `"*"` tenancy
+	   hook, User Permissions and owner scoping. `frappe.get_all` sets `ignore_permissions=True`
+	   and `frappe.db.sql` reaches nothing — either is allowed only in a module that also uses
+	   `erp.api.permission.institution_sql_clause`, which makes the scoping explicit and greppable.
+	"""
+
+	APP = pathlib.Path(frappe.get_app_path("erp"))
+
+	def test_no_report_is_a_query_report(self):
+		offenders = []
+		for path in self.APP.glob("*/report/*/*.json"):
+			config = json.loads(path.read_text())
+			if config.get("report_type") == "Query Report":
+				offenders.append(config.get("report_name", path.stem))
+
+		self.assertEqual(
+			offenders,
+			[],
+			"Query Reports run raw SQL and bypass every row filter, so they cannot be scoped to an "
+			f"institution. Rewrite as Script Reports: {offenders}",
+		)
+
+	def test_every_report_scopes_its_reads(self):
+		offenders = []
+		for path in self.APP.glob("*/report/*/*.py"):
+			if path.name == "__init__.py":
+				continue
+			source = path.read_text()
+			unscoped = "frappe.get_all(" in source or "frappe.db.sql(" in source
+			if unscoped and "institution_sql_clause" not in source:
+				offenders.append(str(path.relative_to(self.APP)))
+
+		self.assertEqual(
+			offenders,
+			[],
+			"These reports read rows without the tenancy filter. Use frappe.get_list, or "
+			f"erp.api.permission.institution_sql_clause if raw SQL is unavoidable: {offenders}",
 		)
