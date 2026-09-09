@@ -6,6 +6,7 @@ from frappe import _
 from frappe.model.document import Document
 from frappe.model.naming import make_autoname
 
+from erp.config.resolver import get_config
 from erp.master.hierarchy import validate_same_parent
 from erp.utils import normalize_aadhaar, normalize_phone
 
@@ -16,13 +17,27 @@ OCCUPYING_STATUSES = frozenset({"Active"})
 
 class Student(Document):
 	def autoname(self):
-		"""Allot the admission register number: a per-trust monotonic series.
+		"""Allot the admission register number from the series this institution is configured with.
 
 		In India the admission register is a statutory record — CBSE, ICSE, the state SSC boards and
 		UGC inspections all ask to see a numbered, chronological list of who was admitted and when —
-		so the number has to be dense and monotonic within a trust, not a random key. The
-		series is keyed on the trust because each one keeps its own register; two institutions of
-		the same group never share a run of numbers.
+		so the number has to be dense and monotonic within whatever keeps the register, not a random
+		key.
+
+		**Which is why this was a defect for four slices.** The docstring here used to say "the
+		series is keyed on the trust because each one keeps its own register; two institutions of the
+		same group never share a run of numbers" — and then keyed it on the trust, so GIS, GCE and
+		GCT *did* share one run. The statement and the code said opposite things, and the code won.
+
+		It is now `student_register_series`, resolved through the configuration chain, whose shipped
+		default is byte-identical to what was hardcoded — `{trust}-STU-.#####` — so no existing site
+		renumbers on upgrade. An institution that keeps its own register sets one `Config Value` row
+		with `{institution}-STU-.#####` and gets its own run, with no deploy and no patch.
+
+		The substitutions are applied here rather than by `make_autoname`, because its own `.#####`
+		counter syntax and a `{placeholder}` are different mechanisms: the counter is a series key
+		in `tabSeries`, the placeholder is part of that key's *name*. Substituting first is what
+		makes two institutions produce two `tabSeries` rows rather than two views of one.
 
 		`name` *is* the register number rather than a separate column holding a second identifier:
 		one authoritative number, and the readable business key the app's naming convention asks
@@ -31,7 +46,34 @@ class Student(Document):
 		if not self.trust:
 			frappe.throw(_("A student cannot be numbered without a Trust."))
 
-		self.name = make_autoname(f"{self.trust}-STU-.#####", doc=self)
+		self.name = make_autoname(self.register_series(), doc=self)
+
+	def register_series(self) -> str:
+		"""The series this student's register number comes from, with the anchors substituted."""
+		series = get_config(
+			"student_register_series",
+			institution=self.institution,
+			programme=self.programme,
+			programme_intake=self.programme_intake,
+		)
+
+		for placeholder, value in (
+			("{trust}", self.trust),
+			("{institution}", self.institution),
+			("{academic_year}", self.academic_year),
+		):
+			if placeholder in series:
+				if not value:
+					frappe.throw(
+						_(
+							"The register series {0} needs {1}, which this student does not have. Fix "
+							"the series on the institution, or fill the field in."
+						).format(frappe.bold(series), frappe.bold(placeholder)),
+						title=_("Register Series Incomplete"),
+					)
+				series = series.replace(placeholder, value)
+
+		return series
 
 	def validate(self):
 		self.set_derived_ancestors()

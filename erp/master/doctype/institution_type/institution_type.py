@@ -30,11 +30,35 @@ import frappe
 from frappe import _
 from frappe.utils.nestedset import NestedSet, get_ancestors_of
 
+from erp.config.resolver import clear_cache as clear_config_cache
+from erp.config.resolver import get_config
+
 
 class InstitutionType(NestedSet):
 	# Stated rather than derived. `update_nsm` builds "parent_" + scrub(doctype) while
 	# `NestedSet.on_trash` builds scrub(doctype) + "_parent", and those are not the same field.
 	nsm_parent_field = "parent_institution_type"
+
+	def on_update(self):
+		"""Maintain the nested set, then invalidate configuration wholesale.
+
+		`super()` first and non-negotiably. `NestedSet.on_update` is what calls `update_nsm`, which
+		maintains `lft`/`rgt` — so overriding this method without it silently stops the tree being
+		a tree: `get_ancestors_of` returns nothing, every inherited capability resolves to None, and
+		a Nursing college added under Professional quietly stops requiring a Department. Three tests
+		caught it here; nothing would have caught it in production until a form stopped asking for a
+		field.
+
+		Wholesale rather than surgical, because a saved type can change every descendant's answer.
+
+		Two ways. A **re-parent** reshuffles the ancestry the whole chain walks, so every institution
+		under this subtree resolves differently and there is no one node to invalidate. And a
+		**capability column** edited here is the source at type scope for every key that names it,
+		which the per-node cache holds under this type's own node — but a leaf inheriting from it
+		caches the answer under *its* node, so surgical invalidation would miss the inheritors.
+		"""
+		super().on_update()
+		clear_config_cache()
 
 	def on_trash(self):
 		self.assert_not_standard()
@@ -97,19 +121,46 @@ def resolve_capability(institution_type: str | None, capability: str) -> str | N
 	return None
 
 
-def resolve_capability_for_institution(institution: str | None, capability: str) -> str | None:
-	"""`resolve_capability`, entered from an institution rather than from its type.
+def resolve_capability_for_institution(
+	institution: str | None,
+	capability: str,
+	*,
+	programme: str | None = None,
+	programme_intake: str | None = None,
+) -> str | None:
+	"""A capability's effective value for one institution, through the full configuration chain.
 
-	Almost every caller has an institution in hand and not a type — a Programme, an enquiry, an
-	application, a pipeline gate — so the Institution → type lookup was being written out at each
-	call site. One of them is enough, and having one place means the day a capability is answerable
-	somewhere other than the type tree (an institution of its own, a programme, an intake — the
-	chain `docs/CONFIGURATION.md` §1 specifies) exactly one function changes.
+	This used to be `resolve_capability` entered from an institution — the Institution → type
+	lookup, then the ancestor walk, and nothing below the type tree or above it. It is now a thin
+	call into `erp.config.resolver`, which is the day this function was written for: its own
+	docstring said "the day a capability is answerable somewhere other than the type tree ...
+	exactly one function changes", and this is that change.
+
+	What every caller gains without any of them changing: four more levels. A capability stated on
+	the type is still stated on the type — `Config Setting.institution_type_field` makes that column
+	the source at type scope — but it can now be overridden on one institution, one programme or one
+	intake, and set trust-wide as a floor. `docs/features/school-admission.md` needs exactly that: a
+	trust with one fee-free school among six fee-charging ones, which the type tree cannot express
+	because both are Schools.
+
+	`default=None` rather than letting the setting's own default apply, because these callers each
+	have their own answer for "nobody said" and it is not the same answer — the interaction gate
+	treats silence as off, the department rule and the fee gate treat it as on. Those defaults
+	belong at the call site, and are documented there.
+
+	`resolve_capability` remains, and remains the ancestor walk: it answers a question about a
+	*type* rather than about an institution, which is what the Institution Type form asks.
 	"""
 	if not institution:
 		return None
 
-	return resolve_capability(frappe.db.get_value("Institution", institution, "institution_type"), capability)
+	return get_config(
+		capability,
+		institution=institution,
+		programme=programme,
+		programme_intake=programme_intake,
+		default=None,
+	)
 
 
 def institution_requires_department(institution: str | None) -> bool:

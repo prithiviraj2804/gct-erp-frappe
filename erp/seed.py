@@ -285,6 +285,7 @@ FIELD_POLICIES = (
 
 def ensure_shared_vocabulary():
 	"""`after_migrate` hook. Re-assert every code-owned vocabulary row."""
+	_ensure_config_settings()
 	# Routes first: `Institution Type.default_admission_route` is a Link to one, and `_validate_links`
 	# would refuse the type row if its target did not exist yet.
 	_ensure("Admission Route", "route_name", ADMISSION_ROUTES, standard=True)
@@ -293,6 +294,42 @@ def ensure_shared_vocabulary():
 	_ensure("Programme Level", "level_code", PROGRAMME_LEVELS)
 	_ensure("Academic Structure", "structure_code", ACADEMIC_STRUCTURES)
 	_ensure_field_policies()
+
+
+def _ensure_config_settings():
+	"""Register every configuration key, and keep its declaration in step with the code.
+
+	Unlike a vocabulary row, a `Config Setting` is **entirely** code-owned: `setting_key` is
+	read-only, `on_trash` refuses, and `get_config` throws on an unregistered key. So there is no
+	operator edit to protect here and no digest to compare — the declaration in
+	`erp/config/settings.py` simply wins, every migrate.
+
+	That is also why it runs first. `Config Value` has a `reqd` Link to a setting, and the
+	capability keys have to exist before anything resolves through them.
+	"""
+	from erp.config.settings import CONFIG_SETTINGS
+
+	for setting in CONFIG_SETTINGS:
+		key = setting["setting_key"]
+		declared = {
+			"label": setting["label"],
+			"value_type": setting["value_type"],
+			"options": setting.get("options"),
+			"default_value": setting.get("default_value"),
+			"is_required": setting.get("is_required", 0),
+			"institution_type_field": setting.get("institution_type_field"),
+			"description": setting.get("description"),
+		}
+
+		if not frappe.db.exists("Config Setting", key):
+			frappe.get_doc({"doctype": "Config Setting", "setting_key": key, **declared}).insert(
+				ignore_permissions=True
+			)
+			continue
+
+		current = frappe.db.get_value("Config Setting", key, list(declared), as_dict=True)
+		if any((current.get(field) or None) != (value or None) for field, value in declared.items()):
+			frappe.db.set_value("Config Setting", key, declared, update_modified=False)
 
 
 def _ensure(doctype: str, key: str, rows: tuple[dict, ...], standard: bool = False):

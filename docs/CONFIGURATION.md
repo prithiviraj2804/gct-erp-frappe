@@ -135,13 +135,20 @@ NULL and the list clause matches nothing. Fixing it needs `ignore_user_permissio
 every other institution's policies. `Institution Type` already carries that flag for the same
 reason (`institution_type.json`), so the pattern exists — it was simply not applied here.
 
-**Test gate.** `erp/config/test_shipped_config.py` builds a fresh Trust plus one Institution per
-Institution Type and asserts `get_many(ALL_KEYS, institution=…)` equals a checked-in dict. Without
-it the config layer rots invisibly. **Not built** — and note that as specified it asserts config
-scalars only, so it would not catch the live gap it was meant to: `Arts & Science` hangs off `All`
-and therefore inherits neither shipped Field Policy, which no test would notice because no test
-instantiates an institution of that type. The gate has to assert that an enquiry *saves* and the
-funnel *counts it*, for one institution of every Institution Type.
+**Test gate — built, and doing both halves.** `erp/config/test_shipped_config.py` builds a fresh
+Trust plus one Institution per Institution Type and asserts `get_many(ALL_KEYS, institution=…)`
+equals a checked-in dict. Without it the config layer rots invisibly.
+
+As specified it asserted config scalars only, and so would not have caught the live gap it was
+meant to: `Arts & Science` hangs off `All` and therefore inherited neither shipped Field Policy.
+No scalar was wrong. Nothing resolved to the wrong value. The type simply had no policy, and no
+test noticed because **no test instantiated an institution of that type** — seven of the nine types
+this app ships had never been instantiated by any test at all.
+
+So the gate also asserts that an Admission Enquiry **saves** at one institution of every type and
+that the trust-wide funnel **counts it**. That is the half that would have caught it, and the half
+every future slice needs: a governed field added for a school otherwise gets proved for School and
+Engineering and shipped for nine.
 
 ## 6. The worked example — **target state, not today**
 

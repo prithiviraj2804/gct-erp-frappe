@@ -167,6 +167,20 @@
    "link_to": "Field Policy",
    "icon": "list-checks",
    "label": "Field Policy"
+  },
+  {
+   "type": "Link",
+   "link_type": "DocType",
+   "link_to": "Config Setting",
+   "icon": "settings-2",
+   "label": "Config Setting"
+  },
+  {
+   "type": "Link",
+   "link_type": "DocType",
+   "link_to": "Config Value",
+   "icon": "sliders-horizontal",
+   "label": "Config Value"
   }
  ]
 }

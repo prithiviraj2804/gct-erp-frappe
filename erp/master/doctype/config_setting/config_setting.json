@@ -1,0 +1,123 @@
+{
+ "actions": [],
+ "allow_rename": 0,
+ "autoname": "field:setting_key",
+ "creation": "2026-09-09 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "setting_section",
+  "id",
+  "setting_key",
+  "label",
+  "column_break_setting",
+  "value_type",
+  "options",
+  "resolution_section",
+  "default_value",
+  "is_required",
+  "column_break_resolution",
+  "institution_type_field",
+  "notes_section",
+  "description"
+ ],
+ "fields": [
+  {"fieldname": "setting_section", "fieldtype": "Section Break", "label": "Setting"},
+  {
+   "fieldname": "id",
+   "fieldtype": "Data",
+   "label": "ID",
+   "unique": 1,
+   "read_only": 1,
+   "no_copy": 1,
+   "in_standard_filter": 1,
+   "description": "Auto-generated UUID"
+  },
+  {
+   "fieldname": "setting_key",
+   "fieldtype": "Data",
+   "label": "Key",
+   "reqd": 1,
+   "unique": 1,
+   "in_list_view": 1,
+   "read_only": 1,
+   "description": "The key code asks for, e.g. student_register_series. Read-only and code-owned: an unregistered key is a bug, not a missing value, so the registry is a seed rather than a form"
+  },
+  {
+   "fieldname": "label",
+   "fieldtype": "Data",
+   "label": "Label",
+   "reqd": 1,
+   "in_list_view": 1,
+   "description": "What a Trust Admin sees when overriding it"
+  },
+  {"fieldname": "column_break_setting", "fieldtype": "Column Break"},
+  {
+   "fieldname": "value_type",
+   "fieldtype": "Select",
+   "label": "Value Type",
+   "options": "Data\nInt\nFloat\nCheck\nSelect\nLink",
+   "reqd": 1,
+   "default": "Data",
+   "in_list_view": 1,
+   "description": "How a stored value is read back. Values are stored as Data so that a blank is distinguishable from a zero - the same reasoning as Field Policy Rule's bounds - and cast on read"
+  },
+  {
+   "fieldname": "options",
+   "fieldtype": "Small Text",
+   "label": "Options",
+   "description": "For Select, the permitted values one per line. For Link, the target doctype. Ignored otherwise"
+  },
+  {"fieldname": "resolution_section", "fieldtype": "Section Break", "label": "Resolution"},
+  {
+   "fieldname": "default_value",
+   "fieldtype": "Data",
+   "label": "Default",
+   "description": "The answer when nothing in the chain states one. Blank means there is no default, which is only legitimate if is_required is off"
+  },
+  {
+   "fieldname": "is_required",
+   "fieldtype": "Check",
+   "label": "Is Required",
+   "default": "0",
+   "description": "Whether resolving to nothing is an error. On for a key code cannot proceed without - the register series - and off for one where absence is a real answer"
+  },
+  {"fieldname": "column_break_resolution", "fieldtype": "Column Break"},
+  {
+   "fieldname": "institution_type_field",
+   "fieldtype": "Data",
+   "label": "Institution Type Field",
+   "read_only": 1,
+   "description": "The Institution Type column that answers this key at type scope, if there is one. Where it is set, the column is the ONLY source at that level - never a Config Value row beside it - so one level of the chain has one source. See erp/config/resolver.py"
+  },
+  {"fieldname": "notes_section", "fieldtype": "Section Break"},
+  {
+   "fieldname": "description",
+   "fieldtype": "Small Text",
+   "label": "Description",
+   "description": "What this key decides, and what each value means"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-09-09 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Master",
+ "name": "Config Setting",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {"create": 1, "delete": 1, "email": 1, "export": 1, "print": 1, "read": 1, "report": 1, "role": "System Manager", "share": 1, "write": 1},
+  {"read": 1, "report": 1, "export": 1, "role": "Trust Admin"},
+  {"read": 1, "report": 1, "export": 1, "role": "Institution Admin"}
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "search_fields": "label",
+ "sort_field": "setting_key",
+ "sort_order": "ASC",
+ "states": [],
+ "title_field": "label",
+ "track_changes": 1
+}
