@@ -6,9 +6,16 @@
 Only `start_application` lives here. Raising an application reads a lead, a programme intake and its
 document checklist and writes one document seeded from all three — which plain `/api/resource` CRUD
 cannot do in a step — and it must be idempotent so a double-click never leaves a lead with two
-applications. Everything after that (recording the allotment, ticking documents off, issuing an
-offer, changing the branch) is ordinary CRUD on the application, with the rules enforced in its
-controller, and needs no wrapper here.
+applications **for the same intake**. Everything after that (recording the allotment, ticking
+documents off, issuing an offer, changing the branch) is ordinary CRUD on the application, with the
+rules enforced in its controller, and needs no wrapper here.
+
+**Idempotency is keyed on the intake, not the lead.** It used to be keyed on the lead, which made
+the endpoint structurally incapable of raising a second application — a candidate applying at a
+second institution of the trust got the first application handed back, silently, as though the
+request had succeeded. Keying on the intake keeps the double-click safe and makes the deliberate
+second application possible, which is the whole point: see
+`AdmissionApplication.validate_one_per_intake`.
 """
 
 import frappe
@@ -23,13 +30,19 @@ SEEDED_FROM_ENQUIRY = ("programme", "programme_intake", "admission_type")
 
 
 @frappe.whitelist(methods=["POST"])
-def start_application(enquiry: str) -> dict:
-	"""Raise the Admission Application for a lead, seeded from the lead and its intake (idempotent).
+def start_application(enquiry: str, programme_intake: str | None = None) -> dict:
+	"""Raise an Admission Application for a lead, seeded from the lead and an intake (idempotent).
 
-	Returns the existing application if one is already raised, so a repeat call never splits a lead
-	across two of them. The fee must already be collected: this institution hands out its application
-	form only after the fee is taken, and the pipeline says the same thing — an unpaid lead cannot
-	reach "Application Submitted".
+	`programme_intake` defaults to the one the lead enquired about, which is the ordinary case and
+	the only one that existed before a lead could hold several applications. Passing another intake
+	raises a second application — a candidate hedging across the trust's institutions, a parent
+	applying to two of its schools, a Class XI applicant wanting both the Bio and the Commerce
+	group. Repeating the call for an intake already applied for returns that application rather
+	than a second one, so a double-click is still safe.
+
+	The fee must already be collected: this institution hands out its application form only after
+	the fee is taken, and the pipeline says the same thing — an unpaid lead cannot reach
+	"Application Submitted".
 	"""
 	if not frappe.has_permission("Admission Application", "create"):
 		frappe.throw(_("You are not permitted to raise an Admission Application."), frappe.PermissionError)
@@ -44,7 +57,21 @@ def start_application(enquiry: str) -> dict:
 		frappe.throw(_("Admission Enquiry {0} was not found.").format(frappe.bold(enquiry)))
 	assert_institution_in_scope(lead.institution)
 
-	existing = frappe.db.get_value("Admission Application", {"admission_enquiry": enquiry}, "name")
+	intake = programme_intake or lead.programme_intake
+	programme = _programme_of(intake) or lead.programme
+
+	# Scoped on the *target* institution, not the lead's. A second application may be at another
+	# institution of the trust, and raising it there is an act at that institution — so the caller
+	# has to be permitted for it. Without this the lead's own scope would be the only check, and a
+	# counsellor at one institution could enter applicants into another's intake.
+	if programme:
+		assert_institution_in_scope(_institution_of(programme))
+
+	existing = frappe.db.get_value(
+		"Admission Application",
+		{"admission_enquiry": enquiry, "programme_intake": intake},
+		"name",
+	)
 	if existing:
 		return _application_result(existing, created=False)
 
@@ -58,18 +85,32 @@ def start_application(enquiry: str) -> dict:
 
 	application = frappe.new_doc("Admission Application")
 	application.admission_enquiry = enquiry
-	for field in SEEDED_FROM_ENQUIRY:
-		application.set(field, lead.get(field))
+	application.admission_type = lead.admission_type
+	application.programme = programme
+	application.programme_intake = intake
 
-	if lead.programme:
-		# The branch they walked in asking for is their first choice until the form says otherwise.
-		application.append("preferences", {"preference_order": 1, "programme": lead.programme})
+	if programme:
+		# The branch this application admits to is its own first choice until the form says
+		# otherwise. Seeded from the *target* programme rather than the lead's, so a second
+		# application does not open with the first one's choice at the top of its list.
+		application.append("preferences", {"preference_order": 1, "programme": programme})
 
-	for row in required_documents_for(lead.programme_intake):
+	for row in required_documents_for(intake):
 		application.append("documents", row)
 
 	application.insert()
 	return _application_result(application.name, created=True)
+
+
+def _programme_of(programme_intake: str | None) -> str | None:
+	"""The programme an intake belongs to. The application's own controller re-checks the pairing."""
+	if not programme_intake:
+		return None
+	return frappe.db.get_value("Programme Intake", programme_intake, "programme")
+
+
+def _institution_of(programme: str) -> str:
+	return frappe.db.get_value("Programme", programme, "institution")
 
 
 def required_documents_for(programme_intake: str) -> list[dict]:

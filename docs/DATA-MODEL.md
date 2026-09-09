@@ -20,7 +20,7 @@ Trust                        one row per site (Trust.assert_only_one)
     ├── Staff                the User → tenant bridge
     └── Programme
         └── Programme Intake            (per Academic Year)
-            ├── Programme Intake Seat       seat matrix by route × category
+            ├── Programme Intake Seat       NOT BUILT — seat matrix by route × category
             └── Programme Intake Document   the checklist this intake publishes
 ```
 

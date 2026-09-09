@@ -13,7 +13,7 @@ import frappe
 from frappe import _
 from frappe.utils import today
 
-from erp.admission.pipeline import assert_status_transition
+from erp.admission.pipeline import assert_application_clears
 from erp.api.permission import assert_institution_in_scope
 
 # Carried from the lead onto the student. Identity and contact only — every academic field comes
@@ -72,16 +72,16 @@ def confirm_admission(application: str, date_of_admission: str | None = None) ->
 	if not enquiry:
 		frappe.throw(_("Admission Enquiry {0} was not found.").format(frappe.bold(doc.admission_enquiry)))
 
-	# `previous_status=None` on purpose: it means "coming from outside every gated region", so every
-	# gate runs — fee, documents and admissibility alike. Passing the lead's real current status would
-	# skip the document check for a lead already sitting at "Documents Verified", and this is the one
-	# moment that deserves the full set rather than the advance-only semantics a plain save gets.
-	assert_status_transition(
-		doc.admission_enquiry,
-		"Admitted",
-		None,
-		application_fee_paid=enquiry.application_fee_paid,
-	)
+	# Every gate runs — fee, documents and admissibility alike — and against **this** application
+	# rather than the lead's best route. `assert_status_transition` would answer the lead-level
+	# question, which any one of its applications clearing satisfies; a lead holding an admissible
+	# application at one institution would then pass the gate for a second application elsewhere
+	# that no counselling round had allotted, and take a seat in its intake.
+	#
+	# It also means the full set rather than the advance-only semantics a plain save gets: passing
+	# the lead's real current status would skip the document check for a lead already sitting at
+	# "Documents Verified", and this is the one moment that deserves every check.
+	assert_application_clears(doc, "Admitted", application_fee_paid=enquiry.application_fee_paid)
 
 	student = _create_student(doc, date_of_admission or today())
 

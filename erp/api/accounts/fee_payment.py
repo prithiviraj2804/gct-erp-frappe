@@ -19,7 +19,7 @@ from erp.api.permission import assert_institution_in_scope
 
 @frappe.whitelist(methods=["POST"])
 def record_application_fee(
-	enquiry: str, mode_of_payment: str, reference_no: str = None, posting_date: str = None
+	enquiry: str, mode_of_payment: str, reference_no: str | None = None, posting_date: str | None = None
 ) -> dict:
 	"""Collect the application fee for an enquiry (idempotent).
 

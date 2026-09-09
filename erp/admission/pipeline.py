@@ -15,6 +15,18 @@ rule then means editing this module, not hunting down every writer.
 Each rule fires only when a lead *enters* the region it guards, never on a save inside it. A lead
 already at "Documents Verified" whose payment was later cancelled can still be edited; the gates are
 about advancing, not about re-litigating history. That is `fee_gate.py`'s rule, kept uniform.
+
+**A lead may hold several applications, and any one of them clearing a gate advances the lead.**
+The enquiry's status is the lead's *furthest progress*, not the progress of every application it
+raised: a candidate whose choice list spans two of the trust's institutions has cleared documents
+the moment one of those applications has, and it would be nonsense to hold the lead back because a
+second application elsewhere is still waiting on a counselling round it may never win.
+
+That is why each gate below answers with an *objection* rather than throwing. Throwing was correct
+while `application_for` was a single lookup; with several applications the first one's complaint is
+not the lead's answer, and the office needs to be told what stands in the way of **every** route
+rather than the first. When only one application exists the message is byte-identical to what it
+was, which is deliberate — the generalisation should be invisible in the common case.
 """
 
 import frappe
@@ -63,17 +75,26 @@ def seats_taken(programme_intake: str, *, exclude_enquiry: str | None = None) ->
 	return frappe.db.count("Student", filters)
 
 
-def application_for(enquiry: str):
-	"""The one Admission Application raised from this lead, or None.
+def applications_for(enquiry: str) -> list:
+	"""Every Admission Application raised from this lead, furthest along first.
 
-	An enquiry carries at most one application — a change of branch or of quota is an edit to it,
-	not a second record — so this is a single lookup rather than a "most recent" guess.
+	Ordered by `application_date` so that the objection reported when none of them clears a gate is
+	the one the office is most likely to be working on. `frappe.get_all` is right here despite
+	bypassing permissions: the caller has already been cleared to write the *enquiry*, and these
+	applications are that enquiry's own — several of them at institutions the caller may not be
+	scoped for, which is precisely the case the gate has to reason about. Refusing to see them
+	would let a lead advance on a gate it had not cleared.
 	"""
 	if not enquiry:
-		return None
+		return []
 
-	name = frappe.db.get_value("Admission Application", {"admission_enquiry": enquiry}, "name")
-	return frappe.get_doc("Admission Application", name) if name else None
+	names = frappe.get_all(
+		"Admission Application",
+		filters={"admission_enquiry": enquiry},
+		pluck="name",
+		order_by="application_date asc, creation asc",
+	)
+	return [frappe.get_doc("Admission Application", name) for name in names]
 
 
 def assert_status_transition(enquiry, new_status, previous_status=None, *, application_fee_paid=0):
@@ -89,8 +110,8 @@ def assert_status_transition(enquiry, new_status, previous_status=None, *, appli
 	if not (needs_documents or needs_admission):
 		return
 
-	application = application_for(enquiry)
-	if not application:
+	applications = applications_for(enquiry)
+	if not applications:
 		frappe.throw(
 			_("Raise an Admission Application before moving this enquiry to {0}.").format(
 				frappe.bold(new_status)
@@ -98,21 +119,160 @@ def assert_status_transition(enquiry, new_status, previous_status=None, *, appli
 			title=_("No Application"),
 		)
 
-	# Order matters to whoever reads the error. The allotment outcome is checked first because it is
-	# the one thing the office cannot remedy: an applicant counselling sent to another institution is not
-	# going to be admitted here however many certificates are produced, so telling them to go and
-	# verify documents first would send them down a road that ends nowhere.
+	objections = []
+	for application in applications:
+		objection = _objection(application, enquiry, new_status, needs_documents, needs_admission)
+		# One route through is enough. The lead's status is its furthest progress, so a second
+		# application still waiting on a counselling round it may never win must not hold it back.
+		if objection is None:
+			return
+		objections.append((application.name, objection))
+
+	_throw(objections, new_status)
+
+
+def assert_application_clears(application, new_status: str, *, application_fee_paid=0) -> None:
+	"""Every gate, against **one named application** rather than the lead's best route.
+
+	`assert_status_transition` above answers a question about the *lead*: may this enquiry move to
+	`new_status`. Any one of its applications clearing the gate is enough, because the lead's status
+	is its furthest progress.
+
+	Admitting is a different question, and it needs this. With two applications — one admissible,
+	one still awaiting a counselling round — the lead-level question answers yes for both, so
+	`confirm_admission` on the wrong one would pass a gate it had not cleared and take a seat in an
+	intake that never allotted it. The lead may be admitted; *this application* may not.
+
+	`previous_status=None` on purpose, as at the `confirm_admission` call site: it means "coming
+	from outside every gated region", so every gate runs rather than only the advance-only subset a
+	plain save gets.
+	"""
+	assert_fee_paid_for_status(new_status, application_fee_paid, None)
+
+	objection = _objection(
+		application,
+		application.admission_enquiry,
+		new_status,
+		_entering(new_status, None, DOCUMENT_GATED_STATUSES),
+		_entering(new_status, None, ADMISSION_GATED_STATUSES),
+	)
+	if objection:
+		frappe.throw(objection.message, title=objection.title)
+
+
+def _objection(application, enquiry, new_status, needs_documents, needs_admission) -> "_Objection | None":
+	"""What stands between this one application and `new_status`, or None if nothing does.
+
+	Order matters to whoever reads the error. The allotment outcome is checked first because it is
+	the one thing the office cannot remedy: an applicant counselling sent to another institution is
+	not going to be admitted here however many certificates are produced, so telling them to go and
+	verify documents first would send them down a road that ends nowhere.
+	"""
 	if needs_admission:
-		assert_allotted_to_us(application)
+		# Before the allotment, because it is the one objection no amount of counselling or
+		# paperwork can remedy: the seat has already been taken, on another application.
+		objection = already_admitted_objection(application)
+		if objection:
+			return objection
+
+		objection = allotment_objection(application)
+		if objection:
+			return objection
 
 	if needs_documents:
-		assert_documents_verified(application, new_status)
+		objection = documents_objection(application, new_status)
+		if objection:
+			return objection
 
 	if needs_admission:
-		assert_admissible(application, enquiry)
+		objection = admissibility_objection(application, enquiry)
+		if objection:
+			return objection
+
+	return None
 
 
-def assert_documents_verified(application, new_status) -> None:
+class _Objection:
+	"""One reason an application cannot advance: a dialog title and the sentence under it.
+
+	A pair rather than a bare string because the title is what the office reads first and it names
+	the *kind* of problem — "Allotment Awaited" is a different job from "Documents Not Verified".
+	Composing several objections has to keep that distinction, so it cannot be flattened.
+	"""
+
+	__slots__ = ("message", "title")
+
+	def __init__(self, title: str, message: str):
+		self.title = title
+		self.message = message
+
+
+def _throw(objections: list[tuple[str, _Objection]], new_status: str) -> None:
+	"""Report why no application cleared the gate.
+
+	With one application the message and title are byte-identical to what they were before a lead
+	could hold several — the generalisation should be invisible in the common case, and the existing
+	messages were written with care.
+
+	With several, each is named with the application it belongs to. Listing them beats reporting the
+	first, because the office's next action depends on which route is closest: chasing a certificate
+	for one application is worth doing, waiting on a counselling round for another is not.
+	"""
+	if len(objections) == 1:
+		objection = objections[0][1]
+		frappe.throw(objection.message, title=objection.title)
+
+	lines = "".join(f"<li>{frappe.bold(name)} — {objection.message}</li>" for name, objection in objections)
+	frappe.throw(
+		_("None of this lead's applications can reach {0} yet:").format(frappe.bold(new_status))
+		+ f"<ul>{lines}</ul>",
+		title=_("Cannot Advance"),
+	)
+
+
+def already_admitted_objection(application) -> _Objection | None:
+	"""A lead may hold several applications and be admitted on exactly one.
+
+	Several applications are a candidate hedging across the trust's institutions. Several
+	*admissions* are a double-counted student, a seat consumed in two intakes, and two rows in the
+	statutory register.
+
+	Checked here, before anything is written, rather than left to `Student.validate_unique_aadhaar`.
+	That check is the backstop and it is not enough on its own: it returns early when no Aadhaar was
+	recorded — which is exactly the lead most likely to be entered twice — and it fires while the
+	Student is being inserted, so the office reads "Student ... already exists" about a register row
+	rather than "this applicant is already admitted on application X".
+
+	Asked of the *other* applications, so it never objects to the admitted one itself: at lead level
+	that application clears the gate and the lead is correctly allowed to be Admitted.
+	"""
+	if not application.admission_enquiry or application.student:
+		return None
+
+	other = frappe.db.get_value(
+		"Admission Application",
+		{
+			"admission_enquiry": application.admission_enquiry,
+			"student": ["is", "set"],
+			"name": ["!=", application.name or ""],
+		},
+		["name", "student"],
+		as_dict=True,
+	)
+	if not other:
+		return None
+
+	return _Objection(
+		_("Already Admitted Elsewhere"),
+		_(
+			"This applicant has already been admitted as {0} on application {1}. A lead may hold "
+			"several applications and be admitted on one of them; withdraw that admission before "
+			"recording another."
+		).format(frappe.bold(other.student), frappe.bold(other.name)),
+	)
+
+
+def documents_objection(application, new_status) -> _Objection | None:
 	"""Every required certificate must have had its original checked.
 
 	Originals are seen in the applicant's presence and handed straight back — UGC and AICTE forbid
@@ -120,86 +280,97 @@ def assert_documents_verified(application, new_status) -> None:
 	the pipeline asks whether it happened.
 	"""
 	if required_documents_verified(application.documents):
-		return
+		return None
 
 	outstanding = [
 		row.document_type for row in application.documents if row.is_required and not row.original_verified
 	]
-	frappe.throw(
+	return _Objection(
+		_("Documents Not Verified"),
 		_("These documents are still unverified: {0}. They must be checked before {1}.").format(
 			frappe.bold(", ".join(outstanding)), frappe.bold(new_status)
 		),
-		title=_("Documents Not Verified"),
 	)
 
 
-def assert_allotted_to_us(application) -> None:
+def allotment_objection(application) -> _Objection | None:
 	"""For a government-quota seat, counselling must actually have sent this applicant to us.
 
-	Only a government-quota application is asked: a management-quota or direct seat is the institution's
-	own to give, and no external body allots it.
+	Only a government-quota application is asked: a management-quota or direct seat is the
+	institution's own to give, and no external body allots it.
 	"""
 	if application.admission_route != GOVERNMENT_QUOTA:
-		return
+		return None
 
 	if application.counselling_outcome in OUTCOMES_NOT_OURS:
-		frappe.throw(
+		return _Objection(
+			_("Not Allotted To This Institution"),
 			_("Counselling recorded this applicant as {0}, so they cannot be admitted here.").format(
 				frappe.bold(application.counselling_outcome)
 			),
-			title=_("Not Allotted To This Institution"),
 		)
 
 	if application.counselling_outcome != "Allotted To Us":
-		frappe.throw(
+		return _Objection(
+			_("Allotment Awaited"),
 			_("Record the counselling allotment before admitting this applicant."),
-			title=_("Allotment Awaited"),
 		)
 
+	return None
 
-def assert_admissible(application, enquiry) -> None:
+
+def admissibility_objection(application, enquiry) -> _Objection | None:
 	"""The last checks before a lead becomes a student: the offer stands, and the seat is free."""
 	# An offer is optional — a counselling allotment is its own offer, and a management-quota seat is
 	# often settled across a desk. But an offer that *was* issued has to have been accepted, and not
 	# after it lapsed, or the record would say a student accepted terms they never did.
 	if application.offer_issued_on:
 		if application.offer_response != "Accepted":
-			frappe.throw(
+			return _Objection(
+				_("Offer Not Accepted"),
 				_("The offer issued on {0} has not been accepted.").format(
 					frappe.bold(frappe.format(application.offer_issued_on, {"fieldtype": "Date"}))
 				),
-				title=_("Offer Not Accepted"),
 			)
 		if (
 			application.offer_expires_on
 			and application.offer_response_on
 			and getdate(application.offer_response_on) > getdate(application.offer_expires_on)
 		):
-			frappe.throw(
+			return _Objection(
+				_("Offer Expired"),
 				_("The offer expired on {0} and was answered only on {1}.").format(
 					frappe.bold(frappe.format(application.offer_expires_on, {"fieldtype": "Date"})),
 					frappe.bold(frappe.format(application.offer_response_on, {"fieldtype": "Date"})),
 				),
-				title=_("Offer Expired"),
 			)
 
-	assert_seat_available(application.programme_intake, exclude_enquiry=enquiry)
+	return seat_objection(application.programme_intake, exclude_enquiry=enquiry)
 
 
-def assert_seat_available(programme_intake: str, *, exclude_enquiry: str | None = None) -> None:
+def seat_objection(programme_intake: str, *, exclude_enquiry: str | None = None) -> _Objection | None:
 	"""Refuse an admission that would take an intake past its sanctioned seats."""
 	if not programme_intake:
-		return
+		return None
 
 	total = frappe.db.get_value("Programme Intake", programme_intake, "total_seats")
 	if not total:
-		return
+		return None
 
 	taken = seats_taken(programme_intake, exclude_enquiry=exclude_enquiry)
 	if taken >= total:
-		frappe.throw(
+		return _Objection(
+			_("No Seats Left"),
 			_("{0} is full — all {1} seats are taken.").format(
 				frappe.bold(programme_intake), frappe.bold(total)
 			),
-			title=_("No Seats Left"),
 		)
+
+	return None
+
+
+def assert_seat_available(programme_intake: str, *, exclude_enquiry: str | None = None) -> None:
+	"""`seat_objection`, thrown. Kept because a seat check is worth asking for on its own."""
+	objection = seat_objection(programme_intake, exclude_enquiry=exclude_enquiry)
+	if objection:
+		frappe.throw(objection.message, title=objection.title)

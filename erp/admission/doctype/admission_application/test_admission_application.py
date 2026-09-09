@@ -113,6 +113,12 @@ class IntegrationTestAdmissionApplication(IntegrationTestCase):
 		cls.ece, cls.ece_intake = cls.make_offering("ECE", cls.ENG, "UG", "12th", seats=60)
 		# Two seats so exhaustion is cheap to prove.
 		cls.lat, cls.lat_intake = cls.make_offering("MECHLAT", cls.ENG, "UG", "12th", seats=60)
+		# A second institution's offering with no age window and no prior qualification, so a lead
+		# raised at the engineering college can apply here too. That is the cardinality case: one
+		# person, two institutions of one trust, which the app forbade until this slice.
+		cls.hsc, cls.hsc_intake = cls.make_offering(
+			"HSC", cls.SCHOOL, "PRI", None, seats=30, documents=("BIRTH",)
+		)
 		# The school class: no department, no prior qualification, an age window instead.
 		cls.lkg, cls.lkg_intake = cls.make_offering(
 			"LKG",
@@ -263,7 +269,15 @@ class IntegrationTestAdmissionApplication(IntegrationTestCase):
 		self.assertFalse(second["created"])
 		self.assertEqual(first["name"], second["name"])
 
-	def test_a_lead_cannot_carry_two_applications(self):
+	def test_a_lead_cannot_carry_two_applications_for_one_intake(self):
+		"""The same intake twice is a duplicate for one seat. A different intake is a second choice.
+
+		This test used to be called `test_a_lead_cannot_carry_two_applications` and asserted the
+		stronger rule, which — composed with the enquiry's own one-per-Aadhaar-per-trust-per-year
+		check — capped an applicant at exactly one application in the whole trust per cycle. It
+		passes unchanged because a duplicate for one intake is still refused; only its name and its
+		reasoning needed correcting. See `test_a_lead_may_apply_at_two_institutions_of_the_trust`.
+		"""
 		enquiry = self.paid_lead(self.cse, self.cse_intake)
 		start_application(enquiry)
 		with self.assertRaises(frappe.ValidationError):
@@ -276,6 +290,184 @@ class IntegrationTestAdmissionApplication(IntegrationTestCase):
 					"programme_intake": self.cse_intake,
 				}
 			).insert()
+
+	# --- One lead, several applications ---------------------------------------------
+
+	def test_a_lead_may_apply_at_two_institutions_of_the_trust(self):
+		"""The journey: *one candidate, applications at two of the trust's institutions.*
+
+		GEI runs both an engineering college and a school; a TNEA choice list spans two colleges,
+		and a parent applies to two schools. All of it was refused: `validate_one_per_enquiry` here
+		plus one enquiry per Aadhaar per trust per academic year on the lead composed into a ceiling
+		of one application per person per trust per cycle. The office's workaround would have been a
+		blank Aadhaar — which the lead's duplicate check skips entirely, so it bought the second
+		application at the price of duplicate detection.
+
+		The model already allowed this: an application is tied to its lead's **trust**, and takes
+		its own `institution` from the programme it admits to. Only the check stood in the way.
+		"""
+		enquiry = self.paid_lead(self.cse, self.cse_intake)
+
+		first = start_application(enquiry)
+		second = start_application(enquiry, programme_intake=self.hsc_intake)
+
+		self.assertTrue(first["created"])
+		self.assertTrue(second["created"], "the second application was not raised")
+		self.assertNotEqual(first["name"], second["name"])
+
+		institutions = {
+			frappe.db.get_value("Admission Application", name, "institution")
+			for name in (first["name"], second["name"])
+		}
+		self.assertEqual(institutions, {self.ENG, self.SCHOOL})
+
+	def test_the_second_application_carries_its_own_programme_and_checklist(self):
+		"""Seeded from the target intake, not the lead's — otherwise it opens as a copy of the first."""
+		enquiry = self.paid_lead(self.cse, self.cse_intake)
+		start_application(enquiry)
+		second = start_application(enquiry, programme_intake=self.hsc_intake)
+
+		doc = frappe.get_doc("Admission Application", second["name"])
+		self.assertEqual(doc.programme, self.hsc)
+		self.assertEqual([row.programme for row in doc.preferences], [self.hsc])
+		self.assertEqual({row.document_type for row in doc.documents}, {"BIRTH"})
+
+	def test_starting_twice_for_one_intake_is_still_idempotent(self):
+		"""Keyed on the intake now, so a double-click is safe and a second choice is possible."""
+		enquiry = self.paid_lead(self.cse, self.cse_intake)
+		first = start_application(enquiry, programme_intake=self.hsc_intake)
+		again = start_application(enquiry, programme_intake=self.hsc_intake)
+		self.assertFalse(again["created"])
+		self.assertEqual(first["name"], again["name"])
+
+	def test_a_lead_may_be_admitted_on_only_one_of_its_applications(self):
+		"""Several applications are a candidate hedging. Several admissions are a double-counted
+		student, a seat consumed in two intakes, and two rows in the statutory register.
+
+		`Student.validate_unique_aadhaar` refuses the second register row, but only when an Aadhaar
+		is on hand and only when the Student is written — too late to be a useful message. This is
+		the same invariant stated on the document the office is looking at.
+		"""
+		enquiry = self.paid_lead(self.cse, self.cse_intake)
+		first = start_application(enquiry)["name"]
+		second = start_application(enquiry, programme_intake=self.hsc_intake)["name"]
+
+		self.allot(first, self.cse, self.cse_intake)
+		self.verify_documents(first)
+		confirm_admission(first)
+
+		# `Direct`, so the second application is not held up by the counselling gate and the
+		# already-admitted objection is what actually refuses it.
+		doc = frappe.get_doc("Admission Application", second)
+		doc.admission_route = "Direct"
+		doc.save()
+		self.verify_documents(second)
+
+		with self.assertRaises(frappe.ValidationError) as caught:
+			confirm_admission(second)
+		self.assertIn("already been admitted", str(caught.exception))
+
+		self.assertFalse(
+			frappe.db.get_value("Admission Application", second, "student"),
+			"the second application was refused but a Student was written anyway",
+		)
+
+	def test_a_lead_with_no_aadhaar_is_still_admitted_only_once(self):
+		"""The backstop does not cover this, and it is the lead most likely to be entered twice.
+
+		`Student.validate_unique_aadhaar` returns early when no Aadhaar was recorded — an enquiry
+		can legitimately be logged before the number is on hand — so before the pipeline asked the
+		question, a lead with a blank Aadhaar could produce two register rows.
+		"""
+		enquiry = self.paid_lead(self.cse, self.cse_intake, aadhaar_number=None)
+		first = start_application(enquiry)["name"]
+		second = start_application(enquiry, programme_intake=self.hsc_intake)["name"]
+
+		self.allot(first, self.cse, self.cse_intake)
+		self.verify_documents(first)
+		confirm_admission(first)
+
+		doc = frappe.get_doc("Admission Application", second)
+		doc.admission_route = "Direct"
+		doc.save()
+		self.verify_documents(second)
+
+		with self.assertRaises(frappe.ValidationError) as caught:
+			confirm_admission(second)
+		self.assertIn("already been admitted", str(caught.exception))
+
+	def test_admitting_checks_the_application_in_hand_not_the_lead_s_best(self):
+		"""The gate that would have opened by accident.
+
+		Moving the *lead* to Admitted is justified by any one of its applications being admissible —
+		the lead's status is its furthest progress. Admitting on *this* application is not. With one
+		admissible application and one still awaiting a counselling round, the lead-level question
+		answers yes for both, so `confirm_admission` on the second would have passed a gate it had
+		not cleared and taken a seat in an intake that never allotted it.
+		"""
+		enquiry = self.paid_lead(self.cse, self.cse_intake)
+		ready = start_application(enquiry)["name"]
+		awaiting = start_application(enquiry, programme_intake=self.ece_intake)["name"]
+
+		self.allot(ready, self.cse, self.cse_intake)
+		self.verify_documents(ready)
+		self.verify_documents(awaiting)
+
+		# `awaiting` is Government Quota by default and has no counselling outcome recorded.
+		with self.assertRaises(frappe.ValidationError) as caught:
+			confirm_admission(awaiting)
+		self.assertIn("allotment", str(caught.exception).lower())
+
+	def test_the_lead_advances_when_any_one_application_clears(self):
+		"""The lead's status is its furthest progress, not every application's.
+
+		Holding a lead back because a second application elsewhere is still waiting on a counselling
+		round it may never win would be nonsense — the certificates have been seen.
+		"""
+		enquiry = self.paid_lead(self.cse, self.cse_intake)
+		cleared = start_application(enquiry)["name"]
+		start_application(enquiry, programme_intake=self.ece_intake)
+
+		self.verify_documents(cleared)
+
+		lead = frappe.get_doc("Admission Enquiry", enquiry)
+		lead.status = "Documents Verified"
+		lead.save()
+		self.assertEqual(lead.status, "Documents Verified")
+
+	def test_when_no_application_clears_every_objection_is_reported(self):
+		"""One application's complaint is not the lead's answer.
+
+		The office's next action depends on which route is closest: chasing a certificate for one
+		application is worth doing, waiting on a counselling round for another is not. So the error
+		names each application rather than reporting the first.
+		"""
+		enquiry = self.paid_lead(self.cse, self.cse_intake)
+		first = start_application(enquiry)["name"]
+		second = start_application(enquiry, programme_intake=self.ece_intake)["name"]
+
+		lead = frappe.get_doc("Admission Enquiry", enquiry)
+		lead.status = "Documents Verified"
+		with self.assertRaises(frappe.ValidationError) as caught:
+			lead.save()
+
+		message = str(caught.exception)
+		self.assertIn(first, message)
+		self.assertIn(second, message)
+
+	def test_one_application_still_reports_its_own_message_verbatim(self):
+		"""The generalisation should be invisible in the common case."""
+		enquiry = self.paid_lead(self.cse, self.cse_intake)
+		start_application(enquiry)
+
+		lead = frappe.get_doc("Admission Enquiry", enquiry)
+		lead.status = "Documents Verified"
+		with self.assertRaises(frappe.ValidationError) as caught:
+			lead.save()
+
+		message = str(caught.exception)
+		self.assertIn("still unverified", message)
+		self.assertNotIn("None of this lead", message)
 
 	# --- The case the slice exists for ----------------------------------------------
 

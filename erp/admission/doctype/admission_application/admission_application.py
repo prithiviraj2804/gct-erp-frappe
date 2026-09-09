@@ -10,6 +10,7 @@ from frappe.utils import today
 
 from erp.admission.application_state import derive_application_state
 from erp.admission.eligibility import assert_prior_qualification, enquiry_education
+from erp.admission.pipeline import already_admitted_objection
 from erp.master.doctype.programme_intake.programme_intake import assert_age_within_window
 from erp.master.hierarchy import validate_same_parent
 
@@ -28,7 +29,8 @@ class AdmissionApplication(Document):
 		self.sync_from_enquiry()
 		self.set_derived_ancestors()
 		self.guard_seat_change_after_admission()
-		self.validate_one_per_enquiry()
+		self.validate_one_per_intake()
+		self.validate_one_admission_per_lead()
 		self.validate_intake_matches_programme()
 		self.validate_hierarchy()
 		self.validate_eligibility()
@@ -96,26 +98,77 @@ class AdmissionApplication(Document):
 					title=_("Already Admitted"),
 				)
 
-	def validate_one_per_enquiry(self):
-		"""One application per lead.
+	def validate_one_per_intake(self):
+		"""One application per lead **per intake**, not one per lead.
 
-		A change of branch or of quota is an edit to this application, not a second record — which
-		keeps "the application for this enquiry" a single unambiguous lookup for the pipeline gates,
-		and stops a lead's history splitting across two documents the way a duplicate enquiry would.
+		This used to be one per lead, on the reasoning that "a change of branch or of quota is an
+		edit to this application, not a second record". That is true of a change of branch. It is
+		not true of a second *institution*: composed with the enquiry's own uniqueness rule — one
+		enquiry per Aadhaar per trust per academic year — it capped an applicant at exactly one
+		application in the entire trust per cycle, and forbade journeys this group already runs. A
+		TNEA candidate's choice list spans GCT and GCE. A parent applies to two of the trust's
+		schools. A Class XI applicant wants both the Bio and the Commerce group.
+
+		The invariant that actually matters was never this one. `Student.validate_unique_aadhaar`
+		enforces one student record per Aadhaar per trust per admission year, so a person can still
+		only be *admitted* once per cycle however many applications they raise — and
+		`validate_one_admission_per_lead` below states the same thing at this level, where the
+		office meets it. The office's real rule is "admitted once", not "enquired once".
+
+		What remains refused is a second application for the same intake, which is a duplicate for
+		one seat rather than a second choice. The model already permitted the rest:
+		`validate_hierarchy` ties an application to its lead's **trust**, not its institution, and
+		`set_derived_ancestors` takes `institution` from the programme this application admits to —
+		so an application at another institution of the trust was always well-formed. Only this
+		check stood in the way.
+
+		The workaround the office would otherwise have used is worse than the rule: the enquiry's
+		duplicate check returns early when `aadhaar_number` is blank, so a blank or invented Aadhaar
+		bought a second application at the price of duplicate detection — and the funnel would then
+		count one child as two leads.
 		"""
-		if not self.admission_enquiry:
+		if not (self.admission_enquiry and self.programme_intake):
 			return
 
 		existing = frappe.db.get_value(
-			"Admission Application", {"admission_enquiry": self.admission_enquiry}, "name"
+			"Admission Application",
+			{
+				"admission_enquiry": self.admission_enquiry,
+				"programme_intake": self.programme_intake,
+				"name": ["!=", self.name or ""],
+			},
+			"name",
 		)
-		if existing and existing != self.name:
+		if existing:
 			frappe.throw(
-				_("{0} already has an application ({1}). Edit that one rather than raising a second.").format(
-					frappe.bold(self.admission_enquiry), frappe.bold(existing)
+				_(
+					"{0} already has an application for {1} ({2}). Edit that one rather than raising a "
+					"second for the same intake — a different programme or institution is a second "
+					"application, the same intake twice is a duplicate."
+				).format(
+					frappe.bold(self.admission_enquiry),
+					frappe.bold(self.programme_intake),
+					frappe.bold(existing),
 				),
 				title=_("Application Exists"),
 			)
+
+	def validate_one_admission_per_lead(self):
+		"""A lead may apply in several places and be admitted in one.
+
+		The rule itself lives in `erp.admission.pipeline.already_admitted_objection`, which is where
+		`confirm_admission` meets it — before anything is written, so nothing half-lands. This is
+		the same boundary for the other writer: `student` is an ordinary field, so plain
+		`/api/resource` CRUD or a console script can set it without ever passing through the
+		pipeline. Calling the pipeline's own function rather than restating the query is the
+		`validate_same_parent` discipline — one implementation per rule, per this app's conventions.
+		"""
+		if not self.student:
+			return
+
+		objection = already_admitted_objection(self)
+		if objection:
+			frappe.throw(objection.message, title=objection.title)
 
 	def validate_intake_matches_programme(self):
 		"""The intake must be the one published for this programme.

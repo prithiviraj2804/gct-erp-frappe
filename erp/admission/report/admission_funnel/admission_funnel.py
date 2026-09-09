@@ -23,6 +23,20 @@ its own, with no second report to keep in step and no chance of the two disagree
 `get_list` also carries the *owner* scoping, so a counsellor running this would see their own
 pipeline rather than their institution's. That is correct, and it is why the aggregates are asked
 for through the same door as the rows.
+
+**Why the conversion denominator is applications, not enquiries.** A lead now belongs to the
+institution it was filed at and may raise applications at any institution of the trust — a TNEA
+choice list spanning two colleges, a parent applying to two of the trust's schools. So `enquiries`
+and `applications` are counted at different institutions for the same person, and
+admitted/enquiries stopped being a ratio of two comparable things: an institution that receives
+applications from leads filed elsewhere could show a conversion above 100%, and one whose leads all
+applied elsewhere could show zero while admitting a full cohort.
+
+Admitted-over-applications is well defined at every institution and comparable across types: of
+the applications this institution received, how many became students. The `enquiries` column stays
+as the lead count it always was — it is a real number, it is just no longer this ratio's
+denominator. Naming the column for what it measures rather than "Conversion %" is part of the fix;
+an ambiguous label is how two rollups come to disagree.
 """
 
 import frappe
@@ -63,7 +77,7 @@ def execute(filters=None):
 			"applications": applications.get(institution.name, 0),
 			"admitted": admitted.get(institution.name, 0),
 		}
-		row["conversion"] = _percent(row["admitted"], row["enquiries"])
+		row["conversion"] = _percent(row["admitted"], row["applications"])
 		for key in totals:
 			totals[key] += row[key]
 		data.append(row)
@@ -74,7 +88,7 @@ def execute(filters=None):
 				"institution": _("Total"),
 				"institution_type": None,
 				**totals,
-				"conversion": _percent(totals["admitted"], totals["enquiries"]),
+				"conversion": _percent(totals["admitted"], totals["applications"]),
 			}
 		)
 
@@ -142,5 +156,10 @@ def _columns():
 		{"fieldname": "paid", "label": _("Fee Paid"), "fieldtype": "Int", "width": 110},
 		{"fieldname": "applications", "label": _("Applications"), "fieldtype": "Int", "width": 120},
 		{"fieldname": "admitted", "label": _("Admitted"), "fieldtype": "Int", "width": 110},
-		{"fieldname": "conversion", "label": _("Conversion %"), "fieldtype": "Percent", "width": 130},
+		{
+			"fieldname": "conversion",
+			"label": _("Admitted % Of Applications"),
+			"fieldtype": "Percent",
+			"width": 190,
+		},
 	]
