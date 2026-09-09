@@ -133,6 +133,13 @@
   {
    "type": "Link",
    "link_type": "DocType",
+   "link_to": "Reservation Category",
+   "icon": "users",
+   "label": "Reservation Category"
+  },
+  {
+   "type": "Link",
+   "link_type": "DocType",
    "link_to": "Consultancy",
    "icon": "handshake",
    "label": "Consultancy"

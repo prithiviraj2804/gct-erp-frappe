@@ -49,8 +49,21 @@ REPORTING_SPINE = {
 	"Admission Application": frozenset(
 		{"institution", "trust", "application_state", "application_date", "programme", "programme_intake"}
 	),
+	# `reservation_category` is on the Student spine and not on the other two on purpose. Student is
+	# the statutory admission register, and the returns a trust files are counted by category — so
+	# hiding it there would drop rows from a count the trust is legally obliged to produce. On the
+	# enquiry and the application it stays configurable, because an institution that runs no
+	# reserved pools has no business collecting it.
 	"Student": frozenset(
-		{"institution", "trust", "status", "date_of_admission", "programme", "academic_year"}
+		{
+			"institution",
+			"trust",
+			"status",
+			"date_of_admission",
+			"programme",
+			"academic_year",
+			"reservation_category",
+		}
 	),
 }
 

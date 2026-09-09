@@ -15,6 +15,8 @@ Field Policy layer reaches Admission Application at last; and Arts & Science —
 neither shipped policy and so collected the raw professional superset — now inherits its own.
 """
 
+import itertools
+
 import frappe
 from frappe.tests import IntegrationTestCase
 from frappe.utils import today
@@ -496,3 +498,322 @@ class IntegrationTestConfigurableGates(IntegrationTestCase):
 			spec = resolve_policy(doctype, institution=self.ARTS)
 			self.assertTrue(spec, f"{doctype} resolves no policy at all for Arts & Science")
 			self.assertEqual(spec["entrance_exam"].requirement, "Hidden", doctype)
+
+
+class IntegrationTestSeatPools(IntegrationTestCase):
+	"""Seats sanctioned by route and category, enforced rather than filed.
+
+	The journey: *an arts & science intake sanctions 30 seats — 20 on the government quota, 6 of
+	them for one community category, and 10 on the institution's own management quota.* Before this
+	slice `assert_seat_available` read one `total_seats` scalar and counted every student against
+	it, so a general candidate could take a reserved seat while the intake was half empty. Nothing
+	noticed, and nothing would notice until the statutory returns were filed — which is why this is
+	a gate and not a report.
+
+	Also proved: an intake that declares no matrix keeps exactly the behaviour it had.
+	"""
+
+	TRUST = "ZS1"
+	INST = "ZSART"
+
+	@classmethod
+	def setUpClass(cls):
+		super().setUpClass()
+		cls.ensure("Trust", cls.TRUST, {"trust_code": cls.TRUST, "trust_name": "Seat Trust"})
+		cls.ensure(
+			"Admission Type",
+			"ZSREG",
+			{"type_code": "ZSREG", "type_name": "Regular", "default_entry_semester": 1},
+		)
+		cls.ensure("Mode of Payment", "Cash", {"mode_name": "Cash", "type": "Cash"})
+		cls.ensure(
+			"Admission Document Type", "ZSDOC", {"document_code": "ZSDOC", "document_name": "Marksheet"}
+		)
+		cls.category = cls.ensure(
+			"Reservation Category",
+			"ZS BC",
+			{"category_name": "ZS BC", "description": "A community category, per this state's GO."},
+		)
+		cls.other_category = cls.ensure(
+			"Reservation Category", "ZS SC", {"category_name": "ZS SC", "description": "Another."}
+		)
+		cls.ensure(
+			"Institution",
+			cls.INST,
+			{
+				"trust": cls.TRUST,
+				"institution_code": cls.INST,
+				"institution_name": "Seat College",
+				"institution_type": "Arts & Science",
+			},
+		)
+		cls.year = cls.ensure(
+			"Academic Year",
+			f"{cls.TRUST}-2080-81",
+			{
+				"trust": cls.TRUST,
+				"year_code": "2080-81",
+				"title": "S 2080-81",
+				"start_date": "2080-06-01",
+				"end_date": "2081-05-31",
+				"is_admission_open": 1,
+			},
+		)
+		cls.department = cls.ensure(
+			"Department",
+			f"{cls.INST}-ZSBA",
+			{
+				"trust": cls.TRUST,
+				"institution": cls.INST,
+				"department_code": "ZSBA",
+				"department_name": "Commerce",
+			},
+		)
+		# One programme per intake: `validate_unique_offering` allows a programme only one intake
+		# per academic year, which is correct — and means a test needing several intakes needs
+		# several programmes rather than several years.
+		cls._offering = itertools.count(1)
+		cls._phone = itertools.count(9876800001)
+
+	@staticmethod
+	def ensure(doctype, name, values):
+		if frappe.db.exists(doctype, name):
+			return name
+		return frappe.get_doc({"doctype": doctype, **values}).insert(ignore_permissions=True).name
+
+	def make_intake(self, *, total_seats=30, seats=()):
+		"""A programme and the intake that sanctions its seats. Returns `(programme, intake)`."""
+		code = f"ZSP{next(self._offering):02d}"
+		programme = (
+			frappe.get_doc(
+				{
+					"doctype": "Programme",
+					"trust": self.TRUST,
+					"institution": self.INST,
+					"department": self.department,
+					"programme_code": code,
+					"programme_name": f"B.Com {code}",
+					"programme_level": "UG",
+					"academic_structure": "SEM",
+					"duration_years": 3,
+					"total_terms": 6,
+				}
+			)
+			.insert(ignore_permissions=True)
+			.name
+		)
+		intake = (
+			frappe.get_doc(
+				{
+					"doctype": "Programme Intake",
+					"academic_year": self.year,
+					"programme": programme,
+					"total_seats": total_seats,
+					"status": "Open",
+					"application_fee": 100.0,
+					"required_documents": [{"document_type": "ZSDOC", "is_required": 1}],
+					"seats": list(seats),
+				}
+			)
+			.insert(ignore_permissions=True)
+			.name
+		)
+		return programme, intake
+
+	def admit(self, programme, intake, *, route="Direct", category=None):
+		"""A whole lead-to-student journey, so the gate is exercised through the real path."""
+		from erp.api.accounts.fee_payment import record_application_fee
+		from erp.api.admission.admission import confirm_admission
+		from erp.api.admission.application import start_application
+
+		enquiry = (
+			frappe.get_doc(
+				{
+					"doctype": "Admission Enquiry",
+					"enquiry_date": today(),
+					"status": "New",
+					"student_name": "Seat Probe",
+					"phone_number": str(next(self._phone)),
+					"institution": self.INST,
+					"department": self.department,
+					"programme": programme,
+					"programme_intake": intake,
+					"admission_type": "ZSREG",
+				}
+			)
+			.insert(ignore_permissions=True)
+			.name
+		)
+		record_application_fee(enquiry, "Cash")
+		application = start_application(enquiry, programme_intake=intake)["name"]
+
+		doc = frappe.get_doc("Admission Application", application)
+		doc.admission_route = route
+		doc.reservation_category = category
+		for row in doc.documents:
+			row.copy_collected, row.original_verified, row.verified_on = 1, 1, today()
+		doc.save(ignore_permissions=True)
+
+		return confirm_admission(application)
+
+	# --- The matrix is optional, and its absence changes nothing ---------------------
+
+	def test_an_intake_with_no_matrix_behaves_exactly_as_before(self):
+		programme, intake = self.make_intake(total_seats=1)
+		self.admit(programme, intake)
+		with self.assertRaises(frappe.ValidationError) as caught:
+			self.admit(programme, intake)
+		self.assertIn("full", str(caught.exception).lower())
+
+	# --- A pool is enforced, not filed ----------------------------------------------
+
+	def test_a_reserved_pool_fills_independently_of_the_intake(self):
+		"""The bug this slice exists for: a full pool while the intake is nearly empty.
+
+		Twenty seats in the intake, one of them sanctioned for a category. Admitting a second
+		applicant in that category must be refused even though nineteen seats remain — a general
+		candidate on a reserved seat is wrong, and it is wrong in a way that surfaces only when the
+		returns are filed.
+		"""
+		programme, intake = self.make_intake(
+			total_seats=20,
+			seats=(
+				{"admission_route": "Direct", "sanctioned_seats": 19},
+				{
+					"admission_route": "Direct",
+					"reservation_category": self.category,
+					"sanctioned_seats": 1,
+				},
+			),
+		)
+		self.admit(programme, intake, category=self.category)
+
+		with self.assertRaises(frappe.ValidationError) as caught:
+			self.admit(programme, intake, category=self.category)
+		self.assertIn("sanctioned for", str(caught.exception))
+
+		# The route's own pool is untouched, so an applicant claiming no category still gets in.
+		self.assertTrue(self.admit(programme, intake)["student"])
+
+	def test_the_more_specific_pool_wins(self):
+		"""Most specific wins — the same rule the whole configuration layer runs on."""
+		from erp.admission.pipeline import seat_pool_for
+
+		_programme, intake = self.make_intake(
+			total_seats=20,
+			seats=(
+				{"admission_route": "Direct", "sanctioned_seats": 15},
+				{
+					"admission_route": "Direct",
+					"reservation_category": self.category,
+					"sanctioned_seats": 5,
+				},
+			),
+		)
+		pool = seat_pool_for(intake, "Direct", self.category)
+		self.assertEqual(pool.sanctioned_seats, 5)
+		self.assertEqual(pool.reservation_category, self.category)
+
+		# A category the matrix says nothing about falls back to the route's own pool.
+		fallback = seat_pool_for(intake, "Direct", self.other_category)
+		self.assertEqual(fallback.sanctioned_seats, 15)
+		self.assertIsNone(fallback.reservation_category)
+
+	def test_a_route_the_matrix_omits_has_no_sanctioned_seats(self):
+		"""An incomplete matrix is refused rather than waved through.
+
+		The whole point of writing a seat matrix down is that every seat has a stated origin, so a
+		route the institution did not write down has no seats — and the message names the pool the
+		office needs to add.
+		"""
+		programme, intake = self.make_intake(
+			total_seats=20, seats=({"admission_route": "Direct", "sanctioned_seats": 20},)
+		)
+		with self.assertRaises(frappe.ValidationError) as caught:
+			self.admit(programme, intake, route="Management Quota")
+		self.assertIn("sanctions no seats", str(caught.exception))
+
+	# --- The matrix has to add up ----------------------------------------------------
+
+	def test_the_matrix_may_not_oversubscribe_the_intake(self):
+		with self.assertRaises(frappe.ValidationError) as caught:
+			self.make_intake(
+				total_seats=10,
+				seats=(
+					{"admission_route": "Direct", "sanctioned_seats": 8},
+					{"admission_route": "Management Quota", "sanctioned_seats": 5},
+				),
+			)
+		self.assertIn("sanctions", str(caught.exception))
+
+	def test_the_matrix_may_sanction_fewer_seats_than_the_intake_has(self):
+		"""The remainder is unreserved, which is how most sanction letters actually read."""
+		_programme, intake = self.make_intake(
+			total_seats=30, seats=({"admission_route": "Direct", "sanctioned_seats": 5},)
+		)
+		self.assertTrue(intake)
+
+	def test_two_rows_for_one_pool_are_refused(self):
+		with self.assertRaises(frappe.ValidationError) as caught:
+			self.make_intake(
+				seats=(
+					{
+						"admission_route": "Direct",
+						"reservation_category": self.category,
+						"sanctioned_seats": 3,
+					},
+					{
+						"admission_route": "Direct",
+						"reservation_category": self.category,
+						"sanctioned_seats": 4,
+					},
+				)
+			)
+		self.assertIn("already has a seat row", str(caught.exception))
+
+	def test_every_seat_row_gets_its_uuid(self):
+		"""The app-wide `id` convention, which child rows silently missed until slice 2."""
+		_programme, intake = self.make_intake(seats=({"admission_route": "Direct", "sanctioned_seats": 5},))
+		rows = frappe.get_doc("Programme Intake", intake).seats
+		self.assertTrue(all(row.id for row in rows), "a seat row has no UUID")
+
+	# --- The category reaches the statutory register ---------------------------------
+
+	def test_the_category_is_carried_onto_the_register(self):
+		"""Student is the register, named by the register number with `allow_rename: 0`, so this is
+		the one column here that is expensive to add later rather than now."""
+		programme, intake = self.make_intake(
+			total_seats=10,
+			seats=(
+				{
+					"admission_route": "Direct",
+					"reservation_category": self.category,
+					"sanctioned_seats": 2,
+				},
+			),
+		)
+		result = self.admit(programme, intake, category=self.category)
+		self.assertEqual(
+			frappe.db.get_value("Student", result["student"], "reservation_category"), self.category
+		)
+
+	def test_a_policy_cannot_hide_the_category_on_the_register(self):
+		"""It is on the Student reporting spine: the returns a trust files are counted by it."""
+		from erp.master.doctype.field_policy.field_policy import REPORTING_SPINE
+
+		self.assertIn("reservation_category", REPORTING_SPINE["Student"])
+
+	def test_a_category_in_use_cannot_be_deleted(self):
+		_programme, intake = self.make_intake(
+			total_seats=10,
+			seats=(
+				{
+					"admission_route": "Direct",
+					"reservation_category": self.category,
+					"sanctioned_seats": 2,
+				},
+			),
+		)
+		self.assertTrue(intake)
+		with self.assertRaises(frappe.ValidationError):
+			frappe.delete_doc("Reservation Category", self.category)

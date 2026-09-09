@@ -1,0 +1,99 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "field:category_name",
+ "creation": "2026-09-09 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "category_section",
+  "id",
+  "category_name",
+  "column_break_category",
+  "status",
+  "is_standard",
+  "standard_key",
+  "notes_section",
+  "description"
+ ],
+ "fields": [
+  {"fieldname": "category_section", "fieldtype": "Section Break", "label": "Category"},
+  {
+   "fieldname": "id",
+   "fieldtype": "Data",
+   "label": "ID",
+   "unique": 1,
+   "read_only": 1,
+   "no_copy": 1,
+   "in_standard_filter": 1,
+   "description": "Auto-generated UUID"
+  },
+  {
+   "fieldname": "category_name",
+   "fieldtype": "Data",
+   "label": "Category Name",
+   "reqd": 1,
+   "unique": 1,
+   "in_list_view": 1,
+   "description": "As the state's own notification names it. The business key, so a Link reads properly on a form and a statutory return can be grouped by it. No rows ship: sub-quota names and their sanctioned shares differ by state and by year, and a wrong one on a statutory register is worse than a blank"
+  },
+  {"fieldname": "column_break_category", "fieldtype": "Column Break"},
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Active\nInactive",
+   "default": "Active",
+   "in_list_view": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "is_standard",
+   "fieldtype": "Check",
+   "label": "Is Standard",
+   "read_only": 1,
+   "no_copy": 1,
+   "default": "0",
+   "description": "Shipped with the app. Nothing ships here today - see category_name"
+  },
+  {
+   "fieldname": "standard_key",
+   "fieldtype": "Data",
+   "label": "Standard Key",
+   "read_only": 1,
+   "no_copy": 1,
+   "hidden": 1,
+   "description": "The name this row shipped under, if it shipped"
+  },
+  {"fieldname": "notes_section", "fieldtype": "Section Break"},
+  {
+   "fieldname": "description",
+   "fieldtype": "Small Text",
+   "label": "Description",
+   "description": "The notification or GO this category comes from, so the seat matrix can be audited against it"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-09-09 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Master",
+ "name": "Reservation Category",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {"create": 1, "delete": 1, "email": 1, "export": 1, "print": 1, "read": 1, "report": 1, "role": "System Manager", "share": 1, "write": 1},
+  {"read": 1, "report": 1, "role": "Admission Manager", "select": 1},
+  {"read": 1, "report": 1, "role": "Admission Counsellor", "select": 1},
+  {"create": 1, "delete": 1, "email": 1, "export": 1, "print": 1, "read": 1, "report": 1, "role": "Trust Admin", "write": 1},
+  {"read": 1, "report": 1, "export": 1, "role": "Institution Admin"}
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "search_fields": "category_name",
+ "sort_field": "category_name",
+ "sort_order": "ASC",
+ "states": [],
+ "track_changes": 1
+}

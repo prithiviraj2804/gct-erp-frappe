@@ -23,6 +23,8 @@
   "age_as_on",
   "column_break_eligibility",
   "application_fee",
+  "seat_matrix_section",
+  "seats",
   "documents_section",
   "required_documents",
   "remarks_section",
@@ -157,6 +159,18 @@
    "reqd": 1,
    "non_negative": 1,
    "description": "Fee payable to submit an application"
+  },
+  {
+   "fieldname": "seat_matrix_section",
+   "fieldtype": "Section Break",
+   "label": "Seat Matrix",
+   "description": "How this intake's sanctioned seats are divided between routes and categories. Leave empty and only total_seats applies, which is what every intake did before this table existed"
+  },
+  {
+   "fieldname": "seats",
+   "fieldtype": "Table",
+   "label": "Seats",
+   "options": "Programme Intake Seat"
   },
   {
    "fieldname": "documents_section",

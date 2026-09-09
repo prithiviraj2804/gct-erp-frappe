@@ -45,6 +45,7 @@ ACADEMIC_FIELDS = (
 	"programme_intake",
 	"admission_type",
 	"admission_route",
+	"reservation_category",
 	"allotment_reference",
 )
 

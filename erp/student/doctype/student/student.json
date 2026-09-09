@@ -17,6 +17,7 @@
   "admission_enquiry",
   "column_break_admission",
   "admission_route",
+  "reservation_category",
   "allotment_reference",
   "academic_section",
   "trust",
@@ -133,6 +134,14 @@
    "in_standard_filter": 1,
    "description": "The route recorded on the application, carried onto the register",
    "options": "Admission Route"
+  },
+  {
+   "fieldname": "reservation_category",
+   "fieldtype": "Link",
+   "label": "Reservation Category",
+   "options": "Reservation Category",
+   "in_standard_filter": 1,
+   "description": "The category this seat is claimed under. Blank means the applicant claims no category, which is a real answer and not a missing one. Read by the seat gate against the intake's matrix, and by the statutory returns a trust files"
   },
   {
    "fieldname": "allotment_reference",

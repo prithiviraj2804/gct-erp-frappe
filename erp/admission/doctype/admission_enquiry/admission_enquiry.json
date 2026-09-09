@@ -57,6 +57,7 @@
   "column_break_choice",
   "academic_year",
   "admission_type",
+  "reservation_category",
   "programme_intake",
   "education_section",
   "previous_education",
@@ -441,6 +442,14 @@
    "reqd": 1,
    "in_standard_filter": 1,
    "description": "Regular / Lateral Entry / Transfer / Readmission"
+  },
+  {
+   "fieldname": "reservation_category",
+   "fieldtype": "Link",
+   "label": "Reservation Category",
+   "options": "Reservation Category",
+   "in_standard_filter": 1,
+   "description": "The category this seat is claimed under. Blank means the applicant claims no category, which is a real answer and not a missing one. Read by the seat gate against the intake's matrix, and by the statutory returns a trust files"
   },
   {
    "fieldname": "programme_intake",

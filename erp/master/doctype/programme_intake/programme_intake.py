@@ -13,6 +13,7 @@ class ProgrammeIntake(Document):
 	def validate(self):
 		self.validate_hierarchy()
 		self.validate_seats()
+		self.validate_seat_matrix()
 		self.validate_percentage()
 		self.validate_age_window()
 		self.validate_unique_offering()
@@ -31,6 +32,56 @@ class ProgrammeIntake(Document):
 	def validate_seats(self):
 		if self.total_seats is not None and self.total_seats <= 0:
 			frappe.throw(_("Total Seats must be greater than zero."))
+
+	def validate_seat_matrix(self):
+		"""The sanctioned pools must be coherent, and must not claim more than the intake has.
+
+		The matrix is optional — an intake that declares none keeps exactly the behaviour it had,
+		one number of seats and one queue for them. Once it declares any, two things have to hold or
+		the numbers stop meaning anything:
+
+		**No two rows may claim the same pool.** `(route, category)` is what the gate resolves
+		against, so two rows for one pool is a contradiction with no answer, the same shape as two
+		Field Policy rules for one field.
+
+		**The pools may not oversubscribe the intake.** Summing to *less* than `total_seats` is
+		legitimate and common — the remainder is unreserved, and a matrix that states only the
+		reserved pools is how most sanction letters read. Summing to more is not: it would let the
+		institution admit past its sanctioned strength one pool at a time, with every individual
+		pool check passing.
+
+		A blank category means "the whole route", so it is summed alongside the categories under it
+		rather than instead of them — a route stating 60 seats with 15 for one category is claiming
+		75 unless the office meant the 15 to come *out* of the 60. That ambiguity is why the sum
+		refuses rather than guesses, and the message says which reading to write down.
+		"""
+		if not self.seats:
+			return
+
+		seen = set()
+		for row in self.seats:
+			pool = (row.admission_route, row.reservation_category or "")
+			if pool in seen:
+				frappe.throw(
+					_("Row {0}: {1} already has a seat row for {2}.").format(
+						row.idx,
+						frappe.bold(row.admission_route),
+						frappe.bold(row.reservation_category or _("every category")),
+					),
+					title=_("Duplicate Seat Pool"),
+				)
+			seen.add(pool)
+
+		sanctioned = sum(row.sanctioned_seats or 0 for row in self.seats)
+		if self.total_seats and sanctioned > self.total_seats:
+			frappe.throw(
+				_(
+					"The seat matrix sanctions {0} seats but this intake has {1}. A pool for a whole "
+					"route and a pool for a category within it are counted separately, so state the "
+					"route's remaining seats rather than its total if the categories come out of it."
+				).format(frappe.bold(sanctioned), frappe.bold(self.total_seats)),
+				title=_("Seat Matrix Oversubscribed"),
+			)
 
 	def validate_percentage(self):
 		if self.min_percentage and not 0 <= self.min_percentage <= 100:

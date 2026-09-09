@@ -51,20 +51,73 @@ APPLICATION_GATES = frozenset({INTERACTION, DOCUMENTS, ADMISSION})
 OCCUPYING_STATUSES = ("Active",)
 
 
-def seats_taken(programme_intake: str, *, exclude_enquiry: str | None = None) -> int:
-	"""How many seats of an intake are occupied right now.
+def seats_taken(
+	programme_intake: str,
+	*,
+	exclude_enquiry: str | None = None,
+	admission_route: str | None = None,
+	reservation_category: str | None = None,
+) -> int:
+	"""How many seats of an intake are occupied right now, optionally within one pool.
 
 	`exclude_enquiry` leaves out the student already created for the enquiry being admitted, so the
 	check answers "is there room for this applicant" rather than "is there room for a further one".
 	Without it, confirming the last seat would fail: `confirm_admission` creates the Student before
 	writing the enquiry's status, so the re-run of this gate would count the new student against
 	their own seat.
+
+	`admission_route` and `reservation_category` narrow the count to one sanctioned pool. A pool
+	naming no category counts every student on that route whatever their category, which is what
+	makes a blank category in the matrix mean "the whole route".
 	"""
 	filters = {"programme_intake": programme_intake, "status": ["in", OCCUPYING_STATUSES]}
 	if exclude_enquiry:
 		filters["admission_enquiry"] = ["!=", exclude_enquiry]
+	if admission_route:
+		filters["admission_route"] = admission_route
+	if reservation_category:
+		filters["reservation_category"] = reservation_category
 
 	return frappe.db.count("Student", filters)
+
+
+def seat_pool_for(programme_intake: str, admission_route: str | None, reservation_category: str | None):
+	"""The sanctioned pool this applicant's seat would come out of, or None if none is declared.
+
+	Most specific wins, which is the same rule the whole configuration layer runs on: a row naming
+	both the route and the category beats one naming only the route. A matrix can therefore state
+	the route's pool once and carve a category out of it without the office doing arithmetic in two
+	places.
+
+	Returns None when the intake declares no matrix at all *or* when it declares one that says
+	nothing about this route — the two are different situations and `seat_objection` tells them
+	apart, because a matrix that omits a route is an incomplete matrix rather than an absent one.
+	"""
+	rows = frappe.get_all(
+		"Programme Intake Seat",
+		filters={"parent": programme_intake, "parenttype": "Programme Intake"},
+		fields=["admission_route", "reservation_category", "sanctioned_seats"],
+		order_by="idx",
+	)
+	if not rows:
+		return None
+
+	exact = next(
+		(
+			row
+			for row in rows
+			if row.admission_route == admission_route
+			and (row.reservation_category or None) == (reservation_category or None)
+		),
+		None,
+	)
+	if exact:
+		return exact
+
+	return next(
+		(row for row in rows if row.admission_route == admission_route and not row.reservation_category),
+		None,
+	)
 
 
 def applications_for(enquiry: str) -> list:
@@ -391,13 +444,38 @@ def admissibility_objection(application, enquiry) -> _Objection | None:
 				),
 			)
 
-	return seat_objection(application.programme_intake, exclude_enquiry=enquiry)
+	return seat_objection(
+		application.programme_intake,
+		exclude_enquiry=enquiry,
+		admission_route=application.admission_route,
+		reservation_category=application.reservation_category,
+	)
 
 
-def seat_objection(programme_intake: str, *, exclude_enquiry: str | None = None) -> _Objection | None:
-	"""Refuse an admission that would take an intake past its sanctioned seats."""
+def seat_objection(
+	programme_intake: str,
+	*,
+	exclude_enquiry: str | None = None,
+	admission_route: str | None = None,
+	reservation_category: str | None = None,
+) -> _Objection | None:
+	"""Refuse an admission that would take an intake past its sanctioned seats.
+
+	Two checks, and both have to hold. The **pool** check is the one this slice adds: if the intake
+	declares a seat matrix, the applicant's own `(route, category)` pool must have room, because a
+	general candidate taking a reserved seat is wrong even while the intake as a whole is half
+	empty — and it is wrong in a way nobody notices until the returns are filed. The **total** check
+	stays because a matrix may legitimately sanction fewer seats than the intake has, leaving an
+	unreserved remainder that still may not overflow it.
+
+	An intake that declares no matrix keeps exactly the behaviour it had: one number, one queue.
+	"""
 	if not programme_intake:
 		return None
+
+	objection = _pool_objection(programme_intake, exclude_enquiry, admission_route, reservation_category)
+	if objection:
+		return objection
 
 	total = frappe.db.get_value("Programme Intake", programme_intake, "total_seats")
 	if not total:
@@ -409,6 +487,61 @@ def seat_objection(programme_intake: str, *, exclude_enquiry: str | None = None)
 			_("No Seats Left"),
 			_("{0} is full — all {1} seats are taken.").format(
 				frappe.bold(programme_intake), frappe.bold(total)
+			),
+		)
+
+	return None
+
+
+def _pool_objection(
+	programme_intake: str,
+	exclude_enquiry: str | None,
+	admission_route: str | None,
+	reservation_category: str | None,
+) -> _Objection | None:
+	"""Whether the applicant's own sanctioned pool has room, when the intake declares a matrix.
+
+	A matrix that names no pool for this route is refused rather than waved through. That is the
+	point of a seat matrix: the institution has written down where every seat comes from, so a
+	route it did not write down has no sanctioned seats — and the message names the missing pool,
+	which is exactly what the office needs to add.
+	"""
+	pool = seat_pool_for(programme_intake, admission_route, reservation_category)
+	if pool is None:
+		if not frappe.db.exists(
+			"Programme Intake Seat", {"parent": programme_intake, "parenttype": "Programme Intake"}
+		):
+			return None
+
+		return _Objection(
+			_("No Sanctioned Pool"),
+			_(
+				"{0}'s seat matrix sanctions no seats on {1}. Add a seat row for that route — or for "
+				"that route and {2} — before admitting on it."
+			).format(
+				frappe.bold(programme_intake),
+				frappe.bold(admission_route or _("no route")),
+				frappe.bold(reservation_category or _("no category")),
+			),
+		)
+
+	taken = seats_taken(
+		programme_intake,
+		exclude_enquiry=exclude_enquiry,
+		admission_route=pool.admission_route,
+		reservation_category=pool.reservation_category,
+	)
+	if taken >= (pool.sanctioned_seats or 0):
+		return _Objection(
+			_("Pool Full"),
+			_("All {0} seats sanctioned for {1} on {2} are taken.").format(
+				frappe.bold(pool.sanctioned_seats or 0),
+				frappe.bold(
+					f"{pool.admission_route} / {pool.reservation_category}"
+					if pool.reservation_category
+					else pool.admission_route
+				),
+				frappe.bold(programme_intake),
 			),
 		)
 
