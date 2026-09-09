@@ -119,6 +119,20 @@
   {
    "type": "Link",
    "link_type": "DocType",
+   "link_to": "Admission Route",
+   "icon": "route",
+   "label": "Admission Route"
+  },
+  {
+   "type": "Link",
+   "link_type": "DocType",
+   "link_to": "Education Board",
+   "icon": "book-open",
+   "label": "Education Board"
+  },
+  {
+   "type": "Link",
+   "link_type": "DocType",
    "link_to": "Consultancy",
    "icon": "handshake",
    "label": "Consultancy"

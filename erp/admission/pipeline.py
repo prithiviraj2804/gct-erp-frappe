@@ -34,12 +34,12 @@ from frappe import _
 from frappe.utils import getdate
 
 from erp.admission.application_state import (
-	GOVERNMENT_QUOTA,
 	OUTCOMES_NOT_OURS,
 	required_documents_verified,
 )
 from erp.admission.fee_gate import assert_fee_paid_for_status
 from erp.admission.stages import ADMISSION, DOCUMENTS, INTERACTION, required_gates
+from erp.master.doctype.admission_route.admission_route import requires_allotment
 
 # The gates that are answered by an *application* rather than by the lead. The fee is the lead's
 # own fact — `Admission Enquiry.application_fee_paid` — so it is not here; everything else needs a
@@ -333,12 +333,19 @@ def documents_objection(application, new_status) -> _Objection | None:
 
 
 def allotment_objection(application) -> _Objection | None:
-	"""For a government-quota seat, counselling must actually have sent this applicant to us.
+	"""On a route that waits on an external body, counselling must actually have sent us this
+	applicant.
 
-	Only a government-quota application is asked: a management-quota or direct seat is the
-	institution's own to give, and no external body allots it.
+	Only such a route is asked: a management-quota or direct seat is the institution's own to give,
+	and no external body allots it.
+
+	The question is put to the **route** rather than compared against `"Government Quota"`. The
+	literal was right for exactly the three routes the old Select offered, and it was right by
+	accident — the gate does not care which route this is, only whether the route waits on somebody
+	else. Add `NRI` or a state minority quota to a Select and this gate goes silently quiet on it;
+	add it as a row with `requires_allotment` and the gate fires with no deploy.
 	"""
-	if application.admission_route != GOVERNMENT_QUOTA:
+	if not requires_allotment(application.admission_route):
 		return None
 
 	if application.counselling_outcome in OUTCOMES_NOT_OURS:

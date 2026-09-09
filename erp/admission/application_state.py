@@ -17,10 +17,10 @@ state cannot drift between the doctype, a report and a future portal.
 field. The two are different things: an outcome is evidence, a state is a conclusion drawn from it.
 """
 
+from erp.master.doctype.admission_route.admission_route import requires_allotment
+
 # Terminal outcomes that end an application: the seat went somewhere else, so nothing else follows.
 OUTCOMES_NOT_OURS = frozenset({"Allotted Elsewhere", "Not Allotted"})
-
-GOVERNMENT_QUOTA = "Government Quota"
 
 ADMITTED = "Admitted"
 NOT_ALLOTTED = "Not Allotted"
@@ -53,7 +53,11 @@ def derive_application_state(application) -> str:
 	if application.student:
 		return ADMITTED
 
-	if application.admission_route == GOVERNMENT_QUOTA:
+	# Asked of the *route*, not compared against a literal. `admission_route == "Government Quota"`
+	# was right for exactly the three routes the old Select offered, and silently wrong for the
+	# fourth: an NRI or minority-quota seat also waits on somebody else's decision, and adding it to
+	# a Select would have left this branch skipping it. Only the route knows.
+	if requires_allotment(application.admission_route):
 		if application.counselling_outcome in OUTCOMES_NOT_OURS:
 			return NOT_ALLOTTED
 		if not application.counselling_outcome or application.counselling_outcome == "Awaited":

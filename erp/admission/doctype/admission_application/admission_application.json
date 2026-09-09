@@ -15,6 +15,7 @@
   "column_break_application",
   "application_state",
   "admission_route",
+  "route_requires_allotment",
   "counselling_outcome",
   "student",
   "counsellor",
@@ -45,6 +46,11 @@
   "allotment_date",
   "documents_section",
   "documents",
+  "previous_schooling_section",
+  "previous_school",
+  "education_board",
+  "previous_class",
+  "marks_percentage",
   "interaction_section",
   "interaction_on",
   "interaction_mode",
@@ -62,6 +68,39 @@
   "remarks"
  ],
  "fields": [
+  {
+   "fieldname": "previous_schooling_section",
+   "fieldtype": "Section Break",
+   "label": "Previous Schooling",
+   "description": "What the applicant completed before this application. Hidden per institution type by Field Policy where it does not apply"
+  },
+  {
+   "fieldname": "previous_school",
+   "fieldtype": "Data",
+   "label": "Previous School",
+   "description": "Free text on purpose: a school keeps no register of every feeder school, and a Link would force a master row for a one-off transfer. The *board* is the part anyone counts by"
+  },
+  {
+   "fieldname": "education_board",
+   "fieldtype": "Link",
+   "label": "Education Board",
+   "options": "Education Board",
+   "in_standard_filter": 1,
+   "description": "The board the applicant comes from. A Link because `GROUP BY education_board` is a real query and free text made CBSE three boards"
+  },
+  {
+   "fieldname": "previous_class",
+   "fieldtype": "Data",
+   "label": "Previous Class",
+   "description": "The class or standard last completed, as the previous school recorded it"
+  },
+  {
+   "fieldname": "marks_percentage",
+   "fieldtype": "Float",
+   "label": "Marks Percentage",
+   "precision": "2",
+   "description": "Aggregate percentage in the qualifying examination. Bounded per institution type by Field Policy rather than in the schema, because what counts as a valid range differs by board"
+  },
   {
    "fieldname": "application_section",
    "fieldtype": "Section Break",
@@ -129,13 +168,23 @@
   },
   {
    "fieldname": "admission_route",
-   "fieldtype": "Select",
+   "fieldtype": "Link",
    "label": "Admission Route",
-   "options": "Government Quota\nManagement Quota\nDirect",
-   "default": "Government Quota",
+   "options": "Admission Route",
    "reqd": 1,
    "in_standard_filter": 1,
-   "description": "Government Quota seats are allotted by an external counselling body; the others are the institution's own decision"
+   "description": "How this seat was decided. Filled from the institution type's default_admission_route when left blank, so a school gets Direct and an engineering college Government Quota without either being hardcoded. The pipeline asks the route whether it requires_allotment"
+  },
+  {
+   "fieldname": "route_requires_allotment",
+   "fieldtype": "Check",
+   "label": "Route Requires Allotment",
+   "read_only": 1,
+   "no_copy": 1,
+   "hidden": 1,
+   "fetch_from": "admission_route.requires_allotment",
+   "fetch_if_empty": 0,
+   "description": "Fetched from the route so `depends_on` can hide the allotment fields without a second copy of the rule in JavaScript. Presentation only — `erp/admission/pipeline.py` reads the route itself, because a fetched value is a client convenience the server does not trust"
   },
   {
    "fieldname": "counselling_outcome",
@@ -143,7 +192,7 @@
    "label": "Counselling Outcome",
    "options": "Awaited\nAllotted To Us\nAllotted Elsewhere\nNot Allotted",
    "default": "Awaited",
-   "depends_on": "eval:doc.admission_route=='Government Quota'",
+   "depends_on": "eval:doc.route_requires_allotment",
    "in_standard_filter": 1,
    "description": "What the counselling round returned. Anything but 'Allotted To Us' ends the application and opens the fee refund"
   },
@@ -286,7 +335,7 @@
    "fieldname": "allotment_section",
    "fieldtype": "Section Break",
    "label": "Entrance & Allotment",
-   "depends_on": "eval:doc.admission_route=='Government Quota'",
+   "depends_on": "eval:doc.route_requires_allotment",
    "description": "Recorded from the allotment order. The app does not compute rank or merit — it records what the counselling body decided"
   },
   {

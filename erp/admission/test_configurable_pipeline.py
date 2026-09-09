@@ -350,6 +350,120 @@ class IntegrationTestConfigurableGates(IntegrationTestCase):
 		finally:
 			frappe.db.set_value("Institution Type", "Professional", "requires_application_fee", None)
 
+	# --- The route is data, so the allotment gate needs no code change ----------------
+
+	def test_a_school_application_opens_on_a_route_that_does_not_wait_for_counselling(self):
+		"""The defect the roadmap carried for three slices, in one assertion.
+
+		`admission_route` had a static default of "Government Quota" in the schema, so every school
+		application opened on a route that waits for a counselling body — and
+		`derive_application_state` then parked it in *Awaiting Counselling*. It was never a hard
+		deadlock: `allotment_objection` returns early for any other route, so an operator who knew
+		to pick `Direct` got through. That is what made it survive — the failure surfaces weeks
+		later at the admission desk, not on the form.
+		"""
+		enquiry = self.paid_lead(self.SCHOOL, self.school_programme, self.school_intake)
+		application = self.application_for(enquiry, self.school_intake)
+
+		doc = frappe.get_doc("Admission Application", application)
+		self.assertEqual(doc.admission_route, "Direct")
+		self.assertNotEqual(doc.application_state, "Awaiting Counselling")
+
+	def test_an_engineering_application_still_opens_on_government_quota(self):
+		"""Stated once at `Professional` and inherited by all nine leaves."""
+		enquiry = self.paid_lead(self.ENGG, self.engg_programme, self.engg_intake)
+		doc = frappe.get_doc("Admission Application", self.application_for(enquiry, self.engg_intake))
+		self.assertEqual(doc.admission_route, "Government Quota")
+		self.assertEqual(doc.application_state, "Awaiting Counselling")
+
+	def test_a_school_application_reaches_admitted(self):
+		"""The roadmap's own proof for this slice, end to end."""
+		from erp.api.admission.admission import confirm_admission
+
+		enquiry = self.paid_lead(self.SCHOOL, self.school_programme, self.school_intake)
+		application = self.application_for(enquiry, self.school_intake)
+
+		doc = self.verify_documents(application)
+		doc.interaction_on = today()
+		doc.interaction_outcome = "Recommended"
+		doc.save(ignore_permissions=True)
+
+		result = confirm_admission(application)
+		self.assertTrue(result["student"])
+		self.assertEqual(
+			frappe.db.get_value("Admission Enquiry", enquiry, "status"),
+			"Admitted",
+		)
+
+	def test_a_new_route_that_requires_allotment_fires_the_gate_with_no_code_change(self):
+		"""The other half of the roadmap's proof, and the reason this is a master.
+
+		The gate used to read `admission_route != "Government Quota"`. That was right for exactly
+		the three routes the Select offered, and right by accident: the gate does not care which
+		route this is, only whether the route waits on somebody else. An `NRI` or state minority
+		quota added to a Select would have gone silently ungated.
+		"""
+		route = frappe.get_doc(
+			{
+				"doctype": "Admission Route",
+				"route_name": "ZP NRI",
+				"requires_allotment": 1,
+				"description": "A sanctioned NRI quota allotted centrally.",
+			}
+		).insert(ignore_permissions=True)
+
+		enquiry = self.paid_lead(self.SCHOOL, self.school_programme, self.school_intake)
+		application = self.application_for(enquiry, self.school_intake)
+
+		doc = self.verify_documents(application)
+		doc.admission_route = route.name
+		doc.interaction_on = today()
+		doc.interaction_outcome = "Recommended"
+		doc.save(ignore_permissions=True)
+
+		self.assertEqual(doc.application_state, "Awaiting Counselling")
+
+		lead = frappe.get_doc("Admission Enquiry", enquiry)
+		lead.status = "Admitted"
+		with self.assertRaises(frappe.ValidationError) as caught:
+			lead.save(ignore_permissions=True)
+		self.assertIn("allotment", str(caught.exception).lower())
+
+	def test_a_shipped_route_cannot_be_deleted(self):
+		"""`admission_route` is `reqd: 1`, so deleting its target orphans live applications."""
+		with self.assertRaises(frappe.ValidationError):
+			frappe.delete_doc("Admission Route", "Government Quota")
+
+	def test_a_route_in_use_cannot_be_deleted(self):
+		route = frappe.get_doc(
+			{"doctype": "Admission Route", "route_name": "ZP Spare", "requires_allotment": 0}
+		).insert(ignore_permissions=True)
+
+		enquiry = self.paid_lead(self.SCHOOL, self.school_programme, self.school_intake)
+		doc = frappe.get_doc("Admission Application", self.application_for(enquiry, self.school_intake))
+		doc.admission_route = route.name
+		doc.save(ignore_permissions=True)
+
+		with self.assertRaises(frappe.ValidationError):
+			frappe.delete_doc("Admission Route", route.name)
+
+	def test_the_board_is_a_link_so_a_trust_can_count_by_it(self):
+		"""Free text made "CBSE", "C.B.S.E." and "Cbse" three boards — which is worse than no
+		answer, because `GROUP BY education_board` still returns rows."""
+		enquiry = self.paid_lead(self.SCHOOL, self.school_programme, self.school_intake)
+		doc = frappe.get_doc("Admission Application", self.application_for(enquiry, self.school_intake))
+		doc.previous_school = "St Anne's Matriculation"
+		doc.education_board = "CBSE"
+		doc.previous_class = "V"
+		doc.marks_percentage = 82.5
+		doc.save(ignore_permissions=True)
+
+		self.assertEqual(doc.education_board, "CBSE")
+
+		with self.assertRaises(frappe.ValidationError):
+			doc.education_board = "C.B.S.E."
+			doc.save(ignore_permissions=True)
+
 	# --- The policy layer reaches the application at last ----------------------------
 	#
 	# Until this slice Field Policy governed Admission Enquiry alone, and a policy for the

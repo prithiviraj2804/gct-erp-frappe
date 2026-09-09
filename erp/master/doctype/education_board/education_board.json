@@ -1,0 +1,108 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "field:board_name",
+ "creation": "2026-09-09 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "board_section",
+  "id",
+  "board_name",
+  "column_break_board",
+  "status",
+  "is_standard",
+  "standard_key",
+  "notes_section",
+  "description"
+ ],
+ "fields": [
+  {
+   "fieldname": "board_section",
+   "fieldtype": "Section Break",
+   "label": "Board"
+  },
+  {
+   "fieldname": "id",
+   "fieldtype": "Data",
+   "label": "ID",
+   "unique": 1,
+   "read_only": 1,
+   "no_copy": 1,
+   "in_standard_filter": 1,
+   "description": "Auto-generated UUID"
+  },
+  {
+   "fieldname": "board_name",
+   "fieldtype": "Data",
+   "label": "Board Name",
+   "reqd": 1,
+   "unique": 1,
+   "in_list_view": 1,
+   "description": "As the board calls itself. The business key, so a Link reads properly on a form. Free text made 'CBSE', 'C.B.S.E.' and 'Cbse' three boards, which is what stopped a trust counting its intake by board at all"
+  },
+  {
+   "fieldname": "column_break_board",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Active\nInactive",
+   "default": "Active",
+   "in_list_view": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "is_standard",
+   "fieldtype": "Check",
+   "label": "Is Standard",
+   "read_only": 1,
+   "no_copy": 1,
+   "default": "0",
+   "description": "Shipped with the app. Disable it rather than deleting it"
+  },
+  {
+   "fieldname": "standard_key",
+   "fieldtype": "Data",
+   "label": "Standard Key",
+   "read_only": 1,
+   "no_copy": 1,
+   "hidden": 1,
+   "description": "The name this row shipped under, so relabelling it does not make the seed insert a second one"
+  },
+  {
+   "fieldname": "notes_section",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "description",
+   "fieldtype": "Small Text",
+   "label": "Description"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-09-09 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Master",
+ "name": "Education Board",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {"create": 1, "delete": 1, "email": 1, "export": 1, "print": 1, "read": 1, "report": 1, "role": "System Manager", "share": 1, "write": 1},
+  {"read": 1, "report": 1, "role": "Admission Manager", "select": 1},
+  {"read": 1, "report": 1, "role": "Admission Counsellor", "select": 1},
+  {"create": 1, "delete": 1, "email": 1, "export": 1, "print": 1, "read": 1, "report": 1, "role": "Trust Admin", "write": 1},
+  {"read": 1, "report": 1, "export": 1, "role": "Institution Admin"}
+ ],
+ "row_format": "Dynamic",
+ "rows_threshold_for_grid_search": 20,
+ "search_fields": "board_name",
+ "sort_field": "board_name",
+ "sort_order": "ASC",
+ "states": [],
+ "track_changes": 1
+}

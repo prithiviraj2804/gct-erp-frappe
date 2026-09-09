@@ -12,6 +12,7 @@ from erp.admission.application_state import derive_application_state
 from erp.admission.eligibility import assert_prior_qualification, enquiry_education
 from erp.admission.pipeline import already_admitted_objection
 from erp.field_policy import apply_field_policy
+from erp.master.doctype.institution_type.institution_type import resolve_capability_for_institution
 from erp.master.doctype.programme_intake.programme_intake import assert_age_within_window
 from erp.master.hierarchy import validate_same_parent
 
@@ -29,6 +30,7 @@ class AdmissionApplication(Document):
 	def validate(self):
 		self.sync_from_enquiry()
 		self.set_derived_ancestors()
+		self.set_default_admission_route()
 		self.guard_seat_change_after_admission()
 		self.validate_one_per_intake()
 		self.validate_one_admission_per_lead()
@@ -83,6 +85,31 @@ class AdmissionApplication(Document):
 				self.campus = programme.campus
 				self.department = programme.department
 				self.programme_level = programme.programme_level
+
+	def set_default_admission_route(self):
+		"""Fill a blank route from the institution type's default.
+
+		`admission_route` used to carry a static default of "Government Quota" in the schema, and
+		that one line is what routed every school application into a counselling branch waiting for
+		a body that does not exist. It looked harmless — an operator who knew to pick `Direct` got
+		through — which is why it survived: the failure surfaces weeks later at the admission desk
+		rather than on the form.
+
+		Field Policy cannot supply it. The field is `reqd: 1`, so `validate_not_statically_required`
+		refuses to govern it, and `Field Policy Rule` has no default-value property at all. So the
+		default lives where the rest of the per-type behaviour lives — on the Institution Type tree,
+		resolved nearest-first, blank inheriting — and a trust that buys a nursing college states it
+		once on the type rather than in a branch in this file.
+
+		Runs after `set_derived_ancestors`, because the institution this resolves against is the one
+		the application's *programme* belongs to, not the one the lead walked into. Runs before
+		`_validate_mandatory`, which is what makes filling a `reqd` field here legitimate: Frappe
+		checks mandatory fields after `validate`.
+		"""
+		if self.admission_route or not self.institution:
+			return
+
+		self.admission_route = resolve_capability_for_institution(self.institution, "default_admission_route")
 
 	def guard_seat_change_after_admission(self):
 		"""Once a student exists, the branch and intake are settled.

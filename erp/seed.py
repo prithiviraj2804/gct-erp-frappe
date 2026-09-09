@@ -49,13 +49,28 @@ INSTITUTION_TYPES = (
 		# inherit, because the app-wide default is No: an institution admitting on an external
 		# counselling allotment has no such step.
 		"requires_admission_interaction": "Yes",
+		# The one line that fixes the defect the roadmap carried for three slices: a school
+		# application no longer opens on a route that waits for a counselling body.
+		"default_admission_route": "Direct",
 	},
-	{"type_name": "Arts & Science", "parent_institution_type": "All", "requires_department": "Yes"},
+	{
+		"type_name": "Arts & Science",
+		"parent_institution_type": "All",
+		"requires_department": "Yes",
+		# A community or government quota seat is allotted by a state body; the college's own seats
+		# are Direct. Stated as Direct because that is the larger share and the safer default —
+		# a route that wrongly waits on an allotment blocks an admission, one that wrongly does not
+		# only means the office picks the right route on the form.
+		"default_admission_route": "Direct",
+	},
 	{
 		"type_name": "Professional",
 		"is_group": 1,
 		"parent_institution_type": "All",
 		"requires_department": "Yes",
+		# Inherited by all nine leaves. An institution running only management-quota intakes
+		# overrides it on its own type or leaves the office to pick.
+		"default_admission_route": "Government Quota",
 	},
 	{"type_name": "Engineering", "parent_institution_type": "Professional"},
 	{"type_name": "Medical", "parent_institution_type": "Professional"},
@@ -77,6 +92,46 @@ PROGRAMME_LEVELS = (
 	{"level_code": "MID", "level_name": "Middle", "level_order": 2},
 	{"level_code": "SEC", "level_name": "Secondary", "level_order": 3},
 	{"level_code": "HSC", "level_name": "Higher Secondary", "level_order": 4},
+)
+
+# How a seat was decided. Named exactly as the superseded `Admission Application.admission_route`
+# Select's options were, so the field becomes a Link with no data migration — the same move slice 3
+# made for `Institution.institution_type`.
+#
+# `requires_allotment` is the only behaviour here, and it is the whole reason this is a master: the
+# allotment gate asks the route whether it waits on somebody else's decision, instead of comparing
+# against the literal "Government Quota". A trust adds `NRI` in Desk and the gate starts firing.
+ADMISSION_ROUTES = (
+	{
+		"route_name": "Government Quota",
+		"requires_allotment": 1,
+		"description": (
+			"Seats filled by a state counselling body — TNEA, MCC, a university's own allotment. "
+			"The institution records the outcome; it does not decide it."
+		),
+	},
+	{
+		"route_name": "Management Quota",
+		"requires_allotment": 0,
+		"description": "The institution's own sanctioned quota, settled by the institution.",
+	},
+	{
+		"route_name": "Direct",
+		"requires_allotment": 0,
+		"description": (
+			"Admitted on the institution's own decision with no quota mechanism at all — a school "
+			"class, an arts & science seat outside the community quota."
+		),
+	},
+)
+
+# The boards this trust's institutions actually receive students from, not a pretend national
+# register. A trust adds its own; these three exist so that `GROUP BY education_board` has
+# something to group by on a fresh site.
+EDUCATION_BOARDS = (
+	{"board_name": "CBSE", "description": "Central Board of Secondary Education"},
+	{"board_name": "ICSE", "description": "Council for the Indian School Certificate Examinations"},
+	{"board_name": "State Board", "description": "The state's own secondary board"},
 )
 
 # `term_label` is what makes one shared Programme read "Term I" in a school and "Semester 1" in a
@@ -230,6 +285,10 @@ FIELD_POLICIES = (
 
 def ensure_shared_vocabulary():
 	"""`after_migrate` hook. Re-assert every code-owned vocabulary row."""
+	# Routes first: `Institution Type.default_admission_route` is a Link to one, and `_validate_links`
+	# would refuse the type row if its target did not exist yet.
+	_ensure("Admission Route", "route_name", ADMISSION_ROUTES, standard=True)
+	_ensure("Education Board", "board_name", EDUCATION_BOARDS, standard=True)
 	_ensure("Institution Type", "type_name", INSTITUTION_TYPES, standard=True)
 	_ensure("Programme Level", "level_code", PROGRAMME_LEVELS)
 	_ensure("Academic Structure", "structure_code", ACADEMIC_STRUCTURES)
@@ -296,6 +355,8 @@ _STRUCTURAL_KEYS = frozenset(
 		"level_order",
 		"structure_code",
 		"structure_name",
+		"route_name",
+		"board_name",
 	}
 )
 

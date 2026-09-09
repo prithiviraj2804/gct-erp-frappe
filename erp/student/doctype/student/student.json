@@ -127,11 +127,12 @@
   },
   {
    "fieldname": "admission_route",
-   "fieldtype": "Data",
+   "fieldtype": "Link",
    "label": "Admission Route",
    "read_only": 1,
    "in_standard_filter": 1,
-   "description": "Government Quota, Management Quota or Direct, as recorded on the application"
+   "description": "The route recorded on the application, carried onto the register",
+   "options": "Admission Route"
   },
   {
    "fieldname": "allotment_reference",
