@@ -33,7 +33,9 @@ from erp.admission.stages import (
 	gated_by,
 	required_gates,
 )
+from erp.field_policy import clear_cache as clear_field_policy_cache
 from erp.field_policy import resolve_policy
+from erp.seed import restore_shipped_field_policies
 
 
 class IntegrationTestStageTable(IntegrationTestCase):
@@ -493,7 +495,15 @@ class IntegrationTestConfigurableGates(IntegrationTestCase):
 		Professional one: its enquiry form was the raw professional superset, with the entrance
 		fields visible and the cut-off unbounded — GCE could save `cutoff_marks = -12.5` where GCT
 		could not.
+
+		Asserted against **shipped** rules, restored inside this transaction and rolled back at
+		teardown. Read against the live rows it failed the moment a Trust Admin legitimately set
+		those fields to Required on GCE — a suite that cannot tell a broken app from a configured
+		site is a suite nobody can act on.
 		"""
+		restore_shipped_field_policies()
+		clear_field_policy_cache()
+
 		for doctype in ("Admission Enquiry", "Admission Application"):
 			spec = resolve_policy(doctype, institution=self.ARTS)
 			self.assertTrue(spec, f"{doctype} resolves no policy at all for Arts & Science")
@@ -537,6 +547,22 @@ class IntegrationTestSeatPools(IntegrationTestCase):
 		cls.other_category = cls.ensure(
 			"Reservation Category", "ZS SC", {"category_name": "ZS SC", "description": "Another."}
 		)
+		# Its **own** Institution Type, not a shipped one. This class is a *journey* test — it
+		# needs a working institution, not a particular configuration — and hanging it off
+		# `Arts & Science` coupled it to whatever a Trust Admin had configured for that type. It
+		# went red the first time an operator set three entrance fields to Required on the shipped
+		# Arts & Science enquiry policy: correct behaviour, six confusing failures, and nothing in
+		# the trace saying the cause was site data rather than code.
+		cls.institution_type = cls.ensure(
+			"Institution Type",
+			"ZS Unconfigured",
+			{
+				"type_name": "ZS Unconfigured",
+				"parent_institution_type": "All",
+				"requires_department": "Yes",
+				"description": "A type this test owns, so operator configuration cannot reach it.",
+			},
+		)
 		cls.ensure(
 			"Institution",
 			cls.INST,
@@ -544,7 +570,7 @@ class IntegrationTestSeatPools(IntegrationTestCase):
 				"trust": cls.TRUST,
 				"institution_code": cls.INST,
 				"institution_name": "Seat College",
-				"institution_type": "Arts & Science",
+				"institution_type": cls.institution_type,
 			},
 		)
 		cls.year = cls.ensure(

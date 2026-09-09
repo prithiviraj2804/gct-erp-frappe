@@ -22,3 +22,4 @@ erp.patches.v1_0.reseed_school_vocabulary
 erp.patches.v1_0.backfill_child_row_uuids
 erp.patches.v1_0.backfill_tenancy_columns
 erp.patches.v1_0.enable_strict_user_permissions
+erp.patches.v1_0.rename_config_value_to_business_key

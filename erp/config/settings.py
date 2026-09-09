@@ -88,10 +88,22 @@ CONFIG_SETTINGS = (
 		"value_type": "Link",
 		"options": "Admission Route",
 		"institution_type_field": "default_admission_route",
+		# `Direct` and not blank, because `Admission Application.admission_route` is `reqd: 1` and
+		# this is what fills it. Left unstated, a **newly created** Institution Type — which states
+		# no default, hanging off `All`, which states none either — resolved to None and the
+		# application could not be saved at all. The operator got a bare Frappe mandatory error
+		# naming a field they had never touched, on a type they had just added. That broke the
+		# promise slice 3 was built for: "adding a Nursing college is an INSERT, not a deploy".
+		#
+		# `Direct` is the safe end of the asymmetry, and the same reasoning the seed gives for Arts
+		# & Science: a route that wrongly waits on an allotment *blocks* an admission, while one
+		# that wrongly does not only means the office picks the right route on the form.
+		"default_value": "Direct",
 		"description": (
 			"The route an application opens on when the office does not pick one. Replaces the "
 			"static default of Government Quota, which routed every school application into a "
-			"counselling branch for a body that does not exist."
+			"counselling branch for a body that does not exist. Defaults to Direct so that a newly "
+			"added institution type can admit before anyone configures it."
 		),
 	},
 )

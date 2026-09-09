@@ -171,6 +171,58 @@ class IntegrationTestUuidConvention(IntegrationTestCase):
 		self.assertEqual(intake.required_documents[0].id, "kept-by-the-import")
 
 
+# The flags the `id` convention specifies, verbatim from CLAUDE.md. `in_standard_filter` is
+# deliberately not among them: it is right for Desk, and the SPA drops it on purpose
+# (`_NEVER_FILTER` in erp/api/doctype.py), so a doctype that omits it has broken nothing.
+ID_CONVENTION = {"fieldtype": "Data", "unique": 1, "read_only": 1, "no_copy": 1}
+
+
+def app_doctypes() -> list[str]:
+	"""Every doctype this app owns, child tables included — the `id` convention exempts nothing."""
+	return frappe.get_all("DocType", filters={"module": ("in", frappe.get_module_list("erp"))}, pluck="name")
+
+
+class IntegrationTestUuidColumnIsDeclared(IntegrationTestCase):
+	"""Every doctype in this app must *declare* the `id` column, not merely have it filled.
+
+	`erp.utils.set_uuid_id` acts only on doctypes that define the field, so one shipped without it
+	simply never gets a UUID: no error, no log, no failing save — CLAUDE.md's "omitting it errors
+	nowhere, which is why it's easy to miss". The tests above prove the hook fills the column; this
+	one proves the column is there to be filled, which is the half with no runtime symptom at all.
+
+	Read from the database rather than the JSON on disk, deliberately. A field authored in the file
+	but never migrated is invisible to the hook exactly as an absent one is, and only the synced
+	meta can tell the difference.
+	"""
+
+	def test_every_doctype_declares_the_id_column(self):
+		missing = sorted(dt for dt in app_doctypes() if not frappe.get_meta(dt).has_field("id"))
+		self.assertEqual(
+			missing,
+			[],
+			f"these doctypes carry no `id` column, so set_uuid_id skips them silently: {missing}",
+		)
+
+	def test_every_id_column_is_a_unique_read_only_data_field(self):
+		"""A declared `id` that is editable, copied or non-unique is not the convention.
+
+		`no_copy` is the one people drop, and it is the one that hurts: without it Duplicate carries
+		the source row's UUID into the new document, and two records claim one external identity —
+		or the unique index rejects the copy with a message about a field the form never showed.
+		"""
+		wrong = {}
+		for doctype in app_doctypes():
+			field = frappe.get_meta(doctype).get_field("id")
+			if not field:
+				continue
+
+			declared = {prop: field.get(prop) for prop in ID_CONVENTION}
+			if declared != ID_CONVENTION:
+				wrong[doctype] = declared
+
+		self.assertEqual(wrong, {}, f"`id` declared, but not as the convention specifies: {wrong}")
+
+
 class IntegrationTestWorkspaceReachability(IntegrationTestCase):
 	"""Every doctype must be reachable from a workspace.
 

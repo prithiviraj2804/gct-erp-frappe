@@ -30,6 +30,7 @@ from frappe.utils import today
 from erp.api.config import explain_config
 from erp.config.resolver import ConfigError, clear_cache, explain, get_config, get_many
 from erp.config.settings import ALL_KEYS
+from erp.seed import restore_shipped_field_policies
 
 # What every registered key resolves to for an institution of each type, with nothing overridden.
 # Checked in deliberately: a change here is a change to what the app does out of the box, and it
@@ -83,6 +84,16 @@ class IntegrationTestShippedConfig(IntegrationTestCase):
 	@classmethod
 	def setUpClass(cls):
 		super().setUpClass()
+		# This class asserts what the app does **out of the box**, so it has to set up out-of-the-box
+		# state rather than read whatever the site happens to hold. A Trust Admin is meant to tune a
+		# shipped policy; read against a tuned one, every assertion here fails and none of the
+		# tracebacks say why — six `Missing Information` errors naming fields, and nothing about the
+		# configuration that made them required.
+		#
+		# Safe because `IntegrationTestCase` rolls the connection back at class teardown: the site's
+		# own configuration is untouched. `erp/test_seed.py` reports divergence deliberately, which
+		# is the other half — a gate must not fail on it, an operator still wants to see it.
+		restore_shipped_field_policies()
 		cls.ensure("Trust", cls.TRUST, {"trust_code": cls.TRUST, "trust_name": "Config Gate Trust"})
 		cls.ensure(
 			"Admission Type",

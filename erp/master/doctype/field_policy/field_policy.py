@@ -187,11 +187,22 @@ class FieldPolicy(Document):
 
 		meta = frappe.get_meta(self.document_type)
 		for rule in self.rules:
+			# A row added and not filled in. Its own message, because
+			# "Admission Enquiry has no field None" is technically true and reads to an operator as
+			# "this doctype is broken" rather than "finish the row you just added" — which is
+			# exactly what it meant, and the commonest way of meeting this validator.
+			if not rule.fieldname:
+				frappe.throw(
+					_("Row {0}: choose a field, or remove the row.").format(rule.idx),
+					title=_("Unfinished Rule"),
+				)
+
 			if not meta.has_field(rule.fieldname):
 				frappe.throw(
-					_("Row {0}: {1} has no field {2}.").format(
-						rule.idx, frappe.bold(self.document_type), frappe.bold(rule.fieldname)
-					),
+					_(
+						"Row {0}: {1} has no field called {2}. Pick from the list — it offers the "
+						"fieldname, not the label, and only fields a policy is allowed to govern."
+					).format(rule.idx, frappe.bold(self.document_type), frappe.bold(rule.fieldname)),
 					title=_("Unknown Field"),
 				)
 

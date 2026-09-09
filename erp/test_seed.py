@@ -30,7 +30,13 @@ means "unstated" — so filling a blank overrides no decision anybody made.
 import frappe
 from frappe.tests import IntegrationTestCase
 
-from erp.seed import FIELD_POLICIES, _rules_digest, ensure_shared_vocabulary
+from erp.seed import (
+	FIELD_POLICIES,
+	_rules_digest,
+	diverged_field_policies,
+	ensure_shared_vocabulary,
+	restore_shipped_field_policies,
+)
 
 
 class IntegrationTestShippedPolicyLifecycle(IntegrationTestCase):
@@ -98,6 +104,43 @@ class IntegrationTestShippedPolicyLifecycle(IntegrationTestCase):
 			{row.fieldname for row in after.rules},
 			"the operator's rule was clobbered by the seed",
 		)
+
+	def test_divergence_is_reportable(self):
+		"""An operator's tuning must be *visible*, even though no gate may fail on it.
+
+		This is the diagnosis for every "shipped behaviour" assertion that goes red on a real
+		deployment. Without it the symptom is a `Missing Information` traceback naming three fields
+		and nothing about the policy row that made them required.
+		"""
+		# From shipped state, not from whatever this site holds. The first version asserted an
+		# empty list up front and failed on a site where a Trust Admin had — correctly — tuned a
+		# shipped policy, which is the exact coupling this whole test is about.
+		restore_shipped_field_policies()
+		self.assertEqual(diverged_field_policies(), [])
+
+		doc = frappe.get_doc("Field Policy", self.POLICY)
+		doc.append("rules", {"fieldname": "email", "requirement": "Required"})
+		doc.save(ignore_permissions=True)
+
+		self.assertEqual(diverged_field_policies(), [self.POLICY])
+
+	def test_restoring_discards_the_operators_edit_on_purpose(self):
+		"""The deliberate counterpart to `_ensure_field_policies`, which protects it.
+
+		Never called from the migrate hook — only by someone who has decided to reset, and by the
+		gates that assert shipped behaviour.
+		"""
+		doc = frappe.get_doc("Field Policy", self.POLICY)
+		doc.rules = []
+		doc.append("rules", {"fieldname": "email", "requirement": "Required"})
+		doc.save(ignore_permissions=True)
+
+		self.assertIn(self.POLICY, restore_shipped_field_policies())
+		self.assertEqual(diverged_field_policies(), [])
+
+		restored = {row.fieldname for row in frappe.get_doc("Field Policy", self.POLICY).rules}
+		self.assertIn("entrance_exam", restored)
+		self.assertNotIn("email", restored)
 
 
 class IntegrationTestCapabilityBackfill(IntegrationTestCase):

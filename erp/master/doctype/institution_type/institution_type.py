@@ -143,10 +143,20 @@ def resolve_capability_for_institution(
 	trust with one fee-free school among six fee-charging ones, which the type tree cannot express
 	because both are Schools.
 
-	`default=None` rather than letting the setting's own default apply, because these callers each
-	have their own answer for "nobody said" and it is not the same answer — the interaction gate
-	treats silence as off, the department rule and the fee gate treat it as on. Those defaults
-	belong at the call site, and are documented there.
+	**The registered default is allowed to apply.** An earlier version passed `default=None` here,
+	on the reasoning that each caller has its own answer for "nobody said" and they are not the same
+	answer — the interaction gate treats silence as off, the department rule and the fee gate as on.
+	That reasoning was wrong twice over. Passing an explicit default *suppresses* the registry's,
+	which broke the one capability whose value is not a boolean: a newly created Institution Type
+	resolved `default_admission_route` to None, and since `Admission Application.admission_route` is
+	`reqd: 1`, applications under it could not be saved at all.
+
+	And it was unnecessary. Where a caller's answer for silence is a real default, it belongs in
+	`erp/config/settings.py` where an operator can see it — `requires_department` and
+	`requires_application_fee` both ship "Yes", which is the same answer their call sites reached by
+	treating None as true. Where it genuinely is not a value, the registry ships no default and the
+	caller still decides: `requires_admission_interaction` resolves to None and
+	`Gate.applies_when_unstated` turns the gate off. One mechanism, and the defaults are visible.
 
 	`resolve_capability` remains, and remains the ancestor walk: it answers a question about a
 	*type* rather than about an institution, which is what the Institution Type form asks.
@@ -159,7 +169,6 @@ def resolve_capability_for_institution(
 		institution=institution,
 		programme=programme,
 		programme_intake=programme_intake,
-		default=None,
 	)
 
 

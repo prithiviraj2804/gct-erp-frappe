@@ -29,6 +29,22 @@ from erp.master.doctype.config_setting.config_setting import assert_valid_value
 
 
 class ConfigValue(Document):
+	def autoname(self):
+		"""`{setting}-{scope}` — readable, and unique on exactly what must be unique.
+
+		The same shape, and the same reasoning, as `Field Policy.autoname`: `(setting, scope)` is what
+		the resolver keys on, so it is the row's real identity and belongs in its name. An
+		autoincrementing counter was the first version, and it made the one column every screen labels
+		"ID" read as `168` — indistinguishable, to anyone looking at the list, from a UUID that failed
+		to generate.
+
+		`autoname` runs before `validate`, so a row with no scope is named `{setting}-None` here and
+		rejected a moment later by `validate_one_scope`. The bad name never reaches the database, and
+		putting a second scope check in front of it would be a copy of the rule that matters.
+		"""
+		_, scope_name = self.scope()
+		self.name = f"{self.setting}-{scope_name}"
+
 	def validate(self):
 		self.validate_one_scope()
 		self.validate_value_is_stated()
@@ -113,16 +129,21 @@ class ConfigValue(Document):
 			)
 
 	def validate_unique_at_scope(self):
+		"""One row per `(setting, scope)`, reported in words rather than as a primary key collision.
+
+		The "not me" clause is conditional, and has to be. Since `autoname` derives the name from
+		exactly this pair, a duplicate arrives at `validate` already *called* `{setting}-{scope}` —
+		so excluding `self.name` unconditionally would exclude the very row being looked for, find
+		nothing, and let MariaDB raise `Duplicate entry … for key 'PRIMARY'` instead. Under the
+		autoincrement naming this doctype shipped with, `name` was still unset here and the bug
+		could not happen; it appeared the moment the name became meaningful.
+		"""
 		scope_type, scope_name = self.scope()
-		existing = frappe.db.get_value(
-			"Config Value",
-			{
-				"setting": self.setting,
-				SCOPE_FIELDS[scope_type]: scope_name,
-				"name": ["!=", self.name or ""],
-			},
-			"name",
-		)
+		filters = {"setting": self.setting, SCOPE_FIELDS[scope_type]: scope_name}
+		if not self.is_new():
+			filters["name"] = ["!=", self.name]
+
+		existing = frappe.db.get_value("Config Value", filters, "name")
 		if existing:
 			frappe.throw(
 				_("{0} already has a value for {1} ({2}). Edit that row rather than adding a second.").format(

@@ -303,12 +303,15 @@ FIELD_POLICIES = (
 
 def ensure_shared_vocabulary():
 	"""`after_migrate` hook. Re-assert every code-owned vocabulary row."""
-	_ensure_config_settings()
-	# Routes first: `Institution Type.default_admission_route` is a Link to one, and `_validate_links`
-	# would refuse the type row if its target did not exist yet.
+	# Vocabulary first: `Institution Type.default_admission_route` is a Link to an Admission Route,
+	# and `_validate_links` would refuse the type row if its target did not exist yet.
 	_ensure("Admission Route", "route_name", ADMISSION_ROUTES, standard=True)
 	_ensure("Education Board", "board_name", EDUCATION_BOARDS, standard=True)
 	_ensure("Examination Subject", "subject_name", EXAMINATION_SUBJECTS, standard=True)
+	# Then the registry, which sits between the two: `default_admission_route` ships a default of
+	# `Direct` and `Config Setting.validate` checks that a `Link` default actually exists, so the
+	# routes have to be in place — and every key has to exist before anything resolves through it.
+	_ensure_config_settings()
 	_ensure("Institution Type", "type_name", INSTITUTION_TYPES, standard=True)
 	_ensure("Programme Level", "level_code", PROGRAMME_LEVELS)
 	_ensure("Academic Structure", "structure_code", ACADEMIC_STRUCTURES)
@@ -528,6 +531,67 @@ def _ensure_field_policies():
 			doc.append("rules", dict(rule))
 		doc.shipped_digest = digest
 		doc.save(ignore_permissions=True)
+
+
+def restore_shipped_field_policies() -> list[str]:
+	"""Force every shipped Field Policy back to the rules the code ships. Returns what changed.
+
+	The deliberate counterpart to `_ensure_field_policies`, which protects an operator's edits.
+	This discards them, so it is never called from the `after_migrate` hook — only by someone who
+	has decided to reset, and by the test gates that assert *shipped* behaviour.
+
+	Those gates are why it exists. `erp/config/test_shipped_config.py` asserts what the app does out
+	of the box; read against whatever the site happens to hold, it goes red the moment a Trust Admin
+	legitimately configures something — which is a suite that cannot tell "you broke the code" from
+	"you configured your site", and would be permanently red on any real deployment. Restoring
+	shipped state inside the test transaction, which `IntegrationTestCase` rolls back, gives them a
+	pristine baseline without touching the site.
+
+	`diverged_field_policies` is the other half: what a gate must not fail on, an operator still
+	wants to be able to see.
+	"""
+	restored = []
+	for policy in FIELD_POLICIES:
+		key = f"{policy['document_type']}::{policy['scope_institution_type']}"
+		name = frappe.db.get_value("Field Policy", {"standard_key": key}, "name")
+		if not name:
+			continue
+
+		doc = frappe.get_doc("Field Policy", name)
+		digest = _rules_digest(policy["rules"])
+		if _rules_digest(doc.rules) == digest:
+			continue
+
+		doc.description = policy["description"]
+		doc.rules = []
+		for rule in policy["rules"]:
+			doc.append("rules", dict(rule))
+		doc.shipped_digest = digest
+		doc.save(ignore_permissions=True)
+		restored.append(name)
+
+	return restored
+
+
+def diverged_field_policies() -> list[str]:
+	"""Shipped policies whose rules an operator has since changed.
+
+	Information, not an error. A trust is *meant* to tune these — but when a shipped-behaviour
+	assertion fails, "GCE's enquiry policy has been tuned" is the one line that explains it, and
+	without this the diagnosis is a `Missing Information` traceback that names three fields and
+	nothing about where the requirement came from.
+	"""
+	diverged = []
+	for policy in FIELD_POLICIES:
+		key = f"{policy['document_type']}::{policy['scope_institution_type']}"
+		row = frappe.db.get_value(
+			"Field Policy", {"standard_key": key}, ["name", "shipped_digest"], as_dict=True
+		)
+		if not row:
+			continue
+		if _rules_digest(frappe.get_doc("Field Policy", row.name).rules) != row.shipped_digest:
+			diverged.append(row.name)
+	return diverged
 
 
 def _adopt_field_policy(policy: dict, scope: str, key: str, digest: str):

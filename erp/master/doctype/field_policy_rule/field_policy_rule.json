@@ -29,12 +29,13 @@
   },
   {
    "fieldname": "fieldname",
-   "fieldtype": "Data",
+   "fieldtype": "Select",
    "label": "Fieldname",
    "reqd": 1,
    "in_list_view": 1,
    "columns": 3,
-   "description": "The fieldname on the governed doctype, exactly as it appears in the schema"
+   "description": "The field on the governed doctype. The options are filled in by field_policy.js from erp.api.field_policy.governable_fields, which offers only fields that will pass every guard in Field Policy.validate - so a rule you can choose is a rule that saves. Deliberately no static options: they depend on which doctype the policy governs, and Frappe skips server-side Select validation when the stored options are empty (base_document.py:1106), which is what makes a client-populated picker safe",
+   "options": ""
   },
   {
    "fieldname": "requirement",
