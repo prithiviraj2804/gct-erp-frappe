@@ -129,7 +129,6 @@
  "module": "Master",
  "name": "Config Value",
  "naming_rule": "By script",
- "autoname": "",
  "owner": "Administrator",
  "permissions": [
   {

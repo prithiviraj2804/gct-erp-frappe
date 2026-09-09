@@ -4,6 +4,8 @@
 import frappe
 from frappe import _
 
+from erp.api.permission import assert_signed_in
+
 APP_NAME = "erp"
 
 
@@ -21,8 +23,7 @@ def get_allowed_modules() -> list[dict]:
 	No `allow_guest` — this is behind a login. An anonymous caller gets 403, which is
 	correct; the SPA only calls this from a guarded route.
 	"""
-	if frappe.session.user == "Guest":
-		frappe.throw(_("Not permitted"), frappe.PermissionError)
+	assert_signed_in()
 
 	# get_cached_doc, not get_doc: this is called on every dashboard load, and the User doc
 	# is already in Frappe's cache from session setup.

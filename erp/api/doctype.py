@@ -27,6 +27,7 @@ import frappe
 from frappe import _
 
 from erp.api.modules import get_allowed_modules
+from erp.api.permission import assert_signed_in
 from erp.field_policy import GOVERNED_DOCTYPES
 
 # DocField properties the SPA renders. Everything else is Desk form machinery (`in_filter`,
@@ -337,8 +338,7 @@ def get_doctype_schema(doctype: str) -> dict:
 	`permissions` is advisory: it decides which buttons render, and guards nothing. The
 	framework re-checks on every write, which is the only check that counts.
 	"""
-	if frappe.session.user == "Guest":
-		frappe.throw(_("Not permitted"), frappe.PermissionError)
+	assert_signed_in()
 
 	if not frappe.db.exists("DocType", doctype):
 		frappe.throw(_("DocType {0} not found").format(doctype), frappe.DoesNotExistError)

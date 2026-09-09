@@ -255,6 +255,26 @@ def institution_sql_clause(alias: str, *, column: str = "institution") -> str:
 	return f"`{alias}`.`{column}` in ({values})"
 
 
+def assert_signed_in() -> None:
+	"""Refuse an anonymous caller with "sign in", not "not permitted".
+
+	Five SPA endpoints used to throw `PermissionError("Not permitted")` for Guest — the same
+	exception and the same words as a genuinely unpermitted user. Frappe maps `PermissionError` to
+	403, the SPA maps 403 to its `permission` kind, and the screen therefore told a user whose
+	session had simply expired that they lacked permission to see a doctype they administer. It was
+	reported as exactly that: "the field policy doctype is showing as not permitted".
+
+	`AuthenticationError` is a 401, which the SPA already has an `auth` kind for — so the two cases
+	become distinguishable at the only place that can tell them apart. A wrong diagnosis is worse
+	than a terse one: it sends someone to check DocPerms that were never the problem.
+	"""
+	if frappe.session.user == "Guest":
+		frappe.throw(
+			frappe._("Your session has ended. Sign in again."),
+			frappe.AuthenticationError,
+		)
+
+
 def assert_institution_in_scope(institution: str) -> None:
 	"""The tenant rule stated imperatively, for whitelisted endpoints that write across doctypes.
 

@@ -309,8 +309,41 @@ class TestSchemaEndpoint(IntegrationTestCase):
 		with self.assertRaises(frappe.DoesNotExistError):
 			get_doctype_schema("No Such Doctype")
 
-	def test_refuses_guest(self):
+	def test_refuses_guest_as_a_signed_out_user_not_an_unpermitted_one(self):
+		"""`AuthenticationError` (401), not `PermissionError` (403), and the distinction matters.
+
+		This used to assert `PermissionError` with the message "Not permitted" — the same exception
+		and the same words a genuinely unpermitted user gets. The SPA maps 403 to its `permission`
+		kind, so a session that had simply expired produced "You don't have permission to do that"
+		on a doctype the user administers. It was reported as exactly that: "the field policy
+		doctype is showing as not permitted", and the diagnosis it invited — check the DocPerms —
+		was a dead end, because the DocPerms were never the problem.
+
+		A wrong diagnosis is worse than a terse one. 401 is a kind the SPA already had, so
+		`ErrorState` can offer "Sign in again" instead of a Try again button that retries forever
+		against a session that is gone.
+		"""
 		frappe.set_user("Guest")
+		try:
+			with self.assertRaises(frappe.AuthenticationError):
+				get_doctype_schema(self.DOCTYPE)
+		finally:
+			frappe.set_user("Administrator")
+
+	def test_a_signed_in_user_without_read_still_gets_a_permission_error(self):
+		"""The other side of the split: 403 must stay 403 for a real permission failure."""
+		email = "zd-nothing@example.com"
+		if not frappe.db.exists("User", email):
+			frappe.get_doc(
+				{
+					"doctype": "User",
+					"email": email,
+					"first_name": "No Roles",
+					"send_welcome_email": 0,
+				}
+			).insert(ignore_permissions=True)
+
+		frappe.set_user(email)
 		try:
 			with self.assertRaises(frappe.PermissionError):
 				get_doctype_schema(self.DOCTYPE)

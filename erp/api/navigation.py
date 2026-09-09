@@ -5,6 +5,7 @@ import frappe
 from frappe import _
 
 from erp.api.modules import get_allowed_modules
+from erp.api.permission import assert_signed_in
 from erp.utils import slugify
 
 
@@ -101,8 +102,7 @@ def get_module_rail() -> list[dict]:
 	Layers workspace metadata onto `get_allowed_modules()` rather than re-deriving the
 	block_modules denylist, so module visibility has exactly one implementation.
 	"""
-	if frappe.session.user == "Guest":
-		frappe.throw(_("Not permitted"), frappe.PermissionError)
+	assert_signed_in()
 
 	rail = []
 	for module in get_allowed_modules():
@@ -152,8 +152,7 @@ def get_module_menu(module: str) -> dict:
 	a doctype without a second round-trip — and, usefully, that map only ever contains
 	permitted doctypes, so an unpermitted deep link fails closed as a 404.
 	"""
-	if frappe.session.user == "Guest":
-		frappe.throw(_("Not permitted"), frappe.PermissionError)
+	assert_signed_in()
 
 	allowed = {m["name"] for m in get_allowed_modules()}
 	if module not in allowed:
