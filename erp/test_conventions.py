@@ -488,3 +488,83 @@ class IntegrationTestStatusLiterals(IntegrationTestCase):
 			"mismatch is silent — no tone, no current step, no error. Fix the literal or the "
 			f"Select: {offenders}",
 		)
+
+
+class IntegrationTestDeskCallVerbs(IntegrationTestCase):
+	"""Every `erp.*` call in this app's Desk scripts must use a verb its endpoint accepts.
+
+	`frappe.call` defaults to POST (`frappe/public/js/frappe/request.js:110`). An endpoint declared
+	`@frappe.whitelist(methods=["GET"])` refuses a POST with **403**, and Desk renders a 403 as a
+	permission error — so the mismatch presents as "this doctype is showing as not permitted", on a
+	form the user administers, with nothing in the message about an HTTP verb. It cost a round of
+	diagnosis down entirely the wrong path: DocPerms, roles, the tenancy hook and the strict
+	user-permission setting were all checked and all fine.
+
+	It is invisible until somebody clicks, which is exactly the class of thing a convention test is
+	for. Reads the JS as text for the same reason `IntegrationTestStatusLiterals` does: there is no
+	JS unit runner on this side, and a check that runs beats a check that is correct in every
+	hypothetical.
+	"""
+
+	APP = pathlib.Path(frappe.get_app_path("erp"))
+
+	# `method: "erp.api.field_policy.governable_fields",` — the dotted path of an app endpoint.
+	CALL = re.compile(r"""method:\s*["'](erp\.[\w.]+)["']""")
+	# `type: "GET",` anywhere in the same call object.
+	VERB = re.compile(r"""type:\s*["'](GET|POST|PUT|DELETE)["']""")
+
+	def _calls(self) -> list[tuple[str, str, str]]:
+		"""Every (file, dotted method, verb) an app Desk script asks for."""
+		found = []
+		for path in sorted(self.APP.glob("*/doctype/*/*.js")):
+			text = path.read_text()
+			# Split on the call boundary so a verb is attributed to the call it sits in, rather
+			# than to whichever call happened to be first in the file.
+			for chunk in text.split("frappe.call(")[1:]:
+				call = self.CALL.search(chunk)
+				if not call:
+					continue
+				verb = self.VERB.search(chunk.split("});")[0])
+				found.append(
+					(str(path.relative_to(self.APP)), call.group(1), verb.group(1) if verb else "POST")
+				)
+		return found
+
+	def test_the_scraper_finds_the_calls_it_is_meant_to(self):
+		"""Guard on the guard: finding nothing would make the assertion below vacuously green."""
+		calls = self._calls()
+		self.assertTrue(calls, "no frappe.call to an erp endpoint found in any doctype script")
+		self.assertIn(
+			("master/doctype/field_policy/field_policy.js", "erp.api.field_policy.governable_fields", "GET"),
+			calls,
+			f"the scraper missed the very call that was wrong: {calls}",
+		)
+
+	def test_every_desk_call_uses_a_verb_its_endpoint_accepts(self):
+		offenders = []
+		for source, method, verb in self._calls():
+			try:
+				fn = frappe.get_attr(method)
+			except Exception:
+				offenders.append(f"{source}: {method} does not resolve")
+				continue
+
+			# A module-level registry keyed by the decorated function, not an attribute on it —
+			# `frappe/__init__.py:466`. The first version of this test read an attribute of that
+			# name off the function and concluded that every endpoint in the app was unwhitelisted.
+			if fn not in frappe.whitelisted:
+				offenders.append(f"{source}: {method} is not whitelisted")
+				continue
+
+			allowed = frappe.allowed_http_methods_for_whitelisted_func.get(fn) or []
+
+			if verb not in allowed:
+				offenders.append(f"{source}: calls {method} with {verb}, which accepts {sorted(allowed)}")
+
+		self.assertEqual(
+			offenders,
+			[],
+			"A Desk script calls an app endpoint with a verb it refuses. The refusal is a 403, "
+			"which Desk shows as a permission error — so the symptom names the doctype, not the "
+			f"verb: {offenders}",
+		)

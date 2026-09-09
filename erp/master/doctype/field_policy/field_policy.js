@@ -13,21 +13,33 @@
  * in `Field Policy.validate` — so a field you can pick is a field that saves. Presentation only,
  * as always here: `validate()` re-checks the choice server-side for every writer, including the
  * ones that never load this script.
+ *
+ * ## `type: "GET"` is load-bearing
+ *
+ * `frappe.call` defaults to POST (`request.js:110`), and `governable_fields` is declared
+ * `methods=["GET"]` because it is a read. The mismatch is a **403**, which Desk surfaces as a
+ * permission error — so the first version of this script made a form the user administers report
+ * itself as not permitted, with nothing in the message about an HTTP verb.
+ * `erp/api/test_conventions.py` now asserts every `erp.*` call in this app's Desk scripts uses a
+ * verb its endpoint accepts.
  */
 frappe.ui.form.on("Field Policy", {
 	refresh: (frm) => set_field_options(frm),
 	document_type: (frm) => {
-		// The old doctype's fields are no longer valid answers, so clear the rules rather than
-		// leave rows that will throw on save with no visible cause.
+		set_field_options(frm);
+
+		// Warn, never clear. An earlier version called `frm.clear_table("rules")` here on the
+		// reasoning that the old doctype's fieldnames are no longer valid answers — which is true,
+		// and not worth the risk: this trigger fires on any change to the field, and a script that
+		// can silently discard an operator's whole policy is a worse failure than the one it
+		// prevents. The server already refuses a stale rule by name, which is a message they can
+		// act on.
 		if (frm.doc.rules && frm.doc.rules.length) {
-			frm.clear_table("rules");
-			frm.refresh_field("rules");
 			frappe.show_alert({
-				message: __("Rules cleared — they named fields on the previous doctype."),
+				message: __("Check the rules — they may name fields of the previous doctype."),
 				indicator: "orange",
 			});
 		}
-		set_field_options(frm);
 	},
 });
 
@@ -42,6 +54,7 @@ function set_field_options(frm) {
 
 	frappe.call({
 		method: "erp.api.field_policy.governable_fields",
+		type: "GET",
 		args: { document_type: frm.doc.document_type },
 		callback: ({ message }) => {
 			grid.update_docfield_property("fieldname", "options", message || []);
