@@ -16,6 +16,7 @@ from erp.master.doctype.institution_type.institution_type import (
 	institution_requires_department,
 	resolve_capability,
 )
+from erp.seed import ensure_shared_vocabulary
 
 
 class IntegrationTestInstitutionType(IntegrationTestCase):
@@ -148,3 +149,60 @@ class IntegrationTestInstitutionType(IntegrationTestCase):
 
 		with self.assertRaises(frappe.ValidationError):
 			frappe.delete_doc("Institution Type", spare)
+
+	# --- Relabelling a shipped type must not fork the taxonomy -------------------------
+
+	def test_relabelling_a_standard_type_does_not_fork_it_on_reseed(self):
+		"""The journey: *a trust calls its schools "CBSE School" and migrates the next morning.*
+
+		`autoname` is `field:type_name` and `allow_rename` is 1, so relabelling is a rename — and
+		`validate_rename` needs only `write`, which Trust Admin holds. The rename itself is correct:
+		the row, every Institution pointing at it and the Field Policy scoped to it all follow.
+
+		Then the `after_migrate` seed looked for "School", did not find it, and inserted a second
+		one. The phantom carried no Field Policy — `_ensure_field_policies` keyed on the autoname
+		`Admission Enquiry-School`, which the renamed policy still bore — so any institution later
+		created under it collected the full professional superset with nothing hidden. And
+		`assert_not_standard` then refused to let anyone delete it, including System Manager. No
+		error at any point: the operator saw a tidy tree with one extra row.
+
+		The fix is `standard_key`: what the row shipped as, separate from what it is called now.
+		"""
+		before = frappe.db.count("Institution Type", {"standard_key": "School"})
+		self.assertEqual(before, 1, "the shipped School row should carry its standard_key")
+
+		frappe.rename_doc("Institution Type", "School", "ZY CBSE School", force=True)
+		try:
+			ensure_shared_vocabulary()
+
+			self.assertEqual(
+				frappe.db.count("Institution Type", {"standard_key": "School"}),
+				1,
+				"the seed inserted a second School instead of recognising the relabelled one",
+			)
+			self.assertFalse(
+				frappe.db.exists("Institution Type", "School"),
+				"a phantom School reappeared under the shipped name",
+			)
+			self.assertEqual(
+				frappe.db.get_value("Institution Type", "ZY CBSE School", "standard_key"),
+				"School",
+				"the relabelled row lost the key that identifies it as shipped",
+			)
+			self.assertTrue(
+				frappe.db.exists(
+					"Field Policy",
+					{"document_type": "Admission Enquiry", "scope_institution_type": "ZY CBSE School"},
+				),
+				"the shipped policy did not follow the rename",
+			)
+			self.assertEqual(
+				frappe.db.count(
+					"Field Policy",
+					{"document_type": "Admission Enquiry", "scope_institution_type": "ZY CBSE School"},
+				),
+				1,
+				"the seed added a second policy at the relabelled scope",
+			)
+		finally:
+			frappe.rename_doc("Institution Type", "ZY CBSE School", "School", force=True)

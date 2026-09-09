@@ -23,8 +23,11 @@ import frappe
 from frappe import _
 from frappe.model.document import Document
 
-from erp.field_policy import clear_cache
+from erp.field_policy import GOVERNED_DOCTYPES, clear_cache, fieldtype_objection
 
+# The verbs a rule may use. All four are enforced in `validate()` — "Read Only" reverts exactly
+# as "Hidden" does, differing only in whether the field is drawn, because a verb enforced solely by
+# greying a control in the browser would be advice rather than a rule.
 REQUIREMENTS = ("Required", "Optional", "Hidden", "Read Only")
 
 # The reporting spine: fields a trust-level rollup reads, which therefore mean the same thing in
@@ -62,8 +65,10 @@ class FieldPolicy(Document):
 		self.name = f"{self.document_type}-{self.scope()}"
 
 	def validate(self):
+		self.validate_document_type_is_governed()
 		self.validate_one_scope()
 		self.validate_fields_exist()
+		self.validate_governable_fieldtypes()
 		self.validate_not_reporting_spine()
 		self.validate_not_statically_required()
 		self.validate_no_duplicate_rules()
@@ -101,6 +106,61 @@ class FieldPolicy(Document):
 				_("Set either an Institution Type or an Institution as the scope, not both and not neither."),
 				title=_("One Scope"),
 			)
+
+	def validate_document_type_is_governed(self):
+		"""A policy may only name a doctype whose controller actually applies one.
+
+		`document_type` is an unrestricted Link to DocType, so the obvious policy for any doctype
+		on the site saves without complaint. If that doctype never calls `apply_field_policy`,
+		every rule on it is inert: the scope resolves, the merge runs, `get_policy` will even
+		return the resolved spec to a form script — and nothing is ever enforced. A Trust Admin has
+		no way to distinguish that from a working policy, which makes it the most expensive kind of
+		bug this layer can have.
+
+		The list lives in `erp/field_policy.py` beside the enforcer, and a convention test asserts
+		it matches the source in both directions.
+		"""
+		if not self.document_type or self.document_type in GOVERNED_DOCTYPES:
+			return
+
+		frappe.throw(
+			_(
+				"Nothing applies a Field Policy to {0}, so every rule here would be silently "
+				"ignored. Governed today: {1}. Governing another doctype means calling "
+				"{2} from its {3} and adding it to {4}."
+			).format(
+				frappe.bold(self.document_type),
+				frappe.bold(", ".join(sorted(GOVERNED_DOCTYPES))),
+				frappe.bold("apply_field_policy"),
+				frappe.bold("validate()"),
+				frappe.bold("GOVERNED_DOCTYPES"),
+			),
+			title=_("Not A Governed DocType"),
+		)
+
+	def validate_governable_fieldtypes(self):
+		"""Refuse a rule form the enforcer could not actually carry out.
+
+		Three cases, all of which used to save green: a bound on a non-numeric field (which reads
+		every value as zero, so it either passes always or blocks every save), Hidden or Read Only
+		on a child table (a row operation dressed as a column write), and any rule at all on a
+		field that only structures the form. The reasoning for each is in
+		`erp.field_policy.fieldtype_objection`, which is the mirror of what enforcement does.
+		"""
+		if not self.document_type:
+			return
+
+		meta = frappe.get_meta(self.document_type)
+		for rule in self.rules:
+			field = meta.get_field(rule.fieldname)
+			if not field:
+				continue
+
+			objection = fieldtype_objection(field, rule)
+			if objection:
+				frappe.throw(
+					_("Row {0}: {1}").format(rule.idx, objection), title=_("Rule Cannot Be Enforced")
+				)
 
 	def validate_fields_exist(self):
 		"""A rule naming a field that does not exist does nothing, silently, for ever.

@@ -2,6 +2,7 @@ import { DoctypeEditor } from '@/pages/doctype/form/DoctypeEditor'
 import { useDoctypeSchema } from '@/pages/doctype/hooks/use-doctype'
 import { useDoctypeRoute } from '@/pages/doctype/hooks/use-doctype-route'
 import { DoctypeLinkContext, useDoctypeLinkIndex } from '@/pages/doctype/lib/doctype-links'
+import { GOVERNED_NOTICE, writesAllowed } from '@/pages/doctype/lib/governed'
 import { EmptyState } from '@/components/feedback/EmptyState'
 import { ErrorState } from '@/components/feedback/ErrorState'
 import { ScreenNotFound } from '@/components/feedback/ScreenNotFound'
@@ -61,18 +62,27 @@ export default function DoctypeCreatePage() {
 
   const schema = schemaQuery.data
 
-  // Advisory, exactly as the schema endpoint says it is: this decides whether the form renders,
-  // and the framework re-checks on the write regardless. Saying so plainly beats rendering a
-  // form whose Save button is guaranteed to 403.
-  if (!schema.permissions.can_create) {
+  // Two different refusals, told apart because the answers are different: one is "ask your
+  // administrator", the other is "use Desk". Collapsing them would send a Trust Admin who holds
+  // every permission off to chase a permission they already have.
+  const refusal = !writesAllowed(schema)
+    ? { title: `${label} is configured per institution`, body: GOVERNED_NOTICE }
+    : !schema.permissions.can_create
+      ? {
+          title: 'You cannot create these',
+          // Advisory, exactly as the schema endpoint says it is: this decides whether the form
+          // renders, and the framework re-checks on the write regardless. Saying so plainly beats
+          // rendering a form whose Save button is guaranteed to 403.
+          body: `Your account can read ${label} records but not create them. Ask your administrator.`,
+        }
+      : null
+
+  if (refusal) {
     return (
       <RecordFrame>
         <PageHeader title={`New ${label}`} crumbs={crumbs} />
         <div className="mt-(--page-stack)">
-          <EmptyState
-            title="You cannot create these"
-            body={`Your account can read ${label} records but not create them. Ask your administrator.`}
-          />
+          <EmptyState title={refusal.title} body={refusal.body} />
         </div>
       </RecordFrame>
     )

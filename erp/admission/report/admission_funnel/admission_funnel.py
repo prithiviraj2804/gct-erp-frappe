@@ -41,7 +41,15 @@ def execute(filters=None):
 		"Admission Enquiry", "enquiry_date", filters, extra={"application_fee_paid": 1}
 	)
 	applications = _count_by_institution("Admission Application", "application_date", filters)
-	admitted = _count_by_institution("Student", "date_of_admission", filters, extra={"status": "Active"})
+	# No `status` filter. An admission is an *event* — it happened on `date_of_admission` and
+	# nothing later un-happens it — whereas `status` is a present-tense lifecycle state. Counting
+	# only `Active` students made a historical number shrink as its cohort moved on: re-running
+	# AY 2023-24 next year would return fewer admissions and a lower conversion than it does
+	# today, with no audit trail and no error. It is also worse the further apart two institution
+	# types are, because the rate at which Active decays is type-specific — a K-12 Class 1 cohort
+	# after twelve years against a two-year MBA cohort — which is exactly the comparison this
+	# report exists to make.
+	admitted = _count_by_institution("Student", "date_of_admission", filters)
 
 	data = []
 	totals = dict.fromkeys(("enquiries", "paid", "applications", "admitted"), 0)

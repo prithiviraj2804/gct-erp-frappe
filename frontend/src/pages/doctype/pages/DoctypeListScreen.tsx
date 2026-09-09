@@ -10,6 +10,7 @@ import { useDeleteDoc } from '@/pages/doctype/hooks/use-doctype-mutations'
 import { useDocCount, useDocList, useDoctypeSchema } from '@/pages/doctype/hooks/use-doctype'
 import { useDoctypeRoute } from '@/pages/doctype/hooks/use-doctype-route'
 import { DoctypeLinkContext, useDoctypeLinkIndex } from '@/pages/doctype/lib/doctype-links'
+import { writesAllowed } from '@/pages/doctype/lib/governed'
 import { screenOverride } from '@/pages/doctype/registry'
 import { STATUS_PARAM, statusOptions, statusViewField } from '@/pages/doctype/lib/status'
 import { EmptyState } from '@/components/feedback/EmptyState'
@@ -102,6 +103,12 @@ function ListBody({ schema, route }: { schema: DoctypeSchema; route: ReturnType<
   const linkIndex = useDoctypeLinkIndex()
   const override = screenOverride(schema.doctype)
   const [searchParams] = useSearchParams()
+
+  // Both gates fold the doctype's DocPerms together with whether this renderer can draw its form
+  // at all. A governed doctype is readable here and writable only in Desk — see `lib/governed.ts`.
+  const writable = writesAllowed(schema)
+  const canCreate = schema.permissions.can_create && writable
+  const canWrite = schema.permissions.can_write && writable
 
   // The status views. `null` is "All"; an unknown word in the URL is ignored rather than sent
   // to the server, so a stale or hand-edited link lands on the full list instead of an empty
@@ -207,7 +214,7 @@ function ListBody({ schema, route }: { schema: DoctypeSchema; route: ReturnType<
                   why it is not folded into the table's toolbar beside the filters that only
                   narrow rows already fetched. See StatusFilter. */}
               {statusField && <StatusFilter doctype={schema.doctype} field={statusField} />}
-              {schema.permissions.can_create && (
+              {canCreate && (
                 <Button asChild className="h-10">
                   <Link to={`${route.listPath}/new`}>
                     <PlusIcon aria-hidden="true" />
@@ -244,12 +251,12 @@ function ListBody({ schema, route }: { schema: DoctypeSchema; route: ReturnType<
               <EmptyState
                 title={`No ${label} records yet`}
                 body={
-                  schema.permissions.can_create
+                  canCreate
                     ? `Nothing has been recorded here yet. Add the first one to get started.`
                     : `Nothing has been recorded here yet, and your account cannot add one.`
                 }
                 action={
-                  schema.permissions.can_create ? (
+                  canCreate ? (
                     <Button asChild className="h-10">
                       <Link to={`${route.listPath}/new`}>
                         <PlusIcon aria-hidden="true" />
@@ -270,7 +277,7 @@ function ListBody({ schema, route }: { schema: DoctypeSchema; route: ReturnType<
               defaultSort={defaultSort}
               hiddenColumns={override.list?.hiddenColumns}
               titleField={schema.title_field}
-              canWrite={schema.permissions.can_write}
+              canWrite={canWrite}
               canDelete={schema.permissions.can_delete}
               onDelete={setDeleteTarget}
             />

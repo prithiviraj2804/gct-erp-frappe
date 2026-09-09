@@ -16,6 +16,7 @@ from dataclasses import asdict
 import frappe
 from frappe import _
 
+from erp.api.permission import assert_institution_in_scope
 from erp.field_policy import resolve_policy
 
 
@@ -33,6 +34,19 @@ def get_policy(document_type: str, institution: str | None = None) -> dict:
 			_("You are not permitted to read {0}.").format(frappe.bold(document_type)),
 			frappe.PermissionError,
 		)
+
+	# The doctype permission above answers "may you read this kind of record". It says nothing
+	# about *whose* configuration you asked for, and `institution` arrives from the caller — so
+	# without this a counsellor at one institution could read another's resolved policy: which
+	# fields it requires and hides, what it calls them, what bounds it sets. `resolve_policy`
+	# cannot refuse it either, because it reads through `frappe.db.get_value` and `frappe.get_all`,
+	# both of which bypass the permission layer by design.
+	#
+	# This matters beyond the disclosure: `docs/CONFIGURATION.md` specifies `explain(key, **anchors)`
+	# with the same shape and the same caller-supplied anchors, and this endpoint is the precedent
+	# it will be written from.
+	if institution:
+		assert_institution_in_scope(institution)
 
 	spec = resolve_policy(document_type, institution=institution)
 	return {fieldname: asdict(rule) for fieldname, rule in spec.items()}

@@ -15,6 +15,7 @@ import { useDeleteDoc } from '@/pages/doctype/hooks/use-doctype-mutations'
 import { useDoc, useDoctypeSchema } from '@/pages/doctype/hooks/use-doctype'
 import { useDoctypeRoute } from '@/pages/doctype/hooks/use-doctype-route'
 import { DoctypeLinkContext, useDoctypeLinkIndex } from '@/pages/doctype/lib/doctype-links'
+import { writesAllowed } from '@/pages/doctype/lib/governed'
 import { evalCondition } from '@/pages/doctype/lib/expressions'
 import { CHILD_TABLE_TYPES, FULL_WIDTH_TYPES, isSummarisable } from '@/pages/doctype/lib/fields'
 import { hasRecordContext } from '@/pages/doctype/lib/record-context'
@@ -144,10 +145,15 @@ function RecordBody({
   const [confirmDelete, setConfirmDelete] = useState(false)
   const remove = useDeleteDoc(schema.doctype)
 
+  // The DocPerm and whether this renderer can draw the form at all. A governed doctype stays
+  // readable here — the record is worth seeing — and is editable only in Desk, because the form
+  // this screen would draw is the ungoverned superset. See `lib/governed.ts`.
+  const canWrite = schema.permissions.can_write && writesAllowed(schema)
+
   // Edit mode lives in the URL, like every other piece of screen state here: it survives a
   // reload, it is a link someone can send ("open this and fix the code"), and Back leaves the
   // form instead of leaving the record.
-  const editing = params.get('edit') === '1' && schema.permissions.can_write
+  const editing = params.get('edit') === '1' && canWrite
 
   const setEditing = (next: boolean) =>
     setParams(
@@ -203,7 +209,7 @@ function RecordBody({
             {HeaderActions && <HeaderActions doctype={schema.doctype} name={doc.name} />}
             {/* Hidden while editing: the form has its own Save/Cancel bar, and a second set of
                 actions in the header is two answers to "how do I finish?". */}
-            {!editing && schema.permissions.can_write && (
+            {!editing && canWrite && (
               <Button variant="outline" className="h-10" onClick={() => setEditing(true)}>
                 <PencilIcon aria-hidden="true" />
                 Edit

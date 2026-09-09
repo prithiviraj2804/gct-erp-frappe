@@ -11,6 +11,7 @@ was invisible: nothing errored, nothing logged, and the JSON said the field was 
 
 import json
 import pathlib
+import re
 
 import frappe
 from frappe.tests import IntegrationTestCase
@@ -251,4 +252,187 @@ class IntegrationTestReportTenancy(IntegrationTestCase):
 			[],
 			"These reports read rows without the tenancy filter. Use frappe.get_list, or "
 			f"erp.api.permission.institution_sql_clause if raw SQL is unavoidable: {offenders}",
+		)
+
+
+class IntegrationTestFieldPolicyRegistry(IntegrationTestCase):
+	"""`GOVERNED_DOCTYPES` must match the controllers that actually call the enforcer.
+
+	The registry is what `Field Policy.validate_document_type_is_governed` refuses against and what
+	`erp.api.doctype` publishes to the SPA, so a stale entry is worse than none: it would let a
+	policy save for a doctype nothing enforces — the silent no-op the whole layer is written to
+	avoid — or it would close the SPA's form for a doctype no policy governs.
+
+	Declared rather than discovered because there is no cheap runtime question that means "does
+	this controller call the enforcer". This test is the discovery, run in CI.
+	"""
+
+	APP = pathlib.Path(frappe.get_app_path("erp"))
+	ENFORCER = "apply_field_policy"
+
+	def _controllers_calling_the_enforcer(self) -> set[str]:
+		"""Every doctype whose own controller calls `apply_field_policy`."""
+		governed = set()
+		for path in self.APP.glob("*/doctype/*/*.py"):
+			if path.name != f"{path.parent.name}.py":
+				continue
+			if f"{self.ENFORCER}(" not in path.read_text():
+				continue
+			# `admission_enquiry` -> `Admission Enquiry`, via the schema rather than by guessing at
+			# capitalisation: `Arts & Science` and `MBA` are exactly why title-casing a slug is not
+			# good enough anywhere in this app.
+			schema = json.loads((path.parent / f"{path.parent.name}.json").read_text())
+			governed.add(schema["name"])
+		return governed
+
+	def test_the_registry_matches_the_source(self):
+		from erp.field_policy import GOVERNED_DOCTYPES
+
+		actual = self._controllers_calling_the_enforcer()
+
+		self.assertEqual(
+			set(GOVERNED_DOCTYPES),
+			actual,
+			"GOVERNED_DOCTYPES has drifted from the controllers that call apply_field_policy. "
+			f"Declared but not enforcing: {sorted(set(GOVERNED_DOCTYPES) - actual)}. "
+			f"Enforcing but not declared: {sorted(actual - set(GOVERNED_DOCTYPES))}.",
+		)
+
+
+class IntegrationTestStatusLiterals(IntegrationTestCase):
+	"""The SPA's status words must be words the schema actually has.
+
+	`frontend/src/modules/*/screens.ts` declares `statusTones` and `statusFlow` as literals,
+	because a `Select`'s options are a *set* and nothing in the schema says which doctypes have a
+	sequence. That is the right call and it has one failure mode: a literal that does not match.
+	It happened — `Application Submit` for `Application Submitted` — and it is invisible, because
+	`statusTone()` falls through to a neutral default and `flow.indexOf()` returns -1 rather than
+	throwing. Every submitted lead rendered with no tone and no current step, and nothing errored.
+
+	This reads the TypeScript as text on purpose. Parsing it properly would mean a JS toolchain in
+	the Python suite, and the app has no unit runner on that side — only Playwright. The shape it
+	relies on is the one Prettier produces for this table and nothing else in the file matches it:
+	a two-space-indented quoted key opening a block, `statusTones` mapping a status to a tone, and
+	`statusFlow` as an array of statuses.
+
+	It reads the *keys* of `statusTones`, never the values. The first version of this test read
+	both and reported that `status` has no option `'info'` — the tones are quoted and the keys
+	often are not, which is exactly the kind of near-miss the test exists to catch, so it is worth
+	the state machine.
+	"""
+
+	APP = pathlib.Path(frappe.get_app_path("erp"))
+	FRONTEND = APP.parent / "frontend" / "src" / "modules"
+
+	# `  'Admission Enquiry': {` — the table's own keys, at two spaces. Nested keys are deeper.
+	DOCTYPE_KEY = re.compile(r"^  '([^']+)':\s*\{")
+	# `New: 'attention',` or `'Application Submitted': 'info',` — the key, quoted or not.
+	TONE_KEY = re.compile(r"^\s*(?:'([^']+)'|([A-Za-z_]\w*))\s*:\s*'[a-z]+',?\s*$")
+	QUOTED = re.compile(r"'([^']+)'")
+
+	def _declared_statuses(self) -> dict[str, set[str]]:
+		"""Every status word each screens.ts claims, keyed by doctype."""
+		claimed: dict[str, set[str]] = {}
+
+		for path in sorted(self.FRONTEND.glob("*/screens.ts")):
+			doctype = None
+			in_tones = False
+			in_flow = False
+
+			for line in path.read_text().splitlines():
+				stripped = line.strip()
+				if stripped.startswith(("*", "//", "/*")):
+					continue
+
+				match = self.DOCTYPE_KEY.match(line)
+				if match:
+					doctype = match.group(1)
+					claimed.setdefault(doctype, set())
+					in_tones = in_flow = False
+					continue
+
+				if not doctype:
+					continue
+
+				if "statusTones" in stripped:
+					in_tones = True
+					# `statusTones: { New: 'attention' },` on one line still has to be read.
+					claimed[doctype].update(self._tone_keys_inline(stripped))
+					if stripped.endswith("},") or stripped.endswith("}"):
+						in_tones = False
+					continue
+
+				if "statusFlow" in stripped:
+					in_flow = "]" not in stripped
+					claimed[doctype].update(self.QUOTED.findall(stripped))
+					continue
+
+				if in_tones:
+					if stripped.startswith("}"):
+						in_tones = False
+						continue
+					key = self.TONE_KEY.match(line)
+					if key:
+						claimed[doctype].add(key.group(1) or key.group(2))
+					continue
+
+				if in_flow:
+					if stripped.startswith("]"):
+						in_flow = False
+						continue
+					claimed[doctype].update(self.QUOTED.findall(stripped))
+
+		return {doctype: words for doctype, words in claimed.items() if words}
+
+	def _tone_keys_inline(self, stripped: str) -> set[str]:
+		"""Status keys from a one-line `statusTones: { ... }`."""
+		body = stripped.split("{", 1)[1] if "{" in stripped else ""
+		found = set()
+		for pair in body.replace("}", "").split(","):
+			key = self.TONE_KEY.match(pair.strip())
+			if key:
+				found.add(key.group(1) or key.group(2))
+		return found
+
+	def test_the_scraper_finds_the_literals_it_is_meant_to(self):
+		"""A scraper that silently finds nothing would make the test below vacuously green.
+
+		This is the guard on the guard: the shape of `screens.ts` is a convention, and if Prettier
+		or an author changes it the assertion above must fail loudly rather than pass on an empty
+		set. Anchored on the two facts that made this test necessary.
+		"""
+		claimed = self._declared_statuses()
+
+		self.assertIn("Admission Enquiry", claimed, f"scraper read no statuses at all: {claimed}")
+		self.assertIn(
+			"Application Submitted",
+			claimed["Admission Enquiry"],
+			"the scraper missed the very literal that was wrong",
+		)
+		self.assertNotIn(
+			"info", claimed["Admission Enquiry"], "the scraper is reading tones as if they were statuses"
+		)
+
+	def test_every_declared_status_exists_in_the_schema(self):
+		offenders = []
+		for doctype, words in sorted(self._declared_statuses().items()):
+			if not frappe.db.exists("DocType", doctype):
+				offenders.append(f"{doctype}: no such doctype")
+				continue
+
+			field = frappe.get_meta(doctype).get_field("status")
+			if not field or not field.options:
+				offenders.append(f"{doctype}: has no status Select")
+				continue
+
+			options = {option.strip() for option in field.options.split("\n") if option.strip()}
+			for word in sorted(words - options):
+				offenders.append(f"{doctype}.status has no option {word!r}")
+
+		self.assertEqual(
+			offenders,
+			[],
+			"frontend/src/modules/*/screens.ts names status words the schema does not have. A "
+			"mismatch is silent — no tone, no current step, no error. Fix the literal or the "
+			f"Select: {offenders}",
 		)

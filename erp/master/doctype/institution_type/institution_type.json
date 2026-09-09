@@ -15,6 +15,7 @@
   "column_break_basic",
   "is_group",
   "is_standard",
+  "standard_key",
   "capability_section",
   "requires_department",
   "notes_section",
@@ -76,6 +77,15 @@
    "read_only": 1,
    "no_copy": 1,
    "description": "Shipped with the app. Standard rows may be edited but not deleted"
+  },
+  {
+   "fieldname": "standard_key",
+   "fieldtype": "Data",
+   "label": "Standard Key",
+   "read_only": 1,
+   "no_copy": 1,
+   "hidden": 1,
+   "description": "The name this row shipped under. Set by the seed, never by hand. `type_name` is the primary key and may be relabelled, so it cannot also be what the seed recognises a shipped row by — renaming School to CBSE School would otherwise make the next migrate insert a second School."
   },
   {
    "fieldname": "capability_section",

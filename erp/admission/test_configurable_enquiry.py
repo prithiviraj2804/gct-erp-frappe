@@ -245,3 +245,204 @@ class IntegrationTestConfigurableEnquiry(IntegrationTestCase):
 		payload = get_policy("Admission Enquiry", institution=self.SCHOOL)
 		self.assertEqual(payload["cutoff_marks"]["requirement"], "Hidden")
 		self.assertEqual(payload["previous_education"]["label"], "Previous School Record")
+
+	# --- Read Only is a rule, not a greyed control -------------------------------------
+
+	def test_read_only_is_enforced_on_the_server(self):
+		"""The verb was offered, rendered, and enforced only in the browser.
+
+		A Config Manager set a field Read Only, saw it greyed in Desk, and reasonably concluded it
+		was protected. It was fully writable through `/api/resource`, Data Import — the documented
+		bulk-admission path — a bench console script and the Admission Follow-up
+		`frappe.db.set_value` path. That is precisely the asymmetry this whole module was written
+		to replace, reintroduced by an unimplemented Select option.
+		"""
+		self.policy(
+			"scope_institution", self.ENGG, [{"fieldname": "entrance_exam", "requirement": "Read Only"}]
+		)
+		try:
+			enquiry = self.make_enquiry(self.ENGG, self.engg_programme, entrance_exam="TNEA")
+			self.assertIn(enquiry.entrance_exam, (None, ""), "Read Only did not hold on insert")
+
+			enquiry.entrance_exam = "JEE Main"
+			enquiry.save(ignore_permissions=True)
+			self.assertIn(enquiry.entrance_exam, (None, ""), "Read Only did not hold on update")
+		finally:
+			frappe.delete_doc(
+				"Field Policy", f"Admission Enquiry-{self.ENGG}", force=True, ignore_permissions=True
+			)
+
+	def test_read_only_keeps_what_is_already_stored(self):
+		"""Reverting, not clearing: a value recorded before the rule existed is history."""
+		enquiry = self.make_enquiry(self.ENGG, self.engg_programme, entrance_exam="TNEA")
+		self.policy(
+			"scope_institution", self.ENGG, [{"fieldname": "entrance_exam", "requirement": "Read Only"}]
+		)
+		try:
+			enquiry.entrance_exam = "JEE Main"
+			enquiry.save(ignore_permissions=True)
+			self.assertEqual(enquiry.entrance_exam, "TNEA")
+		finally:
+			frappe.delete_doc(
+				"Field Policy", f"Admission Enquiry-{self.ENGG}", force=True, ignore_permissions=True
+			)
+
+	# --- A rule added mid-cycle must not freeze the records already in flight ----------
+
+	def test_a_new_required_rule_does_not_lock_an_existing_record(self):
+		"""The journey: *a trust adds a required field in September; July's leads stay editable.*
+
+		`validate` runs on every save, so the rule in force is always today's applied to records
+		raised under last month's. Enforcing Required unconditionally therefore made every earlier
+		lead without the field **unsaveable** — not merely unable to advance, but impossible to
+		edit, so a counsellor could not correct a phone number on it. The lockout was silent until
+		someone tried, and it was armed for the admission path too: `confirm_admission` calls
+		`doc.save()`, so the day a policy governs Admission Application a new Required rule would
+		block admission of every in-flight applicant mid-counselling.
+		"""
+		enquiry = self.make_enquiry(self.SCHOOL, self.school_programme)
+		self.assertIn(enquiry.aadhaar_number, (None, ""))
+
+		self.policy(
+			"scope_institution", self.SCHOOL, [{"fieldname": "aadhaar_number", "requirement": "Required"}]
+		)
+		try:
+			enquiry.phone_number = "9876500123"
+			enquiry.save(ignore_permissions=True)
+			self.assertEqual(enquiry.phone_number, "9876500123")
+		finally:
+			frappe.delete_doc(
+				"Field Policy", f"Admission Enquiry-{self.SCHOOL}", force=True, ignore_permissions=True
+			)
+
+	def test_a_required_field_still_cannot_be_blanked(self):
+		"""Binding only changed fields keeps the rule real. Blanking one *is* a change."""
+		enquiry = self.make_enquiry(self.SCHOOL, self.school_programme, aadhaar_number="123412341234")
+		self.policy(
+			"scope_institution", self.SCHOOL, [{"fieldname": "aadhaar_number", "requirement": "Required"}]
+		)
+		try:
+			enquiry.aadhaar_number = ""
+			with self.assertRaises(frappe.ValidationError):
+				enquiry.save(ignore_permissions=True)
+		finally:
+			frappe.delete_doc(
+				"Field Policy", f"Admission Enquiry-{self.SCHOOL}", force=True, ignore_permissions=True
+			)
+
+	def test_a_required_field_still_blocks_a_new_record(self):
+		self.policy(
+			"scope_institution", self.SCHOOL, [{"fieldname": "aadhaar_number", "requirement": "Required"}]
+		)
+		try:
+			with self.assertRaises(frappe.ValidationError):
+				self.make_enquiry(self.SCHOOL, self.school_programme)
+		finally:
+			frappe.delete_doc(
+				"Field Policy", f"Admission Enquiry-{self.SCHOOL}", force=True, ignore_permissions=True
+			)
+
+	# --- A rule the enforcer could not carry out is refused, not saved green -----------
+
+	def test_a_bound_on_a_non_numeric_field_is_refused(self):
+		"""`min_value: 1` on a Data field blocked every save at that scope.
+
+		`flt` returns 0.0 for anything it cannot parse, so `entrance_exam` holding "JEE Main" read
+		as zero and threw "Entrance Exam cannot be below 1" for every value an institution could
+		possibly enter — with an error naming a bound the operator had no reason to think applied.
+		The Desk grid offers Minimum and Maximum on every rule row regardless of the field picked,
+		so nothing warned them either.
+		"""
+		with self.assertRaises(frappe.ValidationError):
+			self.policy("scope_institution", self.ENGG, [{"fieldname": "entrance_exam", "min_value": "1"}])
+
+	def test_a_bound_on_a_numeric_field_is_still_allowed(self):
+		policy = self.policy(
+			"scope_institution", self.ENGG, [{"fieldname": "entrance_rank", "max_value": "200000"}]
+		)
+		try:
+			self.assertEqual(policy.rules[0].max_value, "200000")
+		finally:
+			frappe.delete_doc("Field Policy", policy.name, force=True, ignore_permissions=True)
+
+	def test_hiding_a_child_table_is_refused(self):
+		"""It used to save, and then every save of an existing enquiry raised a raw 1054.
+
+		`_revert` read the stored value with `doc.get_db_value(fieldname)`, and there is no column
+		`previous_education` on `tabAdmission Enquiry` — the rows live in the child table. Frappe's
+		`get_values` re-raises a missing-column error rather than returning None, so the failure
+		surfaced as `OperationalError (1054, "Unknown column 'previous_education' in 'field list'")`
+		out of `validate()`. Hiding the education table for a lateral-entry intake is an obvious
+		thing to configure, so this was reachable by an operator with no way to see it coming.
+		"""
+		with self.assertRaises(frappe.ValidationError):
+			self.policy(
+				"scope_institution",
+				self.SCHOOL,
+				[{"fieldname": "previous_education", "requirement": "Hidden"}],
+			)
+
+	def test_relabelling_a_child_table_is_still_allowed(self):
+		"""Which is what the shipped School policy does, so this is a regression guard on it."""
+		spec = resolve_policy("Admission Enquiry", institution=self.SCHOOL)
+		self.assertEqual(spec["previous_education"].label, "Previous School Record")
+
+	def test_a_policy_for_an_ungoverned_doctype_is_refused(self):
+		"""The worst failure this layer can have: a green save that enforces nothing.
+
+		`document_type` is an unrestricted Link to DocType, so the obvious policy for Admission
+		Application — the document carrying `admission_route`, `counselling_outcome`, the entrance
+		fields and the checklist — saved without complaint and changed no behaviour whatsoever.
+		Every guard passed, `resolve_policy` would even resolve it, and a Trust Admin had no way to
+		tell it apart from a working policy.
+		"""
+		with self.assertRaises(frappe.ValidationError):
+			self.policy(
+				"scope_institution",
+				self.SCHOOL,
+				[{"fieldname": "notes", "requirement": "Hidden"}],
+				document_type="Admission Follow-up",
+			)
+
+	# --- The endpoint is scoped, because `explain()` will be written from it ------------
+
+	def test_the_endpoint_refuses_another_institutions_policy(self):
+		"""Configuration metadata, and the precedent for `explain(key, **anchors)`.
+
+		The doctype permission answers "may you read this kind of record". It says nothing about
+		*whose* configuration was asked for, and `institution` arrives from the caller — so a
+		counsellor at one institution could read another's resolved policy: which fields it
+		requires and hides, what it calls them, what bounds it sets. `resolve_policy` cannot refuse
+		it either, because it reads through `frappe.db.get_value` and `frappe.get_all`.
+		"""
+		staff = self.scoped_user()
+		with self.set_user(staff):
+			with self.assertRaises(frappe.PermissionError):
+				get_policy("Admission Enquiry", institution=self.ENGG)
+
+	def scoped_user(self) -> str:
+		"""A user permitted for the school and nothing else."""
+		email = "zc-scoped@example.com"
+		if not frappe.db.exists("User", email):
+			user = frappe.get_doc(
+				{
+					"doctype": "User",
+					"email": email,
+					"first_name": "Scoped",
+					"send_welcome_email": 0,
+					"roles": [{"role": "Institution Admin"}],
+				}
+			)
+			user.insert(ignore_permissions=True)
+		if not frappe.db.exists(
+			"User Permission", {"user": email, "allow": "Institution", "for_value": self.SCHOOL}
+		):
+			frappe.get_doc(
+				{
+					"doctype": "User Permission",
+					"user": email,
+					"allow": "Institution",
+					"for_value": self.SCHOOL,
+				}
+			).insert(ignore_permissions=True)
+		return email

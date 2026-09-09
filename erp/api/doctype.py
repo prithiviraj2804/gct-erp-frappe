@@ -27,6 +27,7 @@ import frappe
 from frappe import _
 
 from erp.api.modules import get_allowed_modules
+from erp.field_policy import GOVERNED_DOCTYPES
 
 # DocField properties the SPA renders. Everything else is Desk form machinery (`in_filter`,
 # `bold`, `print_hide`, `translatable`, `permlevel`, `columns`, …) or database detail, and
@@ -417,4 +418,19 @@ def get_doctype_schema(doctype: str) -> dict:
 			"can_write": bool(frappe.has_permission(doctype, "write")),
 			"can_delete": bool(frappe.has_permission(doctype, "delete")),
 		},
+		# Whether a Field Policy governs this doctype — and therefore whether the schema above is
+		# the whole truth about its form. It is not: a policy decides per institution which of
+		# these fields are collected, which are required, what they are called and what bounds
+		# they carry, and none of that is in `fields` because none of it is in the meta.
+		#
+		# Published so a client can refuse to draw a form it would draw wrongly. Drawing it anyway
+		# is worse than not drawing it: the counsellor sees the ungoverned superset, fills a field
+		# their institution does not collect, saves successfully, and `apply_field_policy` reverts
+		# the value server-side. Until this flag existed the SPA did exactly that.
+		#
+		# Deliberately not folded into `permissions`. The caller's DocPerms genuinely do allow the
+		# write; what is missing is this client's ability to render the form correctly, which is a
+		# different fact and will stop being true when the renderer learns to ask
+		# `erp.api.field_policy.get_policy` and re-resolve per institution.
+		"governed": doctype in GOVERNED_DOCTYPES,
 	}

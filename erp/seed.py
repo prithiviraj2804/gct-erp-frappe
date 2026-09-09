@@ -19,7 +19,9 @@ Exactly the argument `erp.utils.ensure_module_defs` makes for running `before_mi
 as a patch, applied to data instead of Module Defs.
 
 Idempotent and non-destructive: a row that already exists is left completely alone, including any
-edits an operator has made to its label. Only absence is corrected.
+edits an operator has made to its label. Only absence is corrected — and "already exists" is asked
+of `standard_key` rather than of the name, because for Institution Type the name *is* the label.
+See `_ensure`.
 """
 
 import frappe
@@ -134,14 +136,48 @@ def _ensure(doctype: str, key: str, rows: tuple[dict, ...], standard: bool = Fal
 
 	`standard` marks the row as shipped, which is what stops it being deleted — a deleted standard
 	row would reappear on the next migrate having taken its configuration with it.
+
+	**A standard row is recognised by `standard_key`, not by its name.** The docstring above used to
+	promise that "a row that already exists is left completely alone, including any edits an
+	operator has made to its label", and for Institution Type that was false precisely because the
+	label *is* the key: `autoname` is `field:type_name` and `allow_rename` is 1, so relabelling
+	School to "CBSE School" is a rename. The row, every Institution pointing at it and the Field
+	Policy scoped to it all follow the rename correctly — and then this function looked for
+	"School", did not find it, and inserted a second one. The phantom carried no policy, so a K-12
+	enquiry created under it collected the full professional superset with nothing hidden, and
+	`assert_not_standard` then refused to let anyone delete it. No error at any step.
 	"""
 	for row in rows:
-		if frappe.db.exists(doctype, row[key]):
+		if standard:
+			if _standard_row(doctype, row[key]):
+				continue
+		elif frappe.db.exists(doctype, row[key]):
 			continue
+
 		values = dict(row)
 		if standard:
 			values["is_standard"] = 1
+			values["standard_key"] = row[key]
+
+			# A row shipped before `standard_key` existed, or one an operator keyed in by hand under
+			# exactly the shipped name. Adopt it rather than colliding with it — self-healing is the
+			# reason this is a hook and not a patch, and a patch that ran once would leave every site
+			# that migrated in between broken.
+			if frappe.db.exists(doctype, row[key]):
+				frappe.db.set_value(
+					doctype,
+					row[key],
+					{"is_standard": 1, "standard_key": row[key]},
+					update_modified=False,
+				)
+				continue
+
 		frappe.get_doc({"doctype": doctype, **values}).insert(ignore_permissions=True)
+
+
+def _standard_row(doctype: str, standard_key: str) -> str | None:
+	"""The current name of the row that shipped under `standard_key`, however it is labelled now."""
+	return frappe.db.get_value(doctype, {"standard_key": standard_key}, "name")
 
 
 def _ensure_field_policies():
@@ -153,11 +189,17 @@ def _ensure_field_policies():
 	the meantime the form it governs would quietly revert to collecting everything.
 	"""
 	for policy in FIELD_POLICIES:
-		scope = policy["scope_institution_type"]
-		name = f"{policy['document_type']}-{scope}"
-		if frappe.db.exists("Field Policy", name):
+		# Resolve the scope through `standard_key`, so a relabelled Institution Type keeps the
+		# policy it already has instead of being handed a second one. Keying on the autoname —
+		# `{document_type}-{scope}` — could not do that: the name embeds the scope as it was at
+		# insert time, and `autoname` does not re-run on rename.
+		scope = _standard_row("Institution Type", policy["scope_institution_type"])
+		if not scope:
 			continue
-		if not frappe.db.exists("Institution Type", scope):
+		if frappe.db.exists(
+			"Field Policy",
+			{"document_type": policy["document_type"], "scope_institution_type": scope},
+		):
 			continue
 
 		doc = frappe.get_doc(

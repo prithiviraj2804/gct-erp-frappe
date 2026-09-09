@@ -121,6 +121,15 @@ export interface DoctypeSchema {
     can_write: boolean
     can_delete: boolean
   }
+  /**
+   * Whether a Field Policy governs this doctype, and therefore whether the `fields` above are the
+   * whole truth about its form. They are not: a policy decides per institution which are
+   * collected, required, relabelled and bounded, and none of that reaches the meta.
+   *
+   * Separate from `permissions` on purpose — the caller's DocPerms do allow the write; what is
+   * missing is this renderer's ability to draw the form correctly. See `lib/governed.ts`.
+   */
+  governed: boolean
 }
 
 /** A list row. Keys are whatever `list_columns` asked for, plus `name`. */
