@@ -21,6 +21,7 @@
   "min_age",
   "max_age",
   "age_as_on",
+  "eligibility_rules",
   "column_break_eligibility",
   "application_fee",
   "seat_matrix_section",
@@ -120,13 +121,13 @@
    "fieldtype": "Float",
    "label": "Minimum Percentage",
    "precision": "2",
-   "description": "Minimum qualifying-exam percentage (0–100), if any"
+   "description": "The aggregate percentage an applicant must have in the qualifying examination. Enforced on the application against the highest qualification recorded on the lead - it was collected and range-checked but enforced nowhere until slice 7, so an intake stating 50 admitted a 35% candidate silently"
   },
   {
    "fieldname": "eligibility_criteria",
    "fieldtype": "Small Text",
    "label": "Eligibility Criteria",
-   "description": "Free-text eligibility (e.g. 10+2 with PCM)"
+   "description": "A note for the admission office, read by nobody and enforced nowhere. The conditions the pipeline actually checks are Minimum Percentage, the age window and the Eligibility Rules table"
   },
   {
    "fieldname": "min_age",
@@ -147,6 +148,13 @@
    "fieldtype": "Date",
    "label": "Age Reckoned As On",
    "description": "Cut-off date the age window is measured against, e.g. 1 June for a school class"
+  },
+  {
+   "fieldname": "eligibility_rules",
+   "fieldtype": "Table",
+   "label": "Eligibility Rules",
+   "options": "Programme Intake Eligibility",
+   "description": "Subject and entrance conditions this intake publishes. The aggregate percentage is Minimum Percentage above, not a row here"
   },
   {
    "fieldname": "column_break_eligibility",

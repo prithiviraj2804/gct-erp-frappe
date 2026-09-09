@@ -61,6 +61,7 @@
   "programme_intake",
   "education_section",
   "previous_education",
+  "subject_marks",
   "entrance_section",
   "entrance_exam",
   "entrance_registration_no",
@@ -470,6 +471,13 @@
    "label": "Previous Education",
    "options": "Admission Enquiry Education",
    "description": "Prior qualifications. The programme's Required Prior Qualification decides which record must appear (blank = none required, e.g. entry-level school classes); a lateral entry needs a Diploma."
+  },
+  {
+   "fieldname": "subject_marks",
+   "fieldtype": "Table",
+   "label": "Subject Marks",
+   "options": "Admission Enquiry Subject Mark",
+   "description": "Per-subject marks, where an intake's eligibility rules name subjects. A sibling of Previous Education rather than nested inside it, because Frappe does not support a child table within a child table"
   },
   {
    "fieldname": "entrance_section",

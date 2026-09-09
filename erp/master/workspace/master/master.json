@@ -140,6 +140,13 @@
   {
    "type": "Link",
    "link_type": "DocType",
+   "link_to": "Examination Subject",
+   "icon": "book-marked",
+   "label": "Examination Subject"
+  },
+  {
+   "type": "Link",
+   "link_type": "DocType",
    "link_to": "Consultancy",
    "icon": "handshake",
    "label": "Consultancy"

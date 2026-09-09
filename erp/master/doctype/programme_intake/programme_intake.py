@@ -15,6 +15,7 @@ class ProgrammeIntake(Document):
 		self.validate_seats()
 		self.validate_seat_matrix()
 		self.validate_percentage()
+		self.validate_eligibility_rules()
 		self.validate_age_window()
 		self.validate_unique_offering()
 
@@ -86,6 +87,57 @@ class ProgrammeIntake(Document):
 	def validate_percentage(self):
 		if self.min_percentage and not 0 <= self.min_percentage <= 100:
 			frappe.throw(_("Minimum Percentage must be between 0 and 100."))
+
+	def validate_eligibility_rules(self):
+		"""Refuse a rule the pipeline could not evaluate.
+
+		The same discipline as `erp.field_policy.fieldtype_objection`: **a rule form that saves is a
+		rule form the enforcer carries out.** A subject rule with no subject, or a threshold rule
+		with no threshold, would be silently skipped by `_rule_failure` — so the intake would look
+		as though it published a condition it does not enforce, which is worse than publishing none.
+
+		A duplicate is refused for the same reason two Field Policy rules for one field are: it is a
+		contradiction with no answer, and the more permissive one would decide by accident.
+		"""
+		if not self.eligibility_rules:
+			return
+
+		needs_subject = ("Subject Required", "Subject Percentage At Least")
+		needs_threshold = (
+			"Subject Percentage At Least",
+			"Entrance Rank At Most",
+			"Entrance Score At Least",
+		)
+
+		seen = set()
+		for row in self.eligibility_rules:
+			if row.rule_type in needs_subject and not row.subject:
+				frappe.throw(
+					_("Row {0}: {1} has to name a subject.").format(row.idx, frappe.bold(row.rule_type)),
+					title=_("Rule Needs A Subject"),
+				)
+
+			if row.rule_type in needs_threshold and not row.threshold:
+				frappe.throw(
+					_("Row {0}: {1} has to state a threshold.").format(row.idx, frappe.bold(row.rule_type)),
+					title=_("Rule Needs A Threshold"),
+				)
+
+			if row.rule_type == "Subject Percentage At Least" and not 0 <= row.threshold <= 100:
+				frappe.throw(
+					_("Row {0}: a subject percentage must be between 0 and 100.").format(row.idx),
+					title=_("Out Of Range"),
+				)
+
+			key = (row.rule_type, row.subject or "")
+			if key in seen:
+				frappe.throw(
+					_("Row {0}: this intake already states {1} for {2}.").format(
+						row.idx, frappe.bold(row.rule_type), frappe.bold(row.subject or _("no subject"))
+					),
+					title=_("Duplicate Eligibility Rule"),
+				)
+			seen.add(key)
 
 	def validate_age_window(self):
 		"""Keep the age window coherent, and make it measurable when it is set.

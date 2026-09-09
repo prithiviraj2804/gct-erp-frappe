@@ -9,7 +9,12 @@ from frappe.model.document import Document
 from frappe.utils import today
 
 from erp.admission.application_state import derive_application_state
-from erp.admission.eligibility import assert_prior_qualification, enquiry_education
+from erp.admission.eligibility import (
+	assert_aggregate_percentage,
+	assert_intake_rules,
+	assert_prior_qualification,
+	enquiry_education,
+)
 from erp.admission.pipeline import already_admitted_objection
 from erp.field_policy import apply_field_policy
 from erp.master.doctype.institution_type.institution_type import resolve_capability_for_institution
@@ -245,6 +250,8 @@ class AdmissionApplication(Document):
 		"""
 		education = enquiry_education(self.admission_enquiry)
 		assert_prior_qualification(self.programme, self.admission_type, education)
+		assert_aggregate_percentage(self.programme_intake, education)
+		assert_intake_rules(self)
 
 		date_of_birth = frappe.db.get_value("Admission Enquiry", self.admission_enquiry, "date_of_birth")
 		assert_age_within_window(self.programme_intake, date_of_birth)

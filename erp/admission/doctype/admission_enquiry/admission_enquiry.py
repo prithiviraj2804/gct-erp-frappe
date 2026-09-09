@@ -6,6 +6,7 @@ import uuid
 import frappe
 from frappe import _
 from frappe.model.document import Document
+from frappe.utils import flt
 
 from erp.admission.eligibility import assert_prior_qualification
 from erp.admission.follow_up_state import derive_follow_up_state
@@ -43,6 +44,7 @@ class AdmissionEnquiry(Document):
 		apply_field_policy(self)
 		self.validate_unique_aadhaar()
 		self.validate_previous_education()
+		self.set_subject_percentages()
 		self.enforce_pipeline_gates()
 		self.set_follow_up_state()
 		self.ensure_child_ids()
@@ -207,6 +209,40 @@ class AdmissionEnquiry(Document):
 		for row in self.previous_education:
 			if not row.get("id"):
 				row.id = str(uuid.uuid4())
+
+	def set_subject_percentages(self):
+		"""Derive each subject row's percentage from its marks.
+
+		Derived on the parent because a child row's `validate` never runs on its own in Frappe —
+		putting the arithmetic in `AdmissionEnquirySubjectMark.validate` would look right and never
+		execute.
+
+		Stored rather than divided at read time so an eligibility rule stated as a percentage has
+		one number to compare. `max_marks` is stored for the same reason it is `reqd`: boards mark
+		out of 75, 90, 200 and 600, and a rule written as a percentage cannot compare raw marks
+		across them.
+		"""
+		for row in self.subject_marks:
+			if not row.max_marks:
+				frappe.throw(
+					_("Row {0}: {1} needs the marks it was out of.").format(
+						row.idx, frappe.bold(row.subject or _("this subject"))
+					),
+					title=_("Marks Out Of What"),
+				)
+
+			if flt(row.marks_obtained) > flt(row.max_marks):
+				frappe.throw(
+					_("Row {0}: {1} scores {2} out of {3}.").format(
+						row.idx,
+						frappe.bold(row.subject or _("this subject")),
+						frappe.bold(row.marks_obtained),
+						frappe.bold(row.max_marks),
+					),
+					title=_("Marks Exceed The Maximum"),
+				)
+
+			row.percentage = flt(row.marks_obtained) * 100.0 / flt(row.max_marks)
 
 	def enforce_pipeline_gates(self):
 		"""Block an advance the lead has not earned — fee unpaid, documents unverified, no seat.

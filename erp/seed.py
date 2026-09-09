@@ -134,6 +134,24 @@ EDUCATION_BOARDS = (
 	{"board_name": "State Board", "description": "The state's own secondary board"},
 )
 
+# Subjects an eligibility rule can name. A small set, because a rule cannot be written before its
+# subjects exist and no operator should key in "Mathematics" before their first intake. A trust adds
+# the rest — a board's own subject list is long, regional and changes, and shipping a pretend one
+# would be the `Education Board` free-text problem with extra steps.
+EXAMINATION_SUBJECTS = (
+	{"subject_name": "Mathematics"},
+	{"subject_name": "Physics"},
+	{"subject_name": "Chemistry"},
+	{"subject_name": "Biology"},
+	{"subject_name": "Botany"},
+	{"subject_name": "Zoology"},
+	{"subject_name": "Computer Science"},
+	{"subject_name": "English"},
+	{"subject_name": "Commerce"},
+	{"subject_name": "Accountancy"},
+	{"subject_name": "Economics"},
+)
+
 # `term_label` is what makes one shared Programme read "Term I" in a school and "Semester 1" in a
 # college, with no doctype knowing which it is.
 ACADEMIC_STRUCTURES = (
@@ -290,6 +308,7 @@ def ensure_shared_vocabulary():
 	# would refuse the type row if its target did not exist yet.
 	_ensure("Admission Route", "route_name", ADMISSION_ROUTES, standard=True)
 	_ensure("Education Board", "board_name", EDUCATION_BOARDS, standard=True)
+	_ensure("Examination Subject", "subject_name", EXAMINATION_SUBJECTS, standard=True)
 	_ensure("Institution Type", "type_name", INSTITUTION_TYPES, standard=True)
 	_ensure("Programme Level", "level_code", PROGRAMME_LEVELS)
 	_ensure("Academic Structure", "structure_code", ACADEMIC_STRUCTURES)
@@ -394,6 +413,7 @@ _STRUCTURAL_KEYS = frozenset(
 		"structure_name",
 		"route_name",
 		"board_name",
+		"subject_name",
 	}
 )
 

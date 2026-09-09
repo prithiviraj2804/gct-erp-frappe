@@ -37,6 +37,7 @@ from erp.admission.application_state import (
 	OUTCOMES_NOT_OURS,
 	required_documents_verified,
 )
+from erp.admission.eligibility import missing_entrance_data
 from erp.admission.fee_gate import assert_fee_paid_for_status
 from erp.admission.stages import ADMISSION, DOCUMENTS, INTERACTION, required_gates
 from erp.master.doctype.admission_route.admission_route import requires_allotment
@@ -228,6 +229,11 @@ def _objection(application, enquiry, new_status, required: frozenset[str]) -> "_
 		if objection:
 			return objection
 
+	if ADMISSION in required:
+		objection = entrance_data_objection(application)
+		if objection:
+			return objection
+
 	if INTERACTION in required:
 		objection = interaction_objection(application, new_status)
 		if objection:
@@ -323,6 +329,31 @@ def already_admitted_objection(application) -> _Objection | None:
 			"several applications and be admitted on one of them; withdraw that admission before "
 			"recording another."
 		).format(frappe.bold(other.student), frappe.bold(other.name)),
+	)
+
+
+def entrance_data_objection(application) -> _Objection | None:
+	"""An intake that publishes an entrance cut-off may not admit on a rank nobody recorded.
+
+	The other half of `erp.admission.eligibility`'s entrance rules, and separated from them on
+	purpose. "Is this rank acceptable" is answerable the moment a rank exists, and
+	`assert_intake_rules` answers it on every save. "Does the rank exist yet" is a *stage* question:
+	the value comes back from the counselling body weeks after the application is raised, so asking
+	it at insert would make an intake with an entrance rule unable to raise an application at all.
+
+	So the acceptability check runs always and ignores absence; this runs once, at the admission
+	gate, and is the only place absence is refused. It is the same boundary `stages.py` draws
+	between a Field Policy rule and a gate: one asks about now, the other about before that stage.
+	"""
+	needed = missing_entrance_data(application.programme_intake, application)
+	if not needed:
+		return None
+
+	return _Objection(
+		_("Entrance Result Awaited"),
+		_("{0} publishes an entrance condition, so record the {1} before admitting.").format(
+			frappe.bold(application.programme_intake), frappe.bold(", ".join(needed))
+		),
 	)
 
 
