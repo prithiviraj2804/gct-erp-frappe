@@ -97,6 +97,21 @@ def resolve_capability(institution_type: str | None, capability: str) -> str | N
 	return None
 
 
+def resolve_capability_for_institution(institution: str | None, capability: str) -> str | None:
+	"""`resolve_capability`, entered from an institution rather than from its type.
+
+	Almost every caller has an institution in hand and not a type — a Programme, an enquiry, an
+	application, a pipeline gate — so the Institution → type lookup was being written out at each
+	call site. One of them is enough, and having one place means the day a capability is answerable
+	somewhere other than the type tree (an institution of its own, a programme, an intake — the
+	chain `docs/CONFIGURATION.md` §1 specifies) exactly one function changes.
+	"""
+	if not institution:
+		return None
+
+	return resolve_capability(frappe.db.get_value("Institution", institution, "institution_type"), capability)
+
+
 def institution_requires_department(institution: str | None) -> bool:
 	"""Whether a Programme or an enquiry under this institution must name a Department.
 
@@ -110,5 +125,4 @@ def institution_requires_department(institution: str | None) -> bool:
 	if not institution:
 		return True
 
-	institution_type = frappe.db.get_value("Institution", institution, "institution_type")
-	return resolve_capability(institution_type, "requires_department") != "No"
+	return resolve_capability_for_institution(institution, "requires_department") != "No"

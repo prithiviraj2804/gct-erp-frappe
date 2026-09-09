@@ -16,6 +16,8 @@
   "scope_institution_type",
   "scope_institution",
   "is_standard",
+  "standard_key",
+  "shipped_digest",
   "rules_section",
   "rules",
   "notes_section",
@@ -84,6 +86,24 @@
    "read_only": 1,
    "no_copy": 1,
    "description": "Shipped with the app. Standard policies may be edited or disabled but not deleted"
+  },
+  {
+   "fieldname": "standard_key",
+   "fieldtype": "Data",
+   "label": "Standard Key",
+   "read_only": 1,
+   "no_copy": 1,
+   "hidden": 1,
+   "description": "For a shipped policy, the document type and scope it shipped under. Separate from `name` so that relabelling the Institution Type it is scoped to does not make the seed insert a second policy"
+  },
+  {
+   "fieldname": "shipped_digest",
+   "fieldtype": "Data",
+   "label": "Shipped Digest",
+   "read_only": 1,
+   "no_copy": 1,
+   "hidden": 1,
+   "description": "A fingerprint of the rules as last shipped. The seed compares the row's current rules against it to tell an untouched shipped policy — which it may safely replace when the code changes — from one an operator has tuned, which it must not"
   },
   {
    "fieldname": "rules_section",

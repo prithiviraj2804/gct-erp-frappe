@@ -4,7 +4,7 @@ The domain this app models: one trust, many institutions, one vocabulary that ha
 
 The app has **no product name**. Every screen identifies the *trust*, from the `Trust` record —
 `erp/api/branding.py` publishes an allow-list of its fields to the sign-in screen
-(`erp/api/branding.py:31-43`). `APP_NAME` (`frontend/src/lib/constants.ts:26`, the literal `'ERP'`)
+(`erp/api/branding.py:32-44`). `APP_NAME` (`frontend/src/lib/constants.ts:26`, the literal `'ERP'`)
 appears only where `brand?.name` is null, i.e. on a bench with no Trust row yet
 (`frontend/src/auth/pages/LoginScreen.tsx:99`). It is a fallback, not a brand.
 
@@ -56,12 +56,21 @@ Seeded by the `after_migrate` hook (`erp/hooks.py:33` → `erp/seed.py:126-131`)
 `is_standard`, so a shipped row may be relabelled or re-parented but not deleted
 (`institution_type.py:44-56`). Adding a Dental college is an INSERT, not a deploy.
 
-**What genuinely differs between them today is small, and that is the design.** One capability
-exists — `requires_department`, resolved nearest-first up the tree by
-`resolve_capability` (`institution_type.py:75-97`) — and two shipped Field Policies: `School` hides
-the four entrance fields and relabels previous education (`erp/seed.py:94-108`), `Professional`
-floors the cut-off and rank at zero (`erp/seed.py:109-122`). `Arts & Science` inherits **neither**,
-because it is a sibling of both, and that hole is the subject of
+**What genuinely differs between them today is small, and that is the design.** The type carries a
+short and growing list of **capabilities** — blank-first `Select` fields in the
+`capability_section` of `institution_type.json`, blank meaning *inherit from the parent type* —
+resolved nearest-first up the tree by `resolve_capability` (`institution_type.py:75-97`), with
+`resolve_capability_for_institution` (`institution_type.py:100`) as the entry point for the callers
+that hold an institution rather than a type. On disk today: `requires_department`,
+`requires_application_fee` and `requires_admission_interaction`. Only the first carries **seeded
+values** (`erp/seed.py:39-56`); the other two are declared and unstated everywhere, so each resolves
+to the default its own field description names. Check the JSON before writing a rule against this
+list — it is where the current slice is adding.
+
+Beyond capabilities, two shipped Field Policies: `School` hides the four entrance fields and
+relabels previous education (`erp/seed.py:94-108`), `Professional` floors the cut-off and rank at
+zero (`erp/seed.py:109-122`). `Arts & Science` inherits **neither**, because it is a sibling of both,
+and that hole is the subject of
 [features/arts-science-admission.md](features/arts-science-admission.md).
 
 Everything else that differs is a *journey*, not a schema, and each is written down rather than
@@ -69,9 +78,9 @@ restated here:
 
 | Type | Journey doc | The difference in one line |
 |---|---|---|
-| School (K-12) | [school-admission.md](features/school-admission.md) | No counselling body, no entrance exam, a class under no department, a fee that must be waivable |
-| Arts & Science | [arts-science-admission.md](features/arts-science-admission.md) | The institution computes merit itself; nothing in the app computes or records merit |
-| Professional, management seat | [professional-management-quota-admission.md](features/professional-management-quota-admission.md) | The institution gives the seat itself, under a type whose default assumes an external allotment |
+| School (K-12) | [school-admission](features/school-admission.md) | No counselling body, no entrance exam, a class under no department, a waivable fee |
+| Arts & Science | [arts-science-admission](features/arts-science-admission.md) | The institution computes merit itself; nothing in the app computes or records merit |
+| Professional, management seat | [professional-management-quota-admission](features/professional-management-quota-admission.md) | The institution gives the seat itself, under a type whose default assumes an allotment |
 
 ## 3. The vocabulary map
 
@@ -84,27 +93,27 @@ invented.
 
 | App term | A school reads it as | A college reads it as | Grounded in |
 |---|---|---|---|
-| `Programme` | a Class / Standard ("Class 10") | a Degree + Branch (`BE-CSE`, `BCOM`, `MBA`) | `programme.json` `programme_code` description; `seed_school_admission_config.py:5-6` |
+| `Programme` | a Class / Standard ("Class 10") | a Degree + Branch (`BE-CSE`, `BCOM`, `MBA`) | `programme.json` `programme_code` desc; `seed_school_admission_config.py:6-7` |
 | `Programme.degree` | *blank* — a school awards no degree | B.E., B.Tech., MBA, MBBS | `programme.json` `degree` description |
 | `Programme Level` | Primary / Middle / Secondary / Higher Secondary | Undergraduate / Postgraduate | `erp/seed.py:62-69` |
 | `Academic Structure.term_label` | "Term", 3 per year | "Semester", 2 per year | `erp/seed.py:73-86`, comment at `:71-72` |
-| `Department` | **absent** — a class sits under none | CSE, Commerce, Physics | `erp/seed.py:41` (`requires_department: "No"`); `institution_type.py:100-114` |
-| `Admission Enquiry` | the registration a parent makes | the walk-in lead a counsellor owns | `admission_enquiry.json` `status` pipeline |
+| `Department` | **absent** — a class sits under none | CSE, Commerce, Physics | `erp/seed.py:41` (`requires_department: "No"`); `institution_type.py:117` |
+| `Admission Enquiry` | the registration a parent makes | the walk-in lead a counsellor owns | `school-admission.md` §3 journey 1 |
 | `Admission Enquiry.programme` | the class asked for | the branch asked for — labelled "Preferred Programme" | `admission_enquiry.json` `programme` label |
 | `Admission Enquiry.programme_level` | Primary / Secondary | UG / PG | that field's own description |
-| Entrance & Merit section | not collected (hidden by policy) | TNEA / NEET / CAT exam, rank, cut-off | `erp/seed.py:101-105`; section description in `admission_enquiry.json` |
+| Entrance & Merit section | not collected (hidden by policy) | TNEA / NEET / CAT exam, rank, cut-off | `erp/seed.py:101-105`; that section's own desc |
 | `previous_education` | "Previous School Record" | prior qualification + board/university | `erp/seed.py:106` (`label_override`) |
-| `Programme Intake.min_age` / `age_as_on` | the entry condition — age as on 1 June | ordinarily blank | `programme_intake.json` descriptions; enforced at `programme_intake.py:92-127` |
+| `Programme Intake.min_age` / `age_as_on` | the entry condition — age as on 1 June | ordinarily blank | `programme_intake.json` descs; enforced at `programme_intake.py:86-129` |
 | `Programme Intake.min_percentage` | rarely used | the marks bar — **enforced nowhere today** | `professional-management-quota-admission.md` §4.3 |
 | `Student` | pupil on the roll | student on the register | `student.json`; both are one row, one word |
-| `Admission Type` | Regular / Transfer / Readmission | Regular / Lateral Entry / Transfer / Readmission | `admission_type.json` `type_code` description |
+| `Admission Type` | Regular / Transfer / Readmission *(inferred — a class has no diploma entry)* | Regular / Lateral Entry / Transfer / Readmission | `admission_type.json` `type_code` desc |
 | `admission_route` | Direct (a school gives its own seats) | Government Quota / Management Quota / Direct | `admission_application.json` `admission_route` |
 | `Institution` | "the school" (GIS) | "the college" (GCT, GCE) | `institution.json` `institution_code` description |
 
 Two things this table is **not**:
 
 - It is not a licence to relabel freely. `Field Policy.REPORTING_SPINE`
-  (`erp/master/doctype/field_policy/field_policy.py:45-59`) refuses a `label_override` on the columns
+  (`erp/master/doctype/field_policy/field_policy.py:45-55`) refuses a `label_override` on the columns
   a trust-wide rollup reads — `institution`, `trust`, `status`/`application_state`, the date, the
   programme. Relabelling `status` would make one institution's funnel incomparable with the next.
   See [CONFIGURATION.md §7](CONFIGURATION.md#7-the-bound-on-configuration-the-trust-must-still-be-able-to-count).

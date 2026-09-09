@@ -17,8 +17,12 @@ that gap; the manager dashboard sidesteps it by computing overdue live from `nex
 
 from frappe.utils import getdate
 
-# Terminal stages — the lead is decided, so follow-up scheduling no longer applies.
-CLOSED_STATUSES = frozenset({"Admitted", "Rejected", "Dropped"})
+from erp.admission.stages import CLOSED_STATUSES
+
+# Terminal stages — the lead is decided, so follow-up scheduling no longer applies. Derived from
+# the stage table in `erp/admission/stages.py` rather than restated, so a new terminal stage closes
+# follow-up without anyone remembering to edit this line.
+__all__ = ("CLOSED_STATUSES", "derive_follow_up_state")
 
 
 def derive_follow_up_state(status: str, next_follow_up, follow_up_count: int) -> str:

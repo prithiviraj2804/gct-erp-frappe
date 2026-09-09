@@ -87,7 +87,7 @@ implementation. For each allowed module it takes the first `public`, non-hidden 
 **`get_module_menu(module)`** (`erp/api/navigation.py:144-217`) returns the permission-filtered menu
 for one module. Deliberately *not* Frappe's `get_workspaces()`/`get_desktop_page()`, which return
 Desk-shaped payloads (content blocks, charts, number cards, onboarding) that would only be discarded
-and yield no SPA routes (`:147-151`). It:
+and yield no SPA routes (`:147-149`). It:
 
 - refuses a module outside `get_allowed_modules()` (`:158-160`);
 - reads the Workspace with `ignore_permissions=True` on purpose — Workspace's own DocPerms gate the
@@ -118,7 +118,7 @@ produces underscores, which are Python identifiers rather than URL segments.
 
 | Layer | File | Role |
 |---|---|---|
-| Fetch | `frontend/src/lib/navigation.ts:9-16` | `fetchModuleRail` / `fetchModuleMenu`, and the query keys |
+| Fetch | `frontend/src/lib/navigation.ts:9-17` | `fetchModuleRail` / `fetchModuleMenu`, and the query keys |
 | Types | `frontend/src/types/navigation.ts` | `RailModule`, `MenuGroup`, `MenuItem`, `ModuleMenu` |
 | Cache | `frontend/src/hooks/use-navigation.ts:9-83` | `useModuleRail`, `useModuleMenu`, `usePrefetchModuleMenus`, `useAllModuleMenus` |
 
@@ -139,22 +139,22 @@ indistinguishable, correctly, from a typo. Costs no extra request; both queries 
 
 `frontend/src/pages/doctype/registry.ts` is the one seam between the generic renderer and a doctype
 that needs something it cannot say. A module contributes one table,
-`frontend/src/modules/<name>/screens.ts`, registered in `MODULE_TABLES` (`registry.ts:101-105`).
+`frontend/src/modules/<name>/screens.ts`, registered in `MODULE_TABLES` (`doctype/registry.ts:101-105`).
 Three exist today: `master`, `gate`, `admission`.
 
 - Collisions are **surfaced, not resolved**: a `console.warn` in DEV, first registration wins in
-  production (`registry.ts:115-130`). Two modules claiming one doctype is a real possibility, since a
+  production (`doctype/registry.ts:115-130`). Two modules claiming one doctype is a real possibility, since a
   workspace may link to another module's doctype.
 - Four escalating levels — absent, data literals (`statusTones` / `list` / `record`), a `slots`
-  component, or a whole `ListScreen`/`RecordScreen` (`registry.ts:33-38`). Level 3 still renders
+  component, or a whole `ListScreen`/`RecordScreen` (`doctype/registry.ts:33-38`). Level 3 still renders
   inside `RequireAuth` → `AppShell` on the generic route, so a bespoke screen cannot lose its
   navigation, breadcrumbs or permission gate by being bespoke.
-- The rule that keeps it honest (`registry.ts:29-31`): **an override may only override a default the
+- The rule that keeps it honest (`doctype/registry.ts:26-29`): **an override may only override a default the
   renderer already produces; it may never supply something the doctype JSON could have said.** A
   column order or a label belongs in the schema, where Desk and the SPA read the same answer.
 
 Status words declared here are cross-checked against the doctype JSON by
-`erp/test_conventions.py:302-424` — a literal duplicated across a JSON, Python and TypeScript drifts
+`erp/test_conventions.py:302-438` — a literal duplicated across a JSON, Python and TypeScript drifts
 silently, and it already had: `'Application Submit'` against a schema saying
 `'Application Submitted'`, which made every submitted lead render with no tone and no current step.
 
@@ -204,7 +204,7 @@ Everything else is server data.
   with the list. Child tables are exempt — they are edited inside their parent. Written after
   `Institution Type` shipped without a link, and it immediately found `Admission Follow-up` missing
   one since the slice that created it.
-- **Every declared status literal exists in the schema** (`erp/test_conventions.py:302-424`), which is
+- **Every declared status literal exists in the schema** (`erp/test_conventions.py:302-438`), which is
   what stops the registry from drifting from the doctype JSON.
 
 ## 5. What `erp/config/` is not

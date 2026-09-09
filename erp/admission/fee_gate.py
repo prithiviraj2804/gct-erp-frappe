@@ -11,31 +11,37 @@ Admission Follow-up's `new_status` path, which uses `frappe.db.set_value` and by
 It is no longer called directly by those writers: `erp/admission/pipeline.py` composes this rule
 with the document and seat gates into a single `assert_status_transition`, and that is what a
 status-writer calls. This module keeps the fee rule itself; add a new rule to `pipeline.py`.
+
+**Which stages the fee gates is no longer stated here.** It is one column of the stage table in
+`erp/admission/stages.py`, so "what does this stage require" has one answer instead of three
+written from three directions. `PIPELINE` and `GATE_ENTRY_STATUS` are re-exported for the callers
+that already import them from this module; the table is the source.
 """
 
 import frappe
 from frappe import _
 
-# The pipeline in order. Rejected/Dropped are off-ramps, not positions on this line.
-PIPELINE = ("New", "Contacted", "Visited", "Application Submitted", "Documents Verified", "Admitted")
+from erp.admission.stages import FEE, GATE_ENTRY_STATUS, PIPELINE, required_gates
 
-# The first stage the fee gates, and everything past it.
-GATE_ENTRY_STATUS = "Application Submitted"
-GATED_STATUSES = frozenset({"Application Submitted", "Documents Verified", "Admitted"})
+__all__ = ("GATE_ENTRY_STATUS", "PIPELINE", "advance_target_on_payment", "assert_fee_paid_for_status")
 
 
-def assert_fee_paid_for_status(new_status, application_fee_paid, previous_status=None):
+def assert_fee_paid_for_status(new_status, application_fee_paid, previous_status=None, *, institution=None):
 	"""Throw if a lead is being moved *into* the gated region without its fee paid.
 
 	Only an entry across the boundary is gated — a lead already inside it (e.g. a payment was later
 	cancelled, leaving it Paid-less at "Application Submitted") can still be saved and edited; the
 	gate is about advancing, not about re-validating history. `previous_status=None` means a brand-new
 	record, which is treated as coming from outside the gate.
+
+	`institution` decides whether the gate is part of this institution's pipeline at all — a
+	government arts college charges nothing for the form. Omitted, the gate applies, which is the
+	fail-closed answer and exactly what every existing caller got.
 	"""
-	entering_gate = new_status in GATED_STATUSES and (
-		previous_status is None or previous_status not in GATED_STATUSES
-	)
-	if entering_gate and not application_fee_paid:
+	if FEE not in required_gates(new_status, previous_status, institution):
+		return
+
+	if not application_fee_paid:
 		frappe.throw(
 			_("The application fee must be collected before this enquiry can move to {0}.").format(
 				frappe.bold(new_status)

@@ -45,6 +45,13 @@
   "allotment_date",
   "documents_section",
   "documents",
+  "interaction_section",
+  "interaction_on",
+  "interaction_mode",
+  "interacted_by",
+  "column_break_interaction",
+  "interaction_outcome",
+  "interaction_remarks",
   "offer_section",
   "offer_issued_on",
   "offer_expires_on",
@@ -330,6 +337,46 @@
    "fieldtype": "Table",
    "label": "Documents",
    "options": "Admission Application Document"
+  },
+  {
+   "fieldname": "interaction_section",
+   "fieldtype": "Section Break",
+   "label": "Admission Interaction",
+   "description": "The meeting or assessment a school holds before offering a place. Gated per institution type by Institution Type.requires_admission_interaction"
+  },
+  {
+   "fieldname": "interaction_on",
+   "fieldtype": "Date",
+   "label": "Interaction On"
+  },
+  {
+   "fieldname": "interaction_mode",
+   "fieldtype": "Select",
+   "label": "Mode",
+   "options": "\nIn Person\nPhone\nVideo",
+   "description": "Blank means unstated, not a default — see the tri-state rule in docs/DATA-MODEL.md"
+  },
+  {
+   "fieldname": "interacted_by",
+   "fieldtype": "Link",
+   "label": "Conducted By",
+   "options": "Staff"
+  },
+  {
+   "fieldname": "column_break_interaction",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "interaction_outcome",
+   "fieldtype": "Select",
+   "label": "Outcome",
+   "options": "\nRecommended\nNot Recommended",
+   "description": "Only Recommended clears the interaction gate. Not Recommended is refused separately, because the office's next step differs"
+  },
+  {
+   "fieldname": "interaction_remarks",
+   "fieldtype": "Small Text",
+   "label": "Remarks"
   },
   {
    "fieldname": "offer_section",

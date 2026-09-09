@@ -24,6 +24,9 @@ of `standard_key` rather than of the name, because for Institution Type the name
 See `_ensure`.
 """
 
+import hashlib
+import json
+
 import frappe
 
 # The kinds of institution a trust runs, as a tree. Ordered parents-first because each row names its
@@ -38,7 +41,15 @@ import frappe
 # no data migration: 'School', 'Arts & Science' and 'Engineering' are already exactly these rows.
 INSTITUTION_TYPES = (
 	{"type_name": "All", "is_group": 1},
-	{"type_name": "School", "parent_institution_type": "All", "requires_department": "No"},
+	{
+		"type_name": "School",
+		"parent_institution_type": "All",
+		"requires_department": "No",
+		# A school meets the family before offering a place. Stated here rather than left to
+		# inherit, because the app-wide default is No: an institution admitting on an external
+		# counselling allotment has no such step.
+		"requires_admission_interaction": "Yes",
+	},
 	{"type_name": "Arts & Science", "parent_institution_type": "All", "requires_department": "Yes"},
 	{
 		"type_name": "Professional",
@@ -120,6 +131,100 @@ FIELD_POLICIES = (
 			{"fieldname": "entrance_rank", "min_value": "0"},
 		),
 	},
+	# --- Admission Application ---------------------------------------------------------
+	#
+	# The document the app exists to configure, and until now the one nothing configured. It carries
+	# `counselling_outcome`, `allotment_reference`, `allotment_date` and the four entrance fields —
+	# every one of them meaningless in a school, all of them on a school's form.
+	#
+	# Note what is *not* here. `admission_route` is `reqd: 1`, so `validate_not_statically_required`
+	# refuses to govern it and a policy cannot supply its default; that default belongs on the
+	# Institution Type tree and arrives with the `Admission Route` master. `application_state` is in
+	# `REPORTING_SPINE` and may not be touched at all. Both refusals are correct, and both are why
+	# `docs/CONFIGURATION.md` §6 is marked target-state rather than implemented.
+	{
+		"document_type": "Admission Application",
+		"scope_institution_type": "School",
+		"description": (
+			"A school admits on its own assessment and the previous school's record. There is no "
+			"entrance exam and no external counselling body, so the entrance and allotment fields "
+			"are not part of a school application — and a form that asks for them invites an "
+			"operator to fill one in, which is how a school application came to sit in Awaiting "
+			"Counselling for a body that does not exist. The interaction fields are deliberately "
+			"NOT Required here: Field Policy's Required binds at insert, and the interview happens "
+			"after the application is raised. That is the interaction *gate*'s job — see below."
+		),
+		"rules": (
+			{"fieldname": "entrance_exam", "requirement": "Hidden"},
+			{"fieldname": "entrance_registration_no", "requirement": "Hidden"},
+			{"fieldname": "entrance_score", "requirement": "Hidden"},
+			{"fieldname": "entrance_rank", "requirement": "Hidden"},
+			{"fieldname": "cutoff_marks", "requirement": "Hidden"},
+			{"fieldname": "counselling_outcome", "requirement": "Hidden"},
+			{"fieldname": "allotment_reference", "requirement": "Hidden"},
+			{"fieldname": "allotment_date", "requirement": "Hidden"},
+		),
+	},
+	{
+		"document_type": "Admission Application",
+		"scope_institution_type": "Professional",
+		"description": (
+			"Engineering, medical, law and the rest admit on an entrance rank, so those fields are "
+			"part of the application and a cut-off or rank cannot be negative. Inherited by every "
+			"type under Professional. The interaction fields are hidden: a seat allotted by an "
+			"external counselling body is not decided by an interview."
+		),
+		"rules": (
+			{"fieldname": "cutoff_marks", "min_value": "0"},
+			{"fieldname": "entrance_rank", "min_value": "0"},
+			{"fieldname": "entrance_score", "min_value": "0"},
+			{"fieldname": "interaction_on", "requirement": "Hidden"},
+			{"fieldname": "interaction_mode", "requirement": "Hidden"},
+			{"fieldname": "interacted_by", "requirement": "Hidden"},
+			{"fieldname": "interaction_outcome", "requirement": "Hidden"},
+			{"fieldname": "interaction_remarks", "requirement": "Hidden"},
+		),
+	},
+	# Arts & Science hangs off `All`, so it inherited *neither* policy above and its form was the
+	# raw professional superset — entrance exam, rank and cut-off all visible and unbounded, with
+	# nothing to notice it because no test instantiated an institution of this type. It admits on
+	# qualifying-exam marks and, for a government or community quota seat, on a state allotment, so
+	# the entrance fields go and the allotment fields stay.
+	{
+		"document_type": "Admission Application",
+		"scope_institution_type": "Arts & Science",
+		"description": (
+			"An arts & science college admits on the marks of the qualifying examination, not on an "
+			"entrance exam — but a government or community quota seat is allotted by a state body, "
+			"so the allotment fields remain part of the application."
+		),
+		"rules": (
+			{"fieldname": "entrance_exam", "requirement": "Hidden"},
+			{"fieldname": "entrance_registration_no", "requirement": "Hidden"},
+			{"fieldname": "entrance_score", "requirement": "Hidden"},
+			{"fieldname": "entrance_rank", "requirement": "Hidden"},
+			{"fieldname": "cutoff_marks", "requirement": "Hidden"},
+			{"fieldname": "interaction_on", "requirement": "Hidden"},
+			{"fieldname": "interaction_mode", "requirement": "Hidden"},
+			{"fieldname": "interacted_by", "requirement": "Hidden"},
+			{"fieldname": "interaction_outcome", "requirement": "Hidden"},
+			{"fieldname": "interaction_remarks", "requirement": "Hidden"},
+		),
+	},
+	{
+		"document_type": "Admission Enquiry",
+		"scope_institution_type": "Arts & Science",
+		"description": (
+			"The enquiry counterpart: no entrance exam here either, so the type that inherited "
+			"neither shipped policy no longer collects fields it has no use for."
+		),
+		"rules": (
+			{"fieldname": "entrance_exam", "requirement": "Hidden"},
+			{"fieldname": "entrance_registration_no", "requirement": "Hidden"},
+			{"fieldname": "cutoff_marks", "requirement": "Hidden"},
+			{"fieldname": "entrance_rank", "requirement": "Hidden"},
+		),
+	},
 )
 
 
@@ -149,7 +254,9 @@ def _ensure(doctype: str, key: str, rows: tuple[dict, ...], standard: bool = Fal
 	"""
 	for row in rows:
 		if standard:
-			if _standard_row(doctype, row[key]):
+			present = _standard_row(doctype, row[key])
+			if present:
+				_backfill_unstated(doctype, present, row)
 				continue
 		elif frappe.db.exists(doctype, row[key]):
 			continue
@@ -170,9 +277,56 @@ def _ensure(doctype: str, key: str, rows: tuple[dict, ...], standard: bool = Fal
 					{"is_standard": 1, "standard_key": row[key]},
 					update_modified=False,
 				)
+				_backfill_unstated(doctype, row[key], row)
 				continue
 
 		frappe.get_doc({"doctype": doctype, **values}).insert(ignore_permissions=True)
+
+
+# Keys that say *where* a standard row sits rather than what it does. An operator may relabel a
+# type and re-parent it — `docs/CONFIGURATION.md` §2 sanctions both — so these are never rewritten,
+# and neither is the key itself.
+_STRUCTURAL_KEYS = frozenset(
+	{
+		"type_name",
+		"parent_institution_type",
+		"is_group",
+		"level_code",
+		"level_name",
+		"level_order",
+		"structure_code",
+		"structure_name",
+	}
+)
+
+
+def _backfill_unstated(doctype: str, name: str, row: dict) -> None:
+	"""Supply a shipped capability the row currently leaves **blank**, and nothing else.
+
+	The problem this solves is the one `_ensure_field_policies` solves with a digest, in the form it
+	takes for a vocabulary row: adding a capability to a shipped type in code reached a fresh site
+	and no existing one, silently. `requires_admission_interaction` was added to `School` and every
+	already-migrated site kept a school with no interaction gate — found by a test asserting the
+	gate applied, which it did not.
+
+	A digest is the wrong instrument here, because these rows are *meant* to be edited: an operator
+	may relabel a type, re-parent it, and set its capabilities. So the rule is narrower and needs no
+	fingerprint. **Blank means unstated** — the tri-state rule in `docs/DATA-MODEL.md` — so writing
+	a shipped value into a blank column overrides no decision anybody made; it supplies the default
+	the row would have had if it were being inserted today. A column the operator has actually
+	answered, including with an explicit "No", is never touched.
+
+	The consequence worth naming: an operator who wants a shipped capability *unset* cannot express
+	that by clearing it, because clearing it means "inherit" and the next migrate will fill it in
+	again. They set the value they want instead, which is what the `Select` is for.
+	"""
+	unstated = {
+		field: value
+		for field, value in row.items()
+		if field not in _STRUCTURAL_KEYS and not frappe.db.get_value(doctype, name, field)
+	}
+	if unstated:
+		frappe.db.set_value(doctype, name, unstated, update_modified=False)
 
 
 def _standard_row(doctype: str, standard_key: str) -> str | None:
@@ -180,37 +334,150 @@ def _standard_row(doctype: str, standard_key: str) -> str | None:
 	return frappe.db.get_value(doctype, {"standard_key": standard_key}, "name")
 
 
-def _ensure_field_policies():
-	"""Insert any shipped Field Policy that is absent, leaving an operator's edits alone.
+# The rule properties a shipped policy states. The digest is taken over these, so an operator who
+# has changed any of them is recognised as having tuned the policy.
+_RULE_PROPERTIES = (
+	"fieldname",
+	"requirement",
+	"label_override",
+	"description_override",
+	"display_order",
+	"min_value",
+	"max_value",
+)
 
-	Keyed on the autoname — `{document_type}-{scope}` — so a policy an operator
-	has since tuned is recognised as present and never overwritten. Marked `is_standard`, which
-	stops it being deleted: a deleted standard policy would reappear on the next migrate, and in
-	the meantime the form it governs would quietly revert to collecting everything.
+
+def _ensure_field_policies():
+	"""Assert every shipped Field Policy, and re-assert one whose *code* has changed.
+
+	Three cases, and the third is the one this used to get wrong.
+
+	**Absent** — insert it, stamped with `standard_key` (what it shipped as) and `shipped_digest`
+	(a fingerprint of its rules as shipped).
+
+	**Present and unchanged in code** — leave it entirely alone.
+
+	**Present, and the shipped rules have since changed in code** — replace them *only if the
+	operator has not touched them*, which the digest is what makes answerable. Before this, "only
+	absence is corrected" meant a shipped policy was frozen at whatever it looked like the first
+	time the site migrated: correcting a mistake in a shipped rule could never reach an existing
+	site, and no error said so. It was found the hard way inside one session — a School application
+	policy shipped with `interaction_outcome` Required, which made `start_application` unable to
+	raise a school application at all, and editing the seed fixed nothing until the rows were
+	deleted by hand through a script that had to bypass `assert_not_standard` to do it.
+
+	The digest is also what keeps the original promise. An operator who has tuned a shipped policy
+	has changed its rules, so its current digest no longer matches what shipped, and the row is left
+	alone — the same guarantee as before, now stated as a comparison rather than as a refusal to
+	look.
+
+	Keyed on `standard_key` rather than on the autoname, for the reason `_ensure` gives: the name
+	embeds the scope as it was at insert time and `autoname` does not re-run on rename, so
+	relabelling an Institution Type would otherwise produce a second policy at the same scope.
 	"""
 	for policy in FIELD_POLICIES:
 		# Resolve the scope through `standard_key`, so a relabelled Institution Type keeps the
-		# policy it already has instead of being handed a second one. Keying on the autoname —
-		# `{document_type}-{scope}` — could not do that: the name embeds the scope as it was at
-		# insert time, and `autoname` does not re-run on rename.
+		# policy it already has instead of being handed a second one.
 		scope = _standard_row("Institution Type", policy["scope_institution_type"])
 		if not scope:
 			continue
-		if frappe.db.exists(
-			"Field Policy",
-			{"document_type": policy["document_type"], "scope_institution_type": scope},
-		):
+
+		key = f"{policy['document_type']}::{policy['scope_institution_type']}"
+		digest = _rules_digest(policy["rules"])
+		existing = frappe.db.get_value(
+			"Field Policy", {"standard_key": key}, ["name", "shipped_digest"], as_dict=True
+		)
+
+		if not existing:
+			existing = _adopt_field_policy(policy, scope, key, digest)
+
+		if not existing:
+			_insert_field_policy(policy, scope, key, digest)
 			continue
 
-		doc = frappe.get_doc(
-			{
-				"doctype": "Field Policy",
-				"document_type": policy["document_type"],
-				"scope_institution_type": scope,
-				"description": policy["description"],
-				"enabled": 1,
-				"is_standard": 1,
-				"rules": [dict(rule) for rule in policy["rules"]],
-			}
-		)
-		doc.insert(ignore_permissions=True)
+		if existing.shipped_digest == digest:
+			continue
+
+		doc = frappe.get_doc("Field Policy", existing.name)
+		if _rules_digest(doc.rules) != existing.shipped_digest:
+			# Tuned by an operator. Their version wins, and the digest is deliberately left stale so
+			# that this stays true on every future migrate.
+			continue
+
+		doc.description = policy["description"]
+		doc.rules = []
+		for rule in policy["rules"]:
+			doc.append("rules", dict(rule))
+		doc.shipped_digest = digest
+		doc.save(ignore_permissions=True)
+
+
+def _adopt_field_policy(policy: dict, scope: str, key: str, digest: str):
+	"""Claim a shipped policy that predates `standard_key`, or return None if there is none.
+
+	Self-healing rather than a patch, for the reason this whole module is a hook: a patch runs once
+	and every site that migrated before it was written stays broken.
+
+	`shipped_digest` is set to the digest of the rules the **code** ships, in both branches, and
+	that single choice gets the conservative answer right without having to guess at history. If
+	the row's rules match what ships, current equals stored and it stays in sync with future code
+	changes. If they do not — an operator tuned it, or it shipped under older code — current will
+	never equal stored, so it reads as tuned and is left alone from here on. A shipped correction
+	reaching an untouched row is worth having; one overwriting an operator's edit is not.
+	"""
+	name = frappe.db.get_value(
+		"Field Policy",
+		{
+			"document_type": policy["document_type"],
+			"scope_institution_type": scope,
+			"standard_key": ["in", ("", None)],
+		},
+		"name",
+	)
+	if not name:
+		return None
+
+	frappe.db.set_value(
+		"Field Policy",
+		name,
+		{"is_standard": 1, "standard_key": key, "shipped_digest": digest},
+		update_modified=False,
+	)
+	return frappe._dict(name=name, shipped_digest=digest)
+
+
+def _insert_field_policy(policy: dict, scope: str, key: str, digest: str):
+	frappe.get_doc(
+		{
+			"doctype": "Field Policy",
+			"document_type": policy["document_type"],
+			"scope_institution_type": scope,
+			"description": policy["description"],
+			"enabled": 1,
+			"is_standard": 1,
+			"standard_key": key,
+			"shipped_digest": digest,
+			"rules": [dict(rule) for rule in policy["rules"]],
+		}
+	).insert(ignore_permissions=True)
+
+
+def _rules_digest(rules) -> str:
+	"""A fingerprint of a policy's rules, stable across shipped dicts and stored child rows.
+
+	Order-insensitive — the merge is per property and a policy refuses two rules for one field, so
+	the order rules are written in carries no meaning and reordering them is not an edit.
+
+	Blank, None and a `display_order` of zero all normalise to the same thing, which is the
+	tri-state rule (`docs/DATA-MODEL.md`) applied to comparison: those are the *same* statement,
+	namely no statement. Note that a `min_value` of `"0"` does not normalise away — it is stored as
+	Data precisely so that a bound of zero is distinguishable from no bound, and `"0" == 0` is
+	False in Python, which is what keeps it distinguishable here too.
+	"""
+	normalised = sorted(tuple(_rule_value(rule, prop) for prop in _RULE_PROPERTIES) for rule in rules)
+	return hashlib.sha256(json.dumps(normalised).encode()).hexdigest()[:32]
+
+
+def _rule_value(rule, prop: str) -> str:
+	value = rule.get(prop)
+	return "" if value in (None, "", 0) else str(value)

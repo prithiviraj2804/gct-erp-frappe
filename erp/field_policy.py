@@ -52,6 +52,7 @@ REVERTING = frozenset({HIDDEN, READ_ONLY})
 GOVERNED_DOCTYPES = frozenset(
 	{
 		"Admission Enquiry",
+		"Admission Application",
 	}
 )
 

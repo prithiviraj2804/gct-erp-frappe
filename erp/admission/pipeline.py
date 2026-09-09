@@ -39,24 +39,16 @@ from erp.admission.application_state import (
 	required_documents_verified,
 )
 from erp.admission.fee_gate import assert_fee_paid_for_status
+from erp.admission.stages import ADMISSION, DOCUMENTS, INTERACTION, required_gates
 
-# Stages that assert the applicant's certificates have been seen.
-DOCUMENT_GATED_STATUSES = frozenset({"Documents Verified", "Admitted"})
-
-# The single stage that consumes a seat and produces a student.
-ADMISSION_GATED_STATUSES = frozenset({"Admitted"})
+# The gates that are answered by an *application* rather than by the lead. The fee is the lead's
+# own fact — `Admission Enquiry.application_fee_paid` — so it is not here; everything else needs a
+# document to interrogate, which is why reaching any of these requires an application to exist.
+APPLICATION_GATES = frozenset({INTERACTION, DOCUMENTS, ADMISSION})
 
 # Student statuses that hold a seat. Mirrors `Student.OCCUPYING_STATUSES`; kept as a query filter
 # here so a withdrawal slice frees seats by flipping a status, with no change to this module.
 OCCUPYING_STATUSES = ("Active",)
-
-
-def _entering(new_status: str, previous_status: str | None, region: frozenset) -> bool:
-	"""Whether this transition crosses *into* `region` from outside it.
-
-	`previous_status=None` means a brand-new record, treated as coming from outside.
-	"""
-	return new_status in region and (previous_status is None or previous_status not in region)
 
 
 def seats_taken(programme_intake: str, *, exclude_enquiry: str | None = None) -> int:
@@ -103,11 +95,12 @@ def assert_status_transition(enquiry, new_status, previous_status=None, *, appli
 	`enquiry` is the lead's name; `application_fee_paid` is passed in rather than read back because
 	a brand-new enquiry has no stored row to read it from.
 	"""
-	assert_fee_paid_for_status(new_status, application_fee_paid, previous_status)
+	institution = frappe.db.get_value("Admission Enquiry", enquiry, "institution")
 
-	needs_documents = _entering(new_status, previous_status, DOCUMENT_GATED_STATUSES)
-	needs_admission = _entering(new_status, previous_status, ADMISSION_GATED_STATUSES)
-	if not (needs_documents or needs_admission):
+	assert_fee_paid_for_status(new_status, application_fee_paid, previous_status, institution=institution)
+
+	required = required_gates(new_status, previous_status, institution) & APPLICATION_GATES
+	if not required:
 		return
 
 	applications = applications_for(enquiry)
@@ -121,7 +114,7 @@ def assert_status_transition(enquiry, new_status, previous_status=None, *, appli
 
 	objections = []
 	for application in applications:
-		objection = _objection(application, enquiry, new_status, needs_documents, needs_admission)
+		objection = _objection(application, enquiry, new_status, required)
 		# One route through is enough. The lead's status is its furthest progress, so a second
 		# application still waiting on a counselling round it may never win must not hold it back.
 		if objection is None:
@@ -147,30 +140,33 @@ def assert_application_clears(application, new_status: str, *, application_fee_p
 	from outside every gated region", so every gate runs rather than only the advance-only subset a
 	plain save gets.
 	"""
-	assert_fee_paid_for_status(new_status, application_fee_paid, None)
+	assert_fee_paid_for_status(new_status, application_fee_paid, None, institution=application.institution)
 
 	objection = _objection(
 		application,
 		application.admission_enquiry,
 		new_status,
-		_entering(new_status, None, DOCUMENT_GATED_STATUSES),
-		_entering(new_status, None, ADMISSION_GATED_STATUSES),
+		required_gates(new_status, None, application.institution) & APPLICATION_GATES,
 	)
 	if objection:
 		frappe.throw(objection.message, title=objection.title)
 
 
-def _objection(application, enquiry, new_status, needs_documents, needs_admission) -> "_Objection | None":
+def _objection(application, enquiry, new_status, required: frozenset[str]) -> "_Objection | None":
 	"""What stands between this one application and `new_status`, or None if nothing does.
 
-	Order matters to whoever reads the error. The allotment outcome is checked first because it is
-	the one thing the office cannot remedy: an applicant counselling sent to another institution is
-	not going to be admitted here however many certificates are produced, so telling them to go and
-	verify documents first would send them down a road that ends nowhere.
+	`required` is the set of gates that apply — to this transition, at this institution. A gate not
+	in it is not part of this institution's pipeline and is not asked: a government arts college is
+	not asked for a fee, and an engineering college admitting on a counselling allotment is not
+	asked whether it interviewed the family.
+
+	Order matters to whoever reads the error, and it is deliberate rather than alphabetical. The
+	seat-already-taken and allotment objections come first because they are the two the office
+	cannot remedy: an applicant counselling sent to another institution is not going to be admitted
+	here however many certificates are produced, so telling them to go and verify documents first
+	would send them down a road that ends nowhere.
 	"""
-	if needs_admission:
-		# Before the allotment, because it is the one objection no amount of counselling or
-		# paperwork can remedy: the seat has already been taken, on another application.
+	if ADMISSION in required:
 		objection = already_admitted_objection(application)
 		if objection:
 			return objection
@@ -179,12 +175,17 @@ def _objection(application, enquiry, new_status, needs_documents, needs_admissio
 		if objection:
 			return objection
 
-	if needs_documents:
+	if INTERACTION in required:
+		objection = interaction_objection(application, new_status)
+		if objection:
+			return objection
+
+	if DOCUMENTS in required:
 		objection = documents_objection(application, new_status)
 		if objection:
 			return objection
 
-	if needs_admission:
+	if ADMISSION in required:
 		objection = admissibility_objection(application, enquiry)
 		if objection:
 			return objection
@@ -269,6 +270,44 @@ def already_admitted_objection(application) -> _Objection | None:
 			"several applications and be admitted on one of them; withdraw that admission before "
 			"recording another."
 		).format(frappe.bold(other.student), frappe.bold(other.name)),
+	)
+
+
+def interaction_objection(application, new_status) -> _Objection | None:
+	"""The family must have been met, and the outcome recorded, before a place is offered.
+
+	The gate a school has and an engineering college does not. A K-12 admission turns on a
+	conversation with the parents and, above the entry class, a readiness assessment; an institution
+	admitting on an external counselling allotment has no such step and never will.
+
+	It is here rather than in a school-only module because that is the whole point of the stage
+	table: a gate is a row, its applicability is a capability on the Institution Type tree, and
+	adding one costs an entry in `GATES`, a `Select` on the type, and this function. No branch on
+	`institution_type` anywhere — `_objection` never asks what kind of institution this is, only
+	which gates it was handed.
+
+	"Not Recommended" is refused as firmly as an unrecorded interaction, and separately, because the
+	two are different facts and the office's next step differs: one needs the meeting to happen, the
+	other needs a decision reversed by someone who can reverse it.
+	"""
+	if application.interaction_outcome == "Recommended":
+		return None
+
+	if application.interaction_outcome == "Not Recommended":
+		return _Objection(
+			_("Not Recommended"),
+			_(
+				"The admission interaction on {0} recorded this applicant as Not Recommended, so they "
+				"cannot advance to {1}."
+			).format(
+				frappe.bold(frappe.format(application.interaction_on, {"fieldtype": "Date"})),
+				frappe.bold(new_status),
+			),
+		)
+
+	return _Objection(
+		_("Interaction Awaited"),
+		_("Record the admission interaction and its outcome before {0}.").format(frappe.bold(new_status)),
 	)
 
 

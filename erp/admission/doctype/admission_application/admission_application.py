@@ -11,6 +11,7 @@ from frappe.utils import today
 from erp.admission.application_state import derive_application_state
 from erp.admission.eligibility import assert_prior_qualification, enquiry_education
 from erp.admission.pipeline import already_admitted_objection
+from erp.field_policy import apply_field_policy
 from erp.master.doctype.programme_intake.programme_intake import assert_age_within_window
 from erp.master.hierarchy import validate_same_parent
 
@@ -36,6 +37,12 @@ class AdmissionApplication(Document):
 		self.validate_eligibility()
 		self.validate_offer()
 		self.set_application_state()
+		# Last, and after `set_derived_ancestors` has run: the policy is resolved against
+		# `self.institution`, which this document derives from its programme rather than inheriting
+		# from the lead — so a policy must be applied to the institution the application actually
+		# admits to, not the one the lead walked into. Also after `validate_offer`, so a Hidden
+		# `offer_response` is reverted before the offer's own consistency rule reads it.
+		apply_field_policy(self)
 		self.ensure_child_ids()
 
 	def sync_from_enquiry(self):
