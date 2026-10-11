@@ -172,8 +172,8 @@ function FormSection({
 
   if (section.collapsible && section.label) {
     return (
-      <Collapsible defaultOpen className="rounded-xl border border-border bg-card shadow-card">
-        <CollapsibleTrigger className="group flex w-full items-center justify-between gap-3 rounded-xl p-(--card-pad) text-left focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none">
+      <Collapsible defaultOpen className="border-b border-border pb-(--section-stack) last:border-b-0">
+        <CollapsibleTrigger className="group flex w-full items-center justify-between gap-3 rounded-md py-2 text-left focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none">
           {heading}
           <ChevronDownIcon
             className="size-4 shrink-0 text-muted-foreground transition-transform duration-150 group-data-[state=open]:ease-emphasized group-data-[state=closed]:-rotate-90 group-data-[state=closed]:ease-exit motion-reduce:transition-none"
@@ -181,14 +181,14 @@ function FormSection({
           />
         </CollapsibleTrigger>
         <CollapsibleContent>
-          <div className="px-(--card-pad) pb-(--card-pad)">{grid}</div>
+          <div className="pt-2">{grid}</div>
         </CollapsibleContent>
       </Collapsible>
     )
   }
 
   return (
-    <section className="rounded-xl border border-border bg-card p-(--card-pad) shadow-card">
+    <section className="border-b border-border pb-(--section-stack) last:border-b-0">
       {heading}
       <div className={section.label ? 'mt-(--field-stack)' : undefined}>{grid}</div>
     </section>

@@ -1,7 +1,7 @@
 import { InstitutionMark } from '@/components/brand/InstitutionMark'
-import { institutionMetaLine, scopeStats } from '@/lib/branding'
+import { scopeStats, trustMetaLine } from '@/lib/branding'
 import { APP_NAME } from '@/lib/constants'
-import type { InstitutionBrand, InstitutionScope } from '@/types/branding'
+import type { TrustBrand, TrustScope } from '@/types/branding'
 
 /**
  * The identity half of the sign-in screen: who this bench belongs to, drawn from the
@@ -21,11 +21,11 @@ export function InstitutionPanel({
   scope,
   isPending,
 }: {
-  brand: InstitutionBrand | null
-  scope: InstitutionScope | null
+  brand: TrustBrand | null
+  scope: TrustScope | null
   isPending: boolean
 }) {
-  const meta = institutionMetaLine(brand)
+  const meta = trustMetaLine(brand)
   const stats = scopeStats(scope)
 
   // The fill is `--brand-panel`, and this is the ONE surface in the app that stays deep in both
@@ -95,7 +95,7 @@ export function InstitutionPanel({
   )
 }
 
-function Identity({ brand, meta }: { brand: InstitutionBrand | null; meta: string | null }) {
+function Identity({ brand, meta }: { brand: TrustBrand | null; meta: string | null }) {
   return (
     // Fades in only once the name is known, so the panel doesn't flash placeholder text.
     // motion-safe keeps it out of the way for prefers-reduced-motion.

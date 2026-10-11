@@ -7,7 +7,7 @@ import { UserMenu } from '@/shell/components/UserMenu'
 import { commandPaletteHint, isApplePlatform } from '@/lib/platform'
 import { useNavCollapsed } from '@/global/nav-column'
 import { RAIL_TILE } from '@/shell/lib/rail'
-import { useInstitutionBranding } from '@/hooks/use-branding'
+import { useTrustBranding } from '@/hooks/use-branding'
 import { ROUTES } from '@/lib/constants'
 import { Sidebar, SidebarContent, SidebarFooter } from '@/components/ui/sidebar'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
@@ -38,9 +38,9 @@ const BASE_CLASS = RAIL_TILE
  * relationship that silently broke on any resize.
  */
 const CURRENT_CLASS = cn(
-  'data-[current=true]:bg-sidebar-primary data-[current=true]:text-sidebar-primary-foreground',
+  'data-[current=true]:bg-rail-primary data-[current=true]:text-rail-primary-foreground',
   // Hover and press must not repaint the selected plate — it is a location, not a target.
-  'data-[current=true]:hover:bg-sidebar-primary data-[current=true]:active:bg-sidebar-primary',
+  'data-[current=true]:hover:bg-rail-primary data-[current=true]:active:bg-rail-primary',
 )
 
 interface ModuleRailProps {
@@ -89,8 +89,8 @@ export function ModuleRail({
   onOpenCommandPalette,
   onOpenShortcuts,
 }: ModuleRailProps) {
-  const { data: branding } = useInstitutionBranding()
-  const brand = branding?.institution ?? null
+  const { data: branding } = useTrustBranding()
+  const brand = branding?.trust ?? null
   const [collapsed, setCollapsed] = useNavCollapsed()
 
   return (
@@ -102,12 +102,12 @@ export function ModuleRail({
       // darkest grey in light mode and the darkest ink in dark. The panel keeps the primitive's
       // default bg-sidebar one step up, so the two nav columns read as a recession into the lit
       // content rather than one slab. The border-r is the other half of that separation.
-      className="h-full w-(--sidebar-width-icon)! shrink-0 border-r border-sidebar-border bg-sidebar-deep"
+      className="hidden h-full w-(--sidebar-width-icon)! shrink-0 border-r border-rail-border bg-rail md:flex"
     >
       {/* The head band. h-13 + border-b keeps the rail's seam at the same y as the nav column's,
           so ONE continuous rule runs across both — where before there were seams at three
           different heights and the rail's 48px mark crossed its own by 7px. */}
-      <div className="flex h-13 shrink-0 items-center justify-center border-b border-sidebar-border">
+      <div className="flex h-14 shrink-0 items-center justify-center border-b border-rail-border">
         <Tooltip>
           <TooltipTrigger asChild>
         <Link
@@ -137,7 +137,7 @@ export function ModuleRail({
           <InstitutionMark
             brand={brand}
             size="sm"
-            surface="chrome"
+            surface="brand"
             // The full rail interior (48px), not the 40px tile: this is the one thing in the
             // column that is NOT a tile, and a landscape letterhead logo needs every pixel of
             // width it can get. `p-1` tightens the plate from the size's own p-1.5 for the same

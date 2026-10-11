@@ -19,10 +19,10 @@ import { cn } from '@/lib/utils'
  * to be byte-identical, so a click gave no feedback at all.
  */
 export const RAIL_TILE = cn(
-  'relative grid size-(--rail-tile) place-items-center rounded-lg text-sidebar-foreground-muted',
+  'relative grid size-(--rail-tile) place-items-center rounded-lg text-rail-foreground-muted',
   "after:absolute after:-inset-x-1 after:-inset-y-0.5 after:content-['']",
   'transition-colors duration-150 ease-out motion-reduce:transition-none',
-  'hover:bg-sidebar-accent hover:text-sidebar-foreground',
-  'active:bg-sidebar-active',
-  'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sidebar-ring',
+  'hover:bg-rail-accent hover:text-rail-foreground',
+  'active:bg-rail-active',
+  'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rail-ring',
 )

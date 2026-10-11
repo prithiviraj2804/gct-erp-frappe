@@ -1,11 +1,10 @@
 import { LayersIcon } from 'lucide-react'
 
 import { ErrorState } from '@/components/feedback/ErrorState'
-import { useBrandedDocument, useInstitutionBranding } from '@/hooks/use-branding'
+import { useBrandedDocument, useTrustBranding } from '@/hooks/use-branding'
 import { useAllModuleMenus, useModuleRail } from '@/hooks/use-navigation'
 import { useSession } from '@/hooks/use-session'
 import { scopeStats } from '@/lib/branding'
-import { AttentionList } from '@/shell/home/components/AttentionList'
 import { HomeSkeleton } from '@/shell/home/components/HomeSkeleton'
 import { QuickAccess } from '@/shell/home/components/QuickAccess'
 import { ScopeStats } from '@/shell/home/components/ScopeStats'
@@ -29,11 +28,11 @@ import { buildWorkspaces } from '@/shell/home/lib/workspaces'
  */
 export default function HomePage() {
   const { data: session } = useSession()
-  const { data: brand } = useInstitutionBranding()
+  const { data: brand } = useTrustBranding()
   const { data: modules, isPending, isError, error, refetch } = useModuleRail()
   const menus = useAllModuleMenus()
 
-  useBrandedDocument('Home', brand?.institution ?? null)
+  useBrandedDocument('Home', brand?.trust ?? null)
 
   if (isPending) return <HomeSkeleton />
 
@@ -51,9 +50,6 @@ export default function HomePage() {
   const stats = scopeStats(brand?.scope ?? null)
   const workspaces = buildWorkspaces(modules, menus)
   const quickLinks = buildQuickAccess(menus)
-  // The worklist reads Admission Enquiry; only mount it for users who have that module, so no one
-  // else pays for a request that would come back empty (or forbidden).
-  const hasAdmission = modules.some((module) => module.module === 'Admission')
 
   return (
     // The one page gutter, shared with every other frame in the app — vertical gutters used to
@@ -61,14 +57,13 @@ export default function HomePage() {
     // while clicking. Read from the density tokens rather than written as `px-6 py-6`, so the
     // whole page tightens with the user's preference instead of only its tables.
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-(--page-stack) px-(--page-gutter-x) py-(--page-gutter-y)">
-      <WelcomeHeader fullName={fullName} brand={brand?.institution ?? null} />
+      <WelcomeHeader fullName={fullName} brand={brand?.trust ?? null} />
 
       {stats.length > 0 && <ScopeStats stats={stats} />}
 
       <div className="grid gap-(--section-stack) lg:grid-cols-3">
         <div className="flex flex-col gap-(--section-stack) lg:col-span-2">
           <WorkspaceLaunchpad workspaces={workspaces} />
-          {hasAdmission && <AttentionList />}
         </div>
         <aside className="lg:col-span-1">
           <QuickAccess links={quickLinks} />

@@ -1,25 +1,7 @@
 [pre_model_sync]
 # Patches added in this section will be executed before doctypes are migrated
-# Read docs to understand patches: https://frappeframework.com/docs/v14/user/en/database-migrations
-erp.patches.v1_0.rename_institution_to_trust
-erp.patches.v1_0.create_gate_roles
-erp.patches.v1_0.create_admission_roles
-erp.patches.v1_0.create_admission_manager_role
-erp.patches.v1_0.create_accounts_roles
-erp.patches.v1_0.create_tenancy_roles
 
 [post_model_sync]
 # Patches added in this section will be executed after doctypes are migrated
-erp.patches.v1_0.rename_trust_and_institution_fields
-erp.patches.v1_0.rename_gate_entry_module
-erp.patches.v1_0.seed_school_admission_config
-erp.patches.v1_0.backfill_follow_up_state
-erp.patches.v1_0.backfill_institution_currency
-erp.patches.v1_0.seed_chart_of_accounts
-erp.patches.v1_0.seed_modes_of_payment
-erp.patches.v1_0.seed_admission_document_types
-erp.patches.v1_0.reseed_school_vocabulary
-erp.patches.v1_0.backfill_child_row_uuids
-erp.patches.v1_0.backfill_tenancy_columns
-erp.patches.v1_0.enable_strict_user_permissions
-erp.patches.v1_0.rename_config_value_to_business_key
+erp.patches.remove_institution_feature
+erp.patches.backfill_institution_campus_assignments

@@ -2,7 +2,7 @@ import { useState } from 'react'
 
 import { monogramFor } from '@/lib/branding'
 import { cn } from '@/lib/utils'
-import type { InstitutionBrand } from '@/types/branding'
+import type { TrustBrand } from '@/types/branding'
 
 const SIZES = {
   // Topbar size. 28px in a 52px bar — the mark identifies the tenant, it is not the loudest
@@ -58,7 +58,7 @@ export function InstitutionMark({
   surface = 'content',
   monogramOnly = false,
 }: {
-  brand: InstitutionBrand | null
+  brand: TrustBrand | null
   size?: InstitutionMarkSize
   className?: string
   /**

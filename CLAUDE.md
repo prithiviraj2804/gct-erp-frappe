@@ -30,11 +30,8 @@ a doctype and cannot name the journey that requires it, don't create it. The pro
 | Doc | For |
 |---|---|
 | [docs/METHOD.md](docs/METHOD.md) | How a slice gets built, start to finish |
-| [docs/PRODUCT.md](docs/PRODUCT.md) | The domain — trust types, the institution/school vocabulary map, personas |
 | [docs/DATA-MODEL.md](docs/DATA-MODEL.md) | What exists today, the hierarchy contract, the unbuilt-masters backlog |
 | [docs/ROADMAP.md](docs/ROADMAP.md) | Slice order |
-| [docs/MODULES.md](docs/MODULES.md) | Modules and how SPA navigation is generated |
-| [docs/features/](docs/features/) | One spec per slice |
 
 Skills in [.claude/skills/](.claude/skills/) carry the step-by-step procedures: `feature-slice`,
 `new-doctype`, `frappe-api`, `ui`, `verify`, `code-review`. Design tokens: [.claude/DESIGN.md](.claude/DESIGN.md).
@@ -48,9 +45,8 @@ are the standard invocations — see `/workspace/development/frappe-bench/CLAUDE
 
 ## Structure
 
-- **Modules** — declared in [erp/modules.txt](erp/modules.txt): `Erp`, `Gate`, `Master`. Each is
-  a Python package (`erp/erp/`, `erp/gate/`, `erp/master/`). Adding one: see
-  [docs/MODULES.md](docs/MODULES.md).
+- **Modules** — declared in [erp/modules.txt](erp/modules.txt): `Erp`, `Master`. `Master` owns the
+  four foundation DocTypes; `Erp` holds the app shell.
 - **Doctypes** — `erp/<module>/doctype/<snake_name>/` holding `<name>.json` (schema, the source of
   truth), `<name>.py` (controller subclassing `Document`), `<name>.js` (form scripting),
   `test_<name>.py`. There is **no `bench new-doctype` command in Frappe v16** — use the Desk UI at
@@ -72,7 +68,8 @@ are the standard invocations — see `/workspace/development/frappe-bench/CLAUDE
   screen is rendered to an anonymous visitor. Both publish a fixed allow-list of fields and
   nothing else; treat adding a field to either as a change to the app's public surface.
 - **[erp/utils.py](erp/utils.py)** — app-level helpers used by hooks: `set_uuid_id`, `slugify`.
-- **[erp/master/hierarchy.py](erp/master/hierarchy.py)** — `validate_same_parent`, the ancestry guard.
+- **[erp/master/hierarchy.py](erp/master/hierarchy.py)** — verifies that an Institution's Campus
+  belongs to the same Trust.
 - `erp/www/` standalone pages · `erp/templates/` Jinja · `erp/public/` bundled assets **plus the
   built SPA in `erp/public/dist/` (generated — never edit by hand)** · `erp/config/` Desk module config.
 

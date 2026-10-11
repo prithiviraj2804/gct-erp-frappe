@@ -28,7 +28,6 @@ from frappe import _
 
 from erp.api.modules import get_allowed_modules
 from erp.api.permission import assert_signed_in
-from erp.field_policy import GOVERNED_DOCTYPES
 
 # DocField properties the SPA renders. Everything else is Desk form machinery (`in_filter`,
 # `bold`, `print_hide`, `translatable`, `permlevel`, `columns`, …) or database detail, and
@@ -432,5 +431,5 @@ def get_doctype_schema(doctype: str) -> dict:
 		# write; what is missing is this client's ability to render the form correctly, which is a
 		# different fact and will stop being true when the renderer learns to ask
 		# `erp.api.field_policy.get_policy` and re-resolve per institution.
-		"governed": doctype in GOVERNED_DOCTYPES,
+		"governed": False,
 	}

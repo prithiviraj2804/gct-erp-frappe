@@ -1,4 +1,4 @@
-import { FolderOpenIcon } from 'lucide-react'
+import { FolderOpenIcon, LayoutDashboardIcon } from 'lucide-react'
 
 import { navIcon } from '@/shell/lib/module-icons'
 import { Link, useLocation } from 'react-router'
@@ -70,7 +70,7 @@ function PanelShell({ title, children }: { title: string; children: React.ReactN
     <Sidebar
       id="nav-column"
       collapsible="none"
-      className="shrink-0 border-r border-sidebar-border"
+      className="hidden shrink-0 border-r border-sidebar-border md:flex"
       aria-label={`${title} menu`}
     >
       {/*
@@ -91,7 +91,15 @@ function PanelShell({ title, children }: { title: string; children: React.ReactN
         good the reason. The columns are simply allowed to start at different heights now: the
         rail has a brand compartment at its top and this column does not, which is the truth.
       */}
-      <SidebarContent id="module-menu">
+      <div className="flex h-14 shrink-0 items-center border-b border-sidebar-border px-4">
+        <div className="min-w-0">
+          <p className="text-2xs font-semibold tracking-eyebrow text-sidebar-foreground-muted uppercase">
+            Module
+          </p>
+          <p className="truncate text-sm font-semibold text-sidebar-foreground">{title}</p>
+        </div>
+      </div>
+      <SidebarContent id="module-menu" className="py-2">
         {/* A real landmark, and it names the module — this is where the module name still lives
             for anyone who cannot see the rail's selected tile. */}
         <nav aria-label={`${title} screens`}>{children}</nav>
@@ -189,6 +197,24 @@ export function ModuleMenuPanel({ module, label }: ModuleMenuPanelProps) {
 
   return (
     <PanelShell title={menu.label}>
+      <SidebarGroup>
+        <SidebarGroupContent>
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                asChild
+                isActive={location.pathname === `/${menu.module_slug}`}
+                className={ACTIVE_CLASS}
+              >
+                <Link to={`/${menu.module_slug}`}>
+                  <LayoutDashboardIcon className="size-4 shrink-0" aria-hidden="true" />
+                  <span>Overview</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarGroupContent>
+      </SidebarGroup>
       {menu.groups.map((group, gi) => {
         // Resolved from the icon NAME the workspace publishes. An unset or unmapped name
         // renders no icon rather than a placeholder — a generic glyph on every heading is noise,

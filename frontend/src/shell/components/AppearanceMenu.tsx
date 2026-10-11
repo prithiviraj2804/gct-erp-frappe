@@ -9,7 +9,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { LayoutControl } from '@/shell/components/LayoutControl'
 import { RAIL_TILE } from '@/shell/lib/rail'
 import { cn } from '@/lib/utils'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
@@ -90,10 +89,6 @@ export function AppearanceMenu({ variant = 'rail' }: { variant?: 'rail' | 'row' 
           <div className="mt-1" aria-labelledby="rail-density-label">
             <DensityControl fullWidth />
           </div>
-          {/* Layout lives with theme and density because it IS one of them: a stored preference
-              that changes nothing about what the app does, only how it looks. It is last because
-              it is the one people set once. */}
-          <LayoutControl />
         </div>
       </DropdownMenuContent>
     </DropdownMenu>

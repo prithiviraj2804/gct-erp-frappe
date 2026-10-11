@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useEffect } from 'react'
 
 import { brandingKeys, fetchLoginBranding, pageTitle } from '@/lib/branding'
-import type { InstitutionBrand } from '@/types/branding'
+import type { TrustBrand } from '@/types/branding'
 
 /**
  * Institution identity for the sign-in screen.
@@ -36,7 +36,7 @@ export function useLoginBranding() {
  *
  * Named for the caller's intent so nothing inside the shell has to import "login" branding.
  */
-export const useInstitutionBranding = useLoginBranding
+export const useTrustBranding = useLoginBranding
 
 /**
  * Points the browser tab at the institution: title, and the favicon when one is configured.
@@ -45,7 +45,7 @@ export const useInstitutionBranding = useLoginBranding
  * in the tab. The favicon deliberately is not — it is app-wide identity, correct on every
  * screen, and this is the only place that learns it.
  */
-export function useBrandedDocument(page: string, brand: InstitutionBrand | null | undefined) {
+export function useBrandedDocument(page: string, brand: TrustBrand | null | undefined) {
   useEffect(() => {
     const previous = document.title
     document.title = pageTitle(page, brand ?? null)

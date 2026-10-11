@@ -15,7 +15,6 @@
   "column_break_basic",
   "trust_type",
   "registration_number",
-  "affiliated_university",
   "status",
   "branding_section",
   "accreditation",
@@ -42,12 +41,6 @@
   "longitude",
   "column_break_geo",
   "timezone",
-  "configuration_section",
-  "default_currency",
-  "financial_year_start",
-  "academic_year_start",
-  "column_break_config",
-  "admission_start_month",
   "remarks_section",
   "remarks"
  ],
@@ -118,13 +111,6 @@
    "label": "Registration Number",
    "length": 100,
    "description": "Government Registration No"
-  },
-  {
-   "fieldname": "affiliated_university",
-   "fieldtype": "Link",
-   "label": "Affiliated University",
-   "options": "Trust",
-   "description": "University this trust is affiliated to"
   },
   {
    "fieldname": "status",
@@ -280,40 +266,6 @@
    "default": "Asia/Kolkata"
   },
   {
-   "fieldname": "configuration_section",
-   "fieldtype": "Section Break",
-   "label": "Configuration"
-  },
-  {
-   "fieldname": "default_currency",
-   "fieldtype": "Link",
-   "options": "Currency",
-   "label": "Default Currency",
-   "default": "INR",
-   "description": "The currency the trust keeps its books and prints receipts in. One source of truth for the currency symbol shown on money."
-  },
-  {
-   "fieldname": "financial_year_start",
-   "fieldtype": "Date",
-   "label": "Financial Year Start"
-  },
-  {
-   "fieldname": "academic_year_start",
-   "fieldtype": "Date",
-   "label": "Academic Year Start"
-  },
-  {
-   "fieldname": "column_break_config",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "admission_start_month",
-   "fieldtype": "Int",
-   "label": "Admission Start Month",
-   "default": "6",
-   "description": "Month number (1-12), usually 6"
-  },
-  {
    "fieldname": "remarks_section",
    "fieldtype": "Section Break",
    "label": "Remarks"
@@ -345,12 +297,6 @@
    "role": "System Manager",
    "share": 1,
    "write": 1
-  },
-  {
-   "read": 1,
-   "report": 1,
-   "role": "Gate Security",
-   "select": 1
   },
   {
    "create": 1,

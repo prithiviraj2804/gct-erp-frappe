@@ -26,7 +26,7 @@ import { normalizeFrappeError } from '@/lib/errors'
 import { Button } from '@/components/ui/button'
 import { ScreenNotFound } from '@/components/feedback/ScreenNotFound'
 import { PageHeader } from '@/components/layout/PageHeader'
-import { useBrandedDocument, useInstitutionBranding } from '@/hooks/use-branding'
+import { useBrandedDocument, useTrustBranding } from '@/hooks/use-branding'
 import { cn } from '@/lib/utils'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -49,7 +49,7 @@ import type { DocRecord, DoctypeSchema, SchemaField, SchemaSection, SchemaTab } 
 export default function DoctypeRecordPage() {
   const route = useDoctypeRoute()
   const { name = '' } = useParams()
-  const { data: brand } = useInstitutionBranding()
+  const { data: brand } = useTrustBranding()
   const override = screenOverride(route.doctype)
 
   // Fired in parallel, never gated on each other: a record page needs both, and chaining them
@@ -59,7 +59,7 @@ export default function DoctypeRecordPage() {
   const linkIndex = useDoctypeLinkIndex()
 
   const title = titleOf(docQuery.data, schemaQuery.data) ?? name
-  useBrandedDocument(title, brand?.institution ?? null)
+  useBrandedDocument(title, brand?.trust ?? null)
 
   if (route.status === 'pending' || (route.status === 'ready' && schemaQuery.isPending)) {
     return <RecordSkeleton />

@@ -47,8 +47,6 @@ _PUBLIC_FIELDS = (
 _SCOPE_DOCTYPES = {
 	"campuses": "Campus",
 	"institutions": "Institution",
-	"departments": "Department",
-	"programmes": "Programme",
 }
 
 
@@ -107,14 +105,7 @@ def _build() -> dict:
 def _resolve_trust() -> str | None:
 	"""Which Trust brands the sign-in screen.
 
-	One bench can hold several Trust rows: the doctype links to itself through
-	`affiliated_university`, so an institution group and the university it answers to are both
-	stored here. The screen needs exactly one, picked the same way on every request:
-
-	1. `erp_login_trust` in site_config.json, when it names a real record — the escape
-	   hatch for a bench that genuinely holds more than one root.
-	2. The oldest Active trust affiliated to nobody, i.e. the top of the tree.
-	3. The oldest Active trust, for the degenerate case where every row is affiliated.
+	The site holds one Trust. A site-config override remains available for recovery and tests.
 
 	`get_all` (not `get_list`) is load-bearing: it ignores permissions, and a Guest has no
 	read access to Trust.
@@ -123,15 +114,10 @@ def _resolve_trust() -> str | None:
 	if override and frappe.db.exists("Trust", override):
 		return override
 
-	for filters in (
-		{"status": "Active", "affiliated_university": ["is", "not set"]},
-		{"status": "Active"},
-	):
-		found = frappe.get_all("Trust", filters=filters, pluck="name", order_by="creation asc", limit=1)
-		if found:
-			return found[0]
-
-	return None
+	found = frappe.get_all(
+		"Trust", filters={"status": "Active"}, pluck="name", order_by="creation asc", limit=1
+	)
+	return found[0] if found else None
 
 
 def _guest_readable(url: str | None) -> str | None:

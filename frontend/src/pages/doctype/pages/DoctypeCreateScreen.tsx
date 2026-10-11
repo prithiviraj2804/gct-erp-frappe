@@ -8,7 +8,7 @@ import { ErrorState } from '@/components/feedback/ErrorState'
 import { ScreenNotFound } from '@/components/feedback/ScreenNotFound'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { RecordFrame, RecordSkeleton } from '@/pages/doctype/components/RecordFrame'
-import { useBrandedDocument, useInstitutionBranding } from '@/hooks/use-branding'
+import { useBrandedDocument, useTrustBranding } from '@/hooks/use-branding'
 
 /**
  * A new document of any doctype, from the same schema the list and record screens read.
@@ -20,12 +20,12 @@ import { useBrandedDocument, useInstitutionBranding } from '@/hooks/use-branding
  */
 export default function DoctypeCreatePage() {
   const route = useDoctypeRoute()
-  const { data: brand } = useInstitutionBranding()
+  const { data: brand } = useTrustBranding()
   const schemaQuery = useDoctypeSchema(route.doctype)
   const linkIndex = useDoctypeLinkIndex()
 
   const label = route.screenLabel ?? schemaQuery.data?.label ?? 'Record'
-  useBrandedDocument(`New ${label}`, brand?.institution ?? null)
+  useBrandedDocument(`New ${label}`, brand?.trust ?? null)
 
   if (route.status === 'pending' || (route.status === 'ready' && schemaQuery.isPending)) {
     return <RecordSkeleton variant="form" />

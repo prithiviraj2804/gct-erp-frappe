@@ -149,13 +149,7 @@ layout:
                                 # point — the previous 72px rail hard-coded a `-left-3.5`
                                 # indicator offset that encoded the tile/gutter relationship and
                                 # silently detached whenever either number moved.
-  # topbarHeight: DELETED. There is no top bar. It carried an identity, a launcher and an
-  # account, and all three moved into the nav column — see "Three planes" below. Every screen
-  # got the 52px back.
-  statusBarHeight: 26px         # the shell's BOTTOM plane — see "The four planes" below. Inside
-                                # the content column, not across the viewport: the rail and the
-                                # menu panel run full-height, and a bar spanning the true bottom
-                                # would cut both off and turn the shell's L into a U.
+  contextHeaderHeight: 56px     # Trust identity, current module and global search.
   contentMaxWidth: "100%"
   gridColumns: 12
 
@@ -265,11 +259,9 @@ The system prioritizes productivity, clarity, accessibility, and scalability ove
 
 ## Navigation
 
-- **No top navigation.** SUPERSEDED — there was a topbar, and the "three things and no fourth"
-  rule below is the reasoning that eventually killed it: a bar admitting only three controls,
-  two of them small and one of them a name, is 52px of every screen spent on a row that is
-  mostly empty in the middle. All three moved into the nav column, which was already permanent
-  and already had the width. See "Three planes".
+- **One stable shell.** The hierarchy is module rail → named module menu → working page. The
+  context header is not another navigation system: it keeps the Trust, current module and global
+  search visible while the user moves between operational screens.
 - **The rail carries the global set in a fixed order**: institution logo at the head, search
   under it, the modules, then appearance and the account pinned to the foot. Every one of them is
   module-independent, which is what lets the rail render unconditionally.

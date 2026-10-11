@@ -18,7 +18,7 @@ import { ErrorState } from '@/components/feedback/ErrorState'
 import { ScreenNotFound } from '@/components/feedback/ScreenNotFound'
 import { PageFrame } from '@/components/layout/PageFrame'
 import { PageHeader } from '@/components/layout/PageHeader'
-import { useBrandedDocument, useInstitutionBranding } from '@/hooks/use-branding'
+import { useBrandedDocument, useTrustBranding } from '@/hooks/use-branding'
 import { normalizeFrappeError } from '@/lib/errors'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -42,11 +42,11 @@ import type { DocRow, DoctypeSchema, SchemaField } from '@/pages/doctype/types'
  */
 export default function DoctypeListPage() {
   const route = useDoctypeRoute()
-  const { data: brand } = useInstitutionBranding()
+  const { data: brand } = useTrustBranding()
   const schemaQuery = useDoctypeSchema(route.doctype)
   const override = screenOverride(route.doctype)
 
-  useBrandedDocument(route.screenLabel ?? 'Records', brand?.institution ?? null)
+  useBrandedDocument(route.screenLabel ?? 'Records', brand?.trust ?? null)
 
   if (route.status === 'pending' || (route.status === 'ready' && schemaQuery.isPending)) {
     return <ListSkeleton />

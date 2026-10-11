@@ -13,15 +13,8 @@ class Trust(Document):
 	def assert_only_one(self):
 		"""One Trust per site — the tenant is the site, not a row in a table.
 
-		Enforced here rather than by making the doctype a Frappe Single, which would look like the
-		obvious tool and would in fact break the app. A Single has no `tab<DocType>` table at all —
-		its values live as key/value rows in `tabSingles` — so converting would drop `tabTrust`
-		and take with it: every one of the eighteen `Link` fields that point at it, the
-		`format:{trust}-…` naming on Account, Academic Year, Campus and Consultancy, the
-		`{trust}-STU-.#####` register series on Student, `validate_same_parent`, the
-		Trust User Permissions the whole scoping model rides on, and the `after_insert` hook
-		that provisions a tenant's chart of accounts. Every existing row's `trust` would be
-		left pointing at something that no longer exists.
+		A normal DocType is intentional: Campus and Institution link to this row, and a Frappe
+		Single has no table that Link fields can target.
 
 		A cardinality rule gets a cardinality check. Everything above keeps working, and lifting the
 		cap later is deleting this method rather than a migration.

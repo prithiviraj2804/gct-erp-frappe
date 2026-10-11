@@ -2,9 +2,9 @@ import { InstitutionPanel } from '@/auth/components/InstitutionPanel'
 import { LoginForm } from '@/auth/components/LoginForm'
 import { InstitutionMark } from '@/components/brand/InstitutionMark'
 import { useBrandedDocument, useLoginBranding } from '@/hooks/use-branding'
-import { institutionMetaLine } from '@/lib/branding'
+import { trustMetaLine } from '@/lib/branding'
 import { APP_NAME } from '@/lib/constants'
-import type { InstitutionBrand } from '@/types/branding'
+import type { TrustBrand } from '@/types/branding'
 
 /**
  * Sign-in, branded from the Institution record.
@@ -28,7 +28,7 @@ import type { InstitutionBrand } from '@/types/branding'
  */
 export default function LoginPage() {
   const { data, isPending } = useLoginBranding()
-  const brand = data?.institution ?? null
+  const brand = data?.trust ?? null
 
   useBrandedDocument('Sign in', brand)
 
@@ -76,8 +76,8 @@ export default function LoginPage() {
   )
 }
 
-function MobileIdentity({ brand, isPending }: { brand: InstitutionBrand | null; isPending: boolean }) {
-  const meta = institutionMetaLine(brand)
+function MobileIdentity({ brand, isPending }: { brand: TrustBrand | null; isPending: boolean }) {
+  const meta = trustMetaLine(brand)
 
   return (
     <div className="mx-auto w-full max-w-sm lg:hidden">
@@ -112,7 +112,7 @@ function MobileIdentity({ brand, isPending }: { brand: InstitutionBrand | null; 
  * registration, no reset flow), so the only honest answer is a human, and the institution's
  * own published contact details are the closest thing to one on file.
  */
-function SupportNote({ brand }: { brand: InstitutionBrand | null }) {
+function SupportNote({ brand }: { brand: TrustBrand | null }) {
   const email = brand?.support_email
   const phone = brand?.support_phone
 

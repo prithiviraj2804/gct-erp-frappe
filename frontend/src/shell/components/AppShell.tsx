@@ -4,27 +4,9 @@ import { useLocation } from 'react-router'
 import { CommandPalette } from '@/shell/components/CommandPalette'
 import { ShortcutsDialog } from '@/shell/components/ShortcutsDialog'
 import { RailShell } from '@/shell/layouts/RailShell'
-import { StackedShell } from '@/shell/layouts/StackedShell'
-import { TopNavShell } from '@/shell/layouts/TopNavShell'
 import { TooltipProvider } from '@/components/ui/tooltip'
-import { useLayout } from '@/global/layout'
 import { getNavCollapsed, setNavCollapsed } from '@/global/nav-column'
 import { useModuleRail, usePrefetchModuleMenus } from '@/hooks/use-navigation'
-import type { ShellLayoutProps } from '@/shell/layouts/types'
-
-/**
- * The layouts this shell can render, by preference value.
- *
- * A record, not a switch, and deliberately: adding a layout is adding one entry, and TypeScript
- * makes the record exhaustive over `Layout` so a new value cannot be introduced without a
- * component to render it. Each is a plain function of `ShellLayoutProps` — no layout owns state,
- * so switching between them cannot change what the app *does*, only where things sit.
- */
-const LAYOUTS: Record<ReturnType<typeof useLayout>[0], (props: ShellLayoutProps) => React.ReactNode> = {
-  rail: RailShell,
-  topnav: TopNavShell,
-  stacked: StackedShell,
-}
 
 function SkipLink() {
   return (
@@ -77,8 +59,6 @@ export function AppShell() {
 
   // Warms every module's menu, so switching modules never has to show skeletons — see the hook.
   usePrefetchModuleMenus(modules)
-
-  const [layout] = useLayout()
 
   const pathname = location.pathname
 
@@ -146,8 +126,6 @@ export function AppShell() {
   // /home's own "No modules available" carries the explanation instead.
   const hasModules = isPending || (modules?.length ?? 0) > 0
 
-  const Shell = LAYOUTS[layout]
-
   return (
     // TooltipProvider wraps the shell because the rail is icon-only: every tile in it needs a
     // hover label, and Radix requires one provider above them all.
@@ -164,7 +142,7 @@ export function AppShell() {
       <SkipLink />
       <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
       <ShortcutsDialog open={shortcutsOpen} onOpenChange={setShortcutsOpen} />
-      <Shell
+      <RailShell
         modules={modules ?? []}
         isPending={isPending}
         activeModule={active?.module ?? null}

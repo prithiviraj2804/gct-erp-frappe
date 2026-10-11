@@ -1,7 +1,5 @@
 import type { ComponentType } from 'react'
 
-import { ADMISSION_SCREENS } from '@/modules/admission/screens'
-import { GATE_SCREENS } from '@/modules/gate/screens'
 import { MASTER_SCREENS } from '@/modules/master/screens'
 import type { StatusTone } from '@/pages/doctype/lib/status'
 
@@ -100,8 +98,6 @@ export type ScreenTable = Readonly<Record<string, ScreenOverride>>
 
 const MODULE_TABLES: ReadonlyArray<readonly [string, ScreenTable]> = [
   ['master', MASTER_SCREENS],
-  ['gate', GATE_SCREENS],
-  ['admission', ADMISSION_SCREENS],
 ]
 
 /**

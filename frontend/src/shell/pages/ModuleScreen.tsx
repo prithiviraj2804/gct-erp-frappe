@@ -5,10 +5,11 @@ import { EmptyState } from '@/components/feedback/EmptyState'
 import { ScreenNotFound } from '@/components/feedback/ScreenNotFound'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { useBrandedDocument, useInstitutionBranding } from '@/hooks/use-branding'
+import { useBrandedDocument, useTrustBranding } from '@/hooks/use-branding'
 import { useModuleMenu, useModuleRail } from '@/hooks/use-navigation'
 import { normalizeFrappeError } from '@/lib/errors'
 import type { MenuItem, ModuleMenu } from '@/types/navigation'
+import { OrganizationOverview } from '@/shell/pages/OrganizationOverview'
 
 /**
  * A module's overview: every screen inside it, as a directory in the content area.
@@ -22,7 +23,7 @@ import type { MenuItem, ModuleMenu } from '@/types/navigation'
  */
 export default function ModulePage() {
   const { moduleSlug } = useParams()
-  const { data: brand } = useInstitutionBranding()
+  const { data: brand } = useTrustBranding()
   const { data: modules, isPending: railPending } = useModuleRail()
 
   // The rail is the authority on which modules this user has, so the slug is resolved
@@ -30,7 +31,7 @@ export default function ModulePage() {
   const railModule = modules?.find((m) => m.slug === moduleSlug) ?? null
   const menuQuery = useModuleMenu(railModule?.module ?? null)
 
-  useBrandedDocument(railModule?.label ?? 'Modules', brand?.institution ?? null)
+  useBrandedDocument(railModule?.label ?? 'Modules', brand?.trust ?? null)
 
   if (railPending) return <PageSkeleton />
 
@@ -46,11 +47,19 @@ export default function ModulePage() {
         <h1 className="font-heading text-2xl leading-snug font-semibold tracking-tight text-foreground">
           {menuQuery.data?.label ?? railModule.label}
         </h1>
-        <p className="mt-1.5 text-sm text-muted-foreground">Pick a screen to work in.</p>
+        <p className="mt-1.5 text-sm text-muted-foreground">
+          {railModule.module === 'Master'
+            ? 'Manage the Trust, campuses and institutions in one place.'
+            : `Open a ${railModule.label} workspace.`}
+        </p>
       </header>
 
       <div className="mt-(--page-stack)">
-        <ModuleBody query={menuQuery} label={railModule.label} />
+        {railModule.module === 'Master' ? (
+          <OrganizationOverview />
+        ) : (
+          <ModuleBody query={menuQuery} label={railModule.label} />
+        )}
       </div>
     </div>
   )

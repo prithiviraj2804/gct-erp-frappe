@@ -1,6 +1,6 @@
 import { call } from '@/lib/frappe'
 import { APP_NAME } from '@/lib/constants'
-import type { InstitutionBrand, InstitutionScope, LoginBranding } from '@/types/branding'
+import type { LoginBranding, TrustBrand, TrustScope } from '@/types/branding'
 
 export const brandingKeys = {
   login: () => ['branding', 'login'] as const,
@@ -12,10 +12,10 @@ export const FALLBACK_MONOGRAM = 'E'
 export async function fetchLoginBranding(): Promise<LoginBranding> {
   const res = await call.get<{ message: LoginBranding }>('erp.api.branding.get_login_branding')
 
-  // A malformed or empty envelope is treated as "no institution", not as a failure. The
+  // A malformed or empty envelope is treated as "no trust", not as a failure. The
   // sign-in form has to render either way, and unbranded is a designed state.
   return {
-    institution: res.message?.institution ?? null,
+    trust: res.message?.trust ?? null,
     scope: res.message?.scope ?? null,
   }
 }
@@ -47,7 +47,7 @@ const MONOGRAM_STOP_WORDS = new Set([
  * "SRMV" are). Otherwise the initials of up to three identity-bearing words. Never returns
  * empty: an empty monogram tile is the one outcome that looks broken.
  */
-export function monogramFor(brand: InstitutionBrand | null): string {
+export function monogramFor(brand: TrustBrand | null): string {
   if (!brand) return FALLBACK_MONOGRAM
 
   const short = brand.short_name?.trim() ?? ''
@@ -66,27 +66,25 @@ export function monogramFor(brand: InstitutionBrand | null): string {
 }
 
 /** The line under the institution name: "Trust · Namakkal, Tamil Nadu", either half optional. */
-export function institutionMetaLine(brand: InstitutionBrand | null): string | null {
+export function trustMetaLine(brand: TrustBrand | null): string | null {
   if (!brand) return null
   return [brand.type, brand.location].filter(Boolean).join(' · ') || null
 }
 
 export interface ScopeStat {
-  key: keyof InstitutionScope
+  key: keyof TrustScope
   label: string
   value: number
 }
 
-/** Hierarchy order — Institution → Campus → College → Department → Programme. */
+/** Foundation hierarchy order — Campus → Institution. */
 const SCOPE_LABELS: {
-  key: keyof InstitutionScope
+  key: keyof TrustScope
   one: string
   many: string
 }[] = [
   { key: 'campuses', one: 'Campus', many: 'Campuses' },
-  { key: 'colleges', one: 'College', many: 'Colleges' },
-  { key: 'departments', one: 'Department', many: 'Departments' },
-  { key: 'programmes', one: 'Programme', many: 'Programmes' },
+  { key: 'institutions', one: 'Institution', many: 'Institutions' },
 ]
 
 /**
@@ -96,7 +94,7 @@ const SCOPE_LABELS: {
  * reads as an unfinished setup rather than an institution's scale. Omitting the empty ones
  * keeps the strip truthful and still structured.
  */
-export function scopeStats(scope: InstitutionScope | null): ScopeStat[] {
+export function scopeStats(scope: TrustScope | null): ScopeStat[] {
   if (!scope) return []
 
   return SCOPE_LABELS.filter(({ key }) => scope[key] > 0).map(({ key, one, many }) => ({
@@ -107,6 +105,6 @@ export function scopeStats(scope: InstitutionScope | null): ScopeStat[] {
 }
 
 /** Browser tab text. Page purpose first, per WCAG 2.4.2 — the tail is truncated in a narrow tab. */
-export function pageTitle(page: string, brand: InstitutionBrand | null): string {
+export function pageTitle(page: string, brand: TrustBrand | null): string {
   return `${page} · ${brand?.short_name || brand?.name || APP_NAME}`
 }

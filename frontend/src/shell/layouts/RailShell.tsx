@@ -1,8 +1,10 @@
 import { Outlet } from 'react-router'
+import { useState } from 'react'
 
 import { ModuleMenuPanel } from '@/shell/components/ModuleMenuPanel'
 import { ModuleRail } from '@/shell/components/ModuleRail'
-import { StatusBar } from '@/shell/components/StatusBar'
+import { ContextHeader } from '@/shell/components/ContextHeader'
+import { MobileNavigation } from '@/shell/components/MobileNavigation'
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
 import { useNavCollapsed } from '@/global/nav-column'
 import type { ShellLayoutProps } from '@/shell/layouts/types'
@@ -42,6 +44,7 @@ export function RailShell({
   onOpenShortcuts,
 }: ShellLayoutProps) {
   const [collapsed] = useNavCollapsed()
+  const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false)
 
   return (
     // SidebarProvider must wrap the rail and the panel: every `Sidebar` calls useSidebar() and
@@ -80,6 +83,10 @@ export function RailShell({
             gives every screen back 52px of height and removes a whole horizontal plane from the
             shell. */}
         <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+          <ContextHeader
+            onOpenNavigation={() => setMobileNavigationOpen(true)}
+            onOpenCommandPalette={onOpenCommandPalette}
+          />
           {/* SidebarInset already renders <main> — pages must not nest another. `isolate` gives
               it its own stacking context, so a page's sticky headers (a table's, a record rail's)
               stay contained. The page's own scroll: `min-h-0` so a flex child can shrink below its
@@ -97,9 +104,15 @@ export function RailShell({
               overlay — so it cannot cover the last row of a table, which is the failure mode of
               every status bar built with `position: fixed`. Inside the content column so the
               rail and menu panel keep running full-height beside it. */}
-          <StatusBar onOpenShortcuts={onOpenShortcuts} />
         </div>
       </div>
+      <MobileNavigation
+        open={mobileNavigationOpen}
+        onOpenChange={setMobileNavigationOpen}
+        modules={modules}
+        shown={shown}
+        onOpenShortcuts={onOpenShortcuts}
+      />
     </SidebarProvider>
   )
 }

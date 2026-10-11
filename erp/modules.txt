@@ -1,6 +1,2 @@
 Erp
-Gate
 Master
-Admission
-Accounts
-Student

@@ -52,15 +52,11 @@ class IntegrationTestTrust(IntegrationTestCase):
 		self.assertTrue(frappe.db.exists("Trust", "ZI4"))
 
 	def test_trust_is_not_a_single_doctype(self):
-		"""Guards the decision itself: eighteen Link fields and five naming series need the table.
-
-		If someone later flips `issingle`, `tabTrust` disappears and every one of those breaks
-		silently. This fails first, and points at why.
-		"""
+		"""Campus and Institution Link fields require a table-backed Trust."""
 		meta = frappe.get_meta("Trust")
 		self.assertFalse(meta.issingle, "Trust must stay a table-backed doctype")
 
 		linked = frappe.get_all(
 			"DocField", filters={"fieldtype": "Link", "options": "Trust"}, fields=["parent"]
 		)
-		self.assertGreater(len(linked), 10, "Link fields depend on tabTrust existing")
+		self.assertGreaterEqual(len(linked), 2, "foundation Link fields depend on tabTrust existing")

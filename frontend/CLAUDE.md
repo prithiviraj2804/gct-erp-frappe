@@ -34,24 +34,13 @@ Naming: a file whose default export is a React component is **PascalCase**; ever
   explicit map, never `icons[name]`, because a dynamic index defeats tree-shaking and ships all
   1600 glyphs. An unmapped name renders no icon rather than a placeholder.
   **Editing a workspace JSON needs `bench migrate` to reach a running site.**
-- **The shell has THREE switchable layouts, and `rail` is the default.** `AppShell` is a
-  dispatcher: it resolves the rail query, the active module and the global key handling once and
-  hands identical props to one of `shell/layouts/{RailShell,TopNavShell,StackedShell}.tsx`. The
-  choice is a preference (`erp-layout`), beside theme and density.
-  - `rail` — icon rail + screen column. **The default. Every test that does not set the
-    preference exercises it, so changing it breaks those, not the layout tests.** Treat a change
-    here as a change for everybody; the alternatives are where to experiment.
-  - `topnav` — 240px sidebar of modules BY NAME, screens as group menus across a top bar.
-  - `stacked` — one 260px sidebar, every module a collapsible section holding its own screens.
-  - **A layout owns no state.** Three things stay in `AppShell` and must not move into one: the
-    single global key listener, the skip link, and the palette/shortcut dialogs.
-  - **Every layout owes the same contract** — identity, search and sign-out always reachable.
-    There is a parameterised e2e over all three; a new layout is not done until it passes it.
-    Screens are deliberately excluded from that contract, because their shape differs by design.
-- **The default (`rail`) is three fixed planes around one scrolling page** — rail (56px, full height), nav
-  column (220px, full height) and status bar (26px). **There is no topbar.** Nothing is
-  `position: fixed`; every plane is in flow, so there is no z-index race and the status bar can
-  never cover a table's last row. Full reasoning: "Three planes" in
+- **The shell has one navigation model:** module rail → module menu → working page. `AppShell`
+  resolves navigation and global shortcuts once and always renders `RailShell`. Users learn one
+  stable hierarchy instead of choosing between different placements for the same information.
+- **The desktop shell is three fixed planes around one scrolling page** — rail (56px, full
+  height), nav column (220px, full height) and Trust context header (56px). Nothing is
+  `position: fixed`; every plane is in flow. Below the desktop breakpoint the two navigation
+  columns are replaced by a drawer, leaving the full viewport for the current task. Full reasoning: "Three planes" in
   [.claude/DESIGN.md](.claude/DESIGN.md).
 - **GLOBAL goes in the rail, LOCAL goes in the nav column.** That is the rule for deciding where
   anything new belongs. The rail: institution **logo** at the head, search tile, the modules,

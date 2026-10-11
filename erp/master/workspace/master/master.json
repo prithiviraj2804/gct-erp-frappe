@@ -1,193 +1,266 @@
 {
+ "charts": [],
+ "content": "[{\"id\":\"master-trust\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Trust\",\"col\":3}},{\"id\":\"master-campus\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Campus\",\"col\":3}},{\"id\":\"master-institution\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Institution\",\"col\":3}},{\"id\":\"master-campus-assignment\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Institution Campus Assignment\",\"col\":3}},{\"id\":\"master-institution-type\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Institution Type\",\"col\":3}},{\"id\":\"master-institution-settings\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Institution Settings\",\"col\":3}},{\"id\":\"master-academic-year\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Academic Year\",\"col\":3}},{\"id\":\"master-academic-pattern\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Academic Pattern\",\"col\":3}},{\"id\":\"master-department\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Department\",\"col\":3}},{\"id\":\"master-programme\",\"type\":\"shortcut\",\"data\":{\"shortcut_name\":\"Programme\",\"col\":3}},{\"id\":\"master-spacer\",\"type\":\"spacer\",\"data\":{\"col\":12}},{\"id\":\"master-organisation-card\",\"type\":\"card\",\"data\":{\"card_name\":\"Organisation\",\"col\":4}},{\"id\":\"master-configuration-card\",\"type\":\"card\",\"data\":{\"card_name\":\"Institution Configuration\",\"col\":4}},{\"id\":\"master-academic-card\",\"type\":\"card\",\"data\":{\"card_name\":\"Academic Foundation\",\"col\":4}}]",
+ "creation": "2026-10-11 23:01:08.607859",
+ "custom_blocks": [],
+ "docstatus": 0,
  "doctype": "Workspace",
- "name": "Master",
- "title": "Master",
- "label": "Master",
- "type": "Workspace",
- "module": "Master",
- "public": 1,
+ "for_user": "",
+ "hide_custom": 0,
+ "icon": "building-2",
+ "idx": 0,
  "is_hidden": 0,
- "sequence_id": 1,
- "content": "[{\"id\":\"master_organisation_card\",\"type\":\"card\",\"data\":{\"card_name\":\"Organisation\",\"col\":4}},{\"id\":\"master_academic_card\",\"type\":\"card\",\"data\":{\"card_name\":\"Academic\",\"col\":4}},{\"id\":\"master_admissions_card\",\"type\":\"card\",\"data\":{\"card_name\":\"Admissions\",\"col\":4}},{\"id\":\"master_people_card\",\"type\":\"card\",\"data\":{\"card_name\":\"People\",\"col\":4}},{\"id\":\"master_configuration_card\",\"type\":\"card\",\"data\":{\"card_name\":\"Configuration\",\"col\":4}}]",
+ "label": "Master",
  "links": [
   {
-   "type": "Card Break",
+   "hidden": 0,
+   "icon": "building-2",
+   "is_query_report": 0,
    "label": "Organisation",
-   "icon": "building-2"
+   "link_count": 0,
+   "onboard": 0,
+   "type": "Card Break"
   },
   {
-   "type": "Link",
-   "link_type": "DocType",
-   "link_to": "Trust",
+   "hidden": 0,
    "icon": "landmark",
-   "label": "Trust"
+   "is_query_report": 0,
+   "label": "Trust",
+   "link_count": 0,
+   "link_to": "Trust",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
   },
   {
-   "type": "Link",
-   "link_type": "DocType",
-   "link_to": "Campus",
+   "hidden": 0,
    "icon": "map-pin",
-   "label": "Campus"
+   "is_query_report": 0,
+   "label": "Campus",
+   "link_count": 0,
+   "link_to": "Campus",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
   },
   {
-   "type": "Link",
-   "link_type": "DocType",
-   "link_to": "Institution",
+   "hidden": 0,
    "icon": "school",
-   "label": "Institution"
+   "is_query_report": 0,
+   "label": "Institution",
+   "link_count": 0,
+   "link_to": "Institution",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
   },
   {
-   "type": "Link",
+   "hidden": 0,
+   "icon": "map-pinned",
+   "is_query_report": 0,
+   "label": "Institution Campus Assignment",
+   "link_count": 0,
+   "link_to": "Institution Campus Assignment",
    "link_type": "DocType",
-   "link_to": "Institution Type",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
    "icon": "list-tree",
-   "label": "Institution Type"
-  },
-  {
-   "type": "Link",
+   "is_query_report": 0,
+   "label": "Institution Type",
+   "link_count": 0,
+   "link_to": "Institution Type",
    "link_type": "DocType",
-   "link_to": "Department",
-   "icon": "network",
-   "label": "Department"
+   "onboard": 0,
+   "type": "Link"
   },
   {
-   "type": "Card Break",
-   "label": "Academic",
-   "icon": "graduation-cap"
+   "hidden": 0,
+   "icon": "settings",
+   "is_query_report": 0,
+   "label": "Institution Configuration",
+   "link_count": 0,
+   "onboard": 0,
+   "type": "Card Break"
   },
   {
-   "type": "Link",
+   "hidden": 0,
+   "icon": "settings",
+   "is_query_report": 0,
+   "label": "Institution Settings",
+   "link_count": 0,
+   "link_to": "Institution Settings",
    "link_type": "DocType",
-   "link_to": "Programme Level",
-   "icon": "layers-2",
-   "label": "Programme Level"
+   "onboard": 0,
+   "type": "Link"
   },
   {
-   "type": "Link",
-   "link_type": "DocType",
-   "link_to": "Degree",
-   "icon": "award",
-   "label": "Degree"
+   "hidden": 0,
+   "icon": "graduation-cap",
+   "is_query_report": 0,
+   "label": "Academic Foundation",
+   "link_count": 0,
+   "onboard": 0,
+   "type": "Card Break"
   },
   {
-   "type": "Link",
-   "link_type": "DocType",
-   "link_to": "Academic Structure",
-   "icon": "workflow",
-   "label": "Academic Structure"
-  },
-  {
-   "type": "Link",
-   "link_type": "DocType",
-   "link_to": "Programme",
-   "icon": "book-marked",
-   "label": "Programme"
-  },
-  {
-   "type": "Card Break",
-   "label": "Admissions",
-   "icon": "clipboard-list"
-  },
-  {
-   "type": "Link",
-   "link_type": "DocType",
-   "link_to": "Academic Year",
+   "hidden": 0,
    "icon": "calendar-days",
-   "label": "Academic Year"
-  },
-  {
-   "type": "Link",
+   "is_query_report": 0,
+   "label": "Academic Year",
+   "link_count": 0,
+   "link_to": "Academic Year",
    "link_type": "DocType",
-   "link_to": "Admission Type",
-   "icon": "tag",
-   "label": "Admission Type"
+   "onboard": 0,
+   "type": "Link"
   },
   {
-   "type": "Link",
+   "hidden": 0,
+   "icon": "repeat-2",
+   "is_query_report": 0,
+   "label": "Academic Pattern",
+   "link_count": 0,
+   "link_to": "Academic Pattern",
    "link_type": "DocType",
-   "link_to": "Programme Intake",
-   "icon": "clipboard-check",
-   "label": "Programme Intake"
+   "onboard": 0,
+   "type": "Link"
   },
   {
-   "type": "Link",
+   "hidden": 0,
+   "icon": "layers-2",
+   "is_query_report": 0,
+   "label": "Programme Level",
+   "link_count": 0,
+   "link_to": "Programme Level",
    "link_type": "DocType",
-   "link_to": "Admission Document Type",
-   "icon": "file-check",
-   "label": "Admission Document Type"
+   "onboard": 0,
+   "type": "Link"
   },
   {
-   "type": "Link",
+   "hidden": 0,
+   "icon": "network",
+   "is_query_report": 0,
+   "label": "Department",
+   "link_count": 0,
+   "link_to": "Department",
    "link_type": "DocType",
-   "link_to": "Admission Route",
-   "icon": "route",
-   "label": "Admission Route"
+   "onboard": 0,
+   "type": "Link"
   },
   {
-   "type": "Link",
+   "hidden": 0,
+   "icon": "graduation-cap",
+   "is_query_report": 0,
+   "label": "Programme",
+   "link_count": 0,
+   "link_to": "Programme",
    "link_type": "DocType",
-   "link_to": "Education Board",
-   "icon": "book-open",
-   "label": "Education Board"
-  },
-  {
-   "type": "Link",
-   "link_type": "DocType",
-   "link_to": "Reservation Category",
-   "icon": "users",
-   "label": "Reservation Category"
-  },
-  {
-   "type": "Link",
-   "link_type": "DocType",
-   "link_to": "Examination Subject",
-   "icon": "book-marked",
-   "label": "Examination Subject"
-  },
-  {
-   "type": "Link",
-   "link_type": "DocType",
-   "link_to": "Consultancy",
-   "icon": "handshake",
-   "label": "Consultancy"
-  },
-  {
-   "type": "Card Break",
-   "label": "People",
-   "icon": "users"
-  },
-  {
-   "type": "Link",
-   "link_type": "DocType",
-   "link_to": "Staff",
-   "icon": "contact",
-   "label": "Staff"
-  },
-  {
-   "type": "Card Break",
-   "label": "Configuration",
-   "icon": "sliders-horizontal"
-  },
-  {
-   "type": "Link",
-   "link_type": "DocType",
-   "link_to": "Field Policy",
-   "icon": "list-checks",
-   "label": "Field Policy"
-  },
-  {
-   "type": "Link",
-   "link_type": "DocType",
-   "link_to": "Config Setting",
-   "icon": "settings-2",
-   "label": "Config Setting"
-  },
-  {
-   "type": "Link",
-   "link_type": "DocType",
-   "link_to": "Config Value",
-   "icon": "sliders-horizontal",
-   "label": "Config Value"
+   "onboard": 0,
+   "type": "Link"
   }
- ]
+ ],
+ "modified": "2026-10-11 12:00:00",
+ "modified_by": "Administrator",
+ "module": "Master",
+ "name": "Master",
+ "number_cards": [],
+ "owner": "Administrator",
+ "parent_page": "",
+ "public": 1,
+ "quick_lists": [],
+ "roles": [],
+ "sequence_id": 1.0,
+ "shortcuts": [
+  {
+   "color": "Blue",
+   "doc_view": "List",
+   "label": "Trust",
+   "link_to": "Trust",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
+  {
+   "color": "Blue",
+   "doc_view": "List",
+   "label": "Campus",
+   "link_to": "Campus",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
+  {
+   "color": "Blue",
+   "doc_view": "List",
+   "label": "Institution",
+   "link_to": "Institution",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
+  {
+   "color": "Blue",
+   "doc_view": "List",
+   "label": "Institution Campus Assignment",
+   "link_to": "Institution Campus Assignment",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
+  {
+   "color": "Blue",
+   "doc_view": "List",
+   "label": "Institution Type",
+   "link_to": "Institution Type",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
+  {
+   "color": "Green",
+   "doc_view": "List",
+   "label": "Institution Settings",
+   "link_to": "Institution Settings",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
+  {
+   "color": "Orange",
+   "doc_view": "List",
+   "label": "Academic Year",
+   "link_to": "Academic Year",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
+  {
+   "color": "Orange",
+   "doc_view": "List",
+   "label": "Academic Pattern",
+   "link_to": "Academic Pattern",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
+  {
+   "color": "Orange",
+   "doc_view": "List",
+   "label": "Programme Level",
+   "link_to": "Programme Level",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
+  {
+   "color": "Orange",
+   "doc_view": "List",
+   "label": "Department",
+   "link_to": "Department",
+   "stats_filter": "[]",
+   "type": "DocType"
+  },
+  {
+   "color": "Orange",
+   "doc_view": "List",
+   "label": "Programme",
+   "link_to": "Programme",
+   "stats_filter": "[]",
+   "type": "DocType"
+  }
+ ],
+ "title": "Master"
 }

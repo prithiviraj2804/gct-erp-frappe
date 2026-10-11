@@ -1,0 +1,19 @@
+{
+ "actions": [], "allow_rename": 1, "autoname": "field:pattern_name", "creation": "2026-10-05 00:00:00.000000", "doctype": "DocType", "engine": "InnoDB",
+ "field_order": ["id", "pattern_code", "pattern_name", "cycle_type", "period_count", "period_label", "status", "is_standard", "standard_key", "description"],
+ "fields": [
+  {"fieldname":"id","fieldtype":"Data","label":"ID","unique":1,"read_only":1,"no_copy":1,"in_standard_filter":1,"description":"Auto-generated UUID"},
+  {"fieldname":"pattern_code","fieldtype":"Data","label":"Pattern Code","reqd":1,"unique":1,"in_list_view":1,"in_standard_filter":1,"description":"Stable key, for example SEMESTER"},
+  {"fieldname":"pattern_name","fieldtype":"Data","label":"Pattern Name","reqd":1,"unique":1,"in_list_view":1,"in_standard_filter":1,"description":"User-facing name, for example Semester"},
+  {"fieldname":"cycle_type","fieldtype":"Data","label":"Cycle Type","reqd":1,"in_standard_filter":1,"description":"A generic classification such as Semester, Annual, Term, or Modular"},
+  {"fieldname":"period_count","fieldtype":"Int","label":"Periods per Academic Year","reqd":1,"default":"1","description":"Number of cycles within one academic year"},
+  {"fieldname":"period_label","fieldtype":"Data","label":"Period Label","reqd":1,"description":"Singular label used for generated periods, for example Semester"},
+  {"fieldname":"status","fieldtype":"Select","label":"Status","options":"Active\nInactive","default":"Active","reqd":1,"in_list_view":1,"in_standard_filter":1},
+  {"fieldname":"is_standard","fieldtype":"Check","label":"Is Standard","read_only":1,"no_copy":1,"default":"0","description":"Shipped with the app. Standard rows may be edited but not deleted"},
+  {"fieldname":"standard_key","fieldtype":"Data","label":"Standard Key","read_only":1,"no_copy":1,"hidden":1,"description":"Seed identity, retained if the pattern is renamed"},
+  {"fieldname":"description","fieldtype":"Small Text","label":"Description"}
+ ],
+ "links": [], "modified": "2026-10-05 00:00:00.000000", "modified_by": "Administrator", "module": "Master", "name": "Academic Pattern", "naming_rule": "By fieldname", "owner": "Administrator",
+ "permissions": [{"create":1,"delete":1,"email":1,"export":1,"print":1,"read":1,"report":1,"role":"System Manager","share":1,"write":1},{"email":1,"export":1,"print":1,"read":1,"report":1,"role":"Trust Admin"},{"export":1,"print":1,"read":1,"report":1,"role":"Institution Admin"}],
+ "sort_field": "pattern_name", "sort_order": "ASC", "track_changes": 1, "title_field": "pattern_name"
+}

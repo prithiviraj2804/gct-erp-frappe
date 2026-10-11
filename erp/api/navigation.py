@@ -8,6 +8,13 @@ from erp.api.modules import get_allowed_modules
 from erp.api.permission import assert_signed_in
 from erp.utils import slugify
 
+MODULE_LABELS = {"Master": "Organization"}
+
+
+def _module_label(module: str, workspace_label: str | None = None) -> str:
+	"""Business-facing module name; Module Def remains the stable technical identifier."""
+	return MODULE_LABELS.get(module, workspace_label or module.replace("_", " "))
+
 
 def _restricted_doctypes() -> set:
 	"""Doctypes not excluded by the site's active domains.
@@ -125,7 +132,7 @@ def get_module_rail() -> list[dict]:
 			{
 				"module": module["name"],
 				"slug": slugify(module["name"]),
-				"label": workspace[0]["label"] or module["module_name"].replace("_", " "),
+				"label": _module_label(module["name"], workspace[0]["label"]),
 				"icon": workspace[0]["icon"],
 				"sequence_id": workspace[0]["sequence_id"] or 0,
 			}
@@ -174,7 +181,7 @@ def get_module_menu(module: str) -> dict:
 	base = {
 		"module": module,
 		"module_slug": module_slug,
-		"label": module.replace("_", " "),
+		"label": _module_label(module),
 		"icon": None,
 		"groups": [],
 		"doctype_by_slug": {},
@@ -184,7 +191,7 @@ def get_module_menu(module: str) -> dict:
 		return base
 
 	workspace = frappe.get_cached_doc("Workspace", workspaces[0]["name"])
-	base["label"] = workspaces[0]["label"] or base["label"]
+	base["label"] = _module_label(module, workspaces[0]["label"])
 	base["icon"] = workspaces[0]["icon"]
 
 	groups: list[dict] = []

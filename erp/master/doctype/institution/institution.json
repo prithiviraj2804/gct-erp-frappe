@@ -9,7 +9,6 @@
   "basic_information_section",
   "id",
   "trust",
-  "campus",
   "institution_code",
   "institution_name",
   "short_name",
@@ -72,15 +71,6 @@
    "in_list_view": 1,
    "in_standard_filter": 1,
    "description": "Parent Trust"
-  },
-  {
-   "fieldname": "campus",
-   "fieldtype": "Link",
-   "label": "Campus",
-   "options": "Campus",
-   "in_standard_filter": 1,
-   "link_filters": "[[\"Campus\",\"trust\",\"=\",\"eval:doc.trust\"]]",
-   "description": "Parent Campus (optional — leave blank for single-location trusts)"
   },
   {
    "fieldname": "institution_code",
@@ -330,12 +320,6 @@
    "role": "System Manager",
    "share": 1,
    "write": 1
-  },
-  {
-   "read": 1,
-   "report": 1,
-   "role": "Gate Security",
-   "select": 1
   },
   {
    "create": 1,

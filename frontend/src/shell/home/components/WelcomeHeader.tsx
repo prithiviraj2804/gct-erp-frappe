@@ -1,5 +1,5 @@
-import { institutionMetaLine } from '@/lib/branding'
-import type { InstitutionBrand } from '@/types/branding'
+import { trustMetaLine } from '@/lib/branding'
+import type { TrustBrand } from '@/types/branding'
 import { firstNameOf, formatToday, greetingFor } from '@/shell/home/lib/greeting'
 
 /**
@@ -15,12 +15,12 @@ export function WelcomeHeader({
   brand,
 }: {
   fullName: string | null
-  brand: InstitutionBrand | null
+  brand: TrustBrand | null
 }) {
   const now = new Date()
   const first = firstNameOf(fullName)
   const greeting = first ? `${greetingFor(now)}, ${first}` : greetingFor(now)
-  const detail = [institutionMetaLine(brand), formatToday(now)].filter(Boolean).join(' · ')
+  const detail = [trustMetaLine(brand), formatToday(now)].filter(Boolean).join(' · ')
 
   return (
     // The 64px mark is gone. The institution is already named in the topbar on every screen and

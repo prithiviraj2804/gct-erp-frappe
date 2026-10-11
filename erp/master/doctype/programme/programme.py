@@ -1,65 +1,15 @@
-# Copyright (c) 2026, Prithivi and contributors
-# For license information, please see license.txt
-
 import frappe
 from frappe import _
 from frappe.model.document import Document
+from frappe.utils import flt
 
-from erp.master.doctype.institution_type.institution_type import institution_requires_department
 from erp.master.hierarchy import validate_same_parent
+from erp.master.institution_readiness import validate_institution_scope
 
 
 class Programme(Document):
 	def validate(self):
-		self.set_derived_level()
-		self.validate_department()
-		self.validate_hierarchy()
-
-	def set_derived_level(self):
-		"""Keep `programme_level` in step with the Degree when there is one.
-
-		An institution programme names a Degree and the level rides on it — `fetch_from` fills the
-		field on the form, but the field is now editable (a school programme has no degree and
-		must set the level by hand), so a hand-edit could otherwise drift from the Degree. When
-		a Degree is present, re-derive from it and let the Degree win; when it is blank, the
-		hand-entered level stands and `reqd` guarantees it is there.
-		"""
-		if self.degree:
-			self.programme_level = frappe.db.get_value("Degree", self.degree, "programme_level")
-
-	def validate_department(self):
-		"""Require a Department for every institution that is not a School.
-
-		`department` is optional on the schema because a school may have none, but a degree-awarding
-		institution always sits under one. The rule is enforced here rather than with a static
-		`reqd` so it can turn on the institution's type, and — like a real `reqd` field — is
-		skipped under `ignore_mandatory`.
-
-		Which types require one is a row on `Institution Type`, not a literal here. This used to
-		read `!= "School"`, in this file and byte-identically in `admission_enquiry.py`: two copies
-		of one rule that had to agree, and that no trust could change without a deploy.
-		"""
-		if self.department or self.flags.ignore_mandatory:
-			return
-
-		if institution_requires_department(self.institution):
-			frappe.throw(
-				_("Department is required for this institution."),
-				title=_("Department Required"),
-			)
-
-	def validate_hierarchy(self):
-		"""Keep `institution`, `trust`, `campus` and `department` on one branch of the tree.
-
-		`department` is the hole: it is the one ancestry field a user picks freely, and the
-		Link accepts any Department in the system — including one belonging to a different
-		institution, or a different trust altogether. A blank department (a school's) is
-		nothing to reconcile and `validate_same_parent` passes it silently.
-
-		`trust` and `campus` are `fetch_from` institution and so are rewritten from it on
-		every save, but that rewrite happens in `_validate_links`, which any caller can skip
-		by setting `flags.ignore_links`. Assert them here rather than let the invariant rest
-		on a JSON attribute nothing points at.
-		"""
-		validate_same_parent(self, "department", "institution")
-		validate_same_parent(self, "institution", "trust", "campus")
+		validate_institution_scope(self)
+		validate_same_parent(self, "department", "institution", "trust")
+		if self.duration is not None and flt(self.duration) <= 0:
+			frappe.throw(_("Duration must be greater than zero."))

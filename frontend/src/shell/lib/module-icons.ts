@@ -10,8 +10,6 @@ import {
   ClipboardCheckIcon,
   ClipboardListIcon,
   ContactIcon,
-  CreditCardIcon,
-  DoorOpenIcon,
   FileCheckIcon,
   FileTextIcon,
   GraduationCapIcon,
@@ -50,13 +48,7 @@ import {
  * "Cannot create components during render" rule. A lookup is just data.
  */
 export const MODULE_ICONS: Record<string, LucideIcon> = {
-  Accounts: CreditCardIcon,
-  Admission: UserPlusIcon,
-  Gate: DoorOpenIcon,
   Master: LayersIcon,
-  // Added when the Student module shipped. A module absent from this map is not an error — it
-  // falls back to a generic box, which is why it took a while to notice.
-  Student: GraduationCapIcon,
 }
 
 export const FALLBACK_MODULE_ICON: LucideIcon = BoxIcon

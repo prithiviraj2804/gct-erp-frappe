@@ -16,11 +16,6 @@
   "is_group",
   "is_standard",
   "standard_key",
-  "capability_section",
-  "requires_department",
-  "requires_application_fee",
-  "requires_admission_interaction",
-  "default_admission_route",
   "notes_section",
   "description",
   "lft",
@@ -89,39 +84,6 @@
    "no_copy": 1,
    "hidden": 1,
    "description": "The name this row shipped under. Set by the seed, never by hand. `type_name` is the primary key and may be relabelled, so it cannot also be what the seed recognises a shipped row by — renaming School to CBSE School would otherwise make the next migrate insert a second School."
-  },
-  {
-   "fieldname": "capability_section",
-   "fieldtype": "Section Break",
-   "label": "Capabilities"
-  },
-  {
-   "fieldname": "requires_department",
-   "fieldtype": "Select",
-   "label": "Requires Department",
-   "options": "\nYes\nNo",
-   "description": "Whether a Programme here must name a Department. Leave blank to inherit from the parent type"
-  },
-  {
-   "fieldname": "requires_application_fee",
-   "fieldtype": "Select",
-   "label": "Requires Application Fee",
-   "options": "\nYes\nNo",
-   "description": "Whether the application fee gates this kind of institution's pipeline. Blank inherits from the type above; unstated resolves to Yes. A government arts college or a state-aided school charges nothing for the form. This is not a per-applicant waiver — an RTE or sibling concession at a fee-charging school is a different record"
-  },
-  {
-   "fieldname": "requires_admission_interaction",
-   "fieldtype": "Select",
-   "label": "Requires Admission Interaction",
-   "options": "\nYes\nNo",
-   "description": "Whether a recorded interaction with the family — an interview, a readiness assessment — gates this kind of institution's pipeline. Blank inherits; unstated resolves to No, because an institution admitting on an external allotment has no such step"
-  },
-  {
-   "fieldname": "default_admission_route",
-   "fieldtype": "Link",
-   "label": "Default Admission Route",
-   "options": "Admission Route",
-   "description": "The route an application under this kind of institution opens on. Blank inherits from the type above. A nullable Link is genuinely tri-state, so no Select is needed here. This replaces the static default of 'Government Quota' on Admission Application, which routed every school application into a counselling branch for a body that does not exist"
   },
   {
    "fieldname": "notes_section",

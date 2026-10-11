@@ -1,0 +1,22 @@
+{
+ "actions": [], "allow_rename": 0, "autoname": "field:institution", "creation": "2026-10-04 00:00:00.000000", "doctype": "DocType", "engine": "InnoDB",
+ "field_order": ["scope_section", "id", "institution", "trust", "academic_section", "default_academic_year", "timezone", "date_format", "first_day_of_week", "numbering_section", "application_number_prefix", "student_number_prefix", "status"],
+ "fields": [
+  {"fieldname":"scope_section","fieldtype":"Section Break","label":"Institution"},
+  {"fieldname":"id","fieldtype":"Data","label":"ID","unique":1,"read_only":1,"no_copy":1,"in_standard_filter":1,"description":"Auto-generated UUID"},
+  {"fieldname":"institution","fieldtype":"Link","label":"Institution","options":"Institution","reqd":1,"unique":1,"in_list_view":1,"in_standard_filter":1},
+  {"fieldname":"trust","fieldtype":"Link","label":"Trust","options":"Trust","reqd":1,"read_only":1,"hidden":1,"fetch_from":"institution.trust","fetch_if_empty":1,"in_list_view":1,"in_standard_filter":1},
+  {"fieldname":"academic_section","fieldtype":"Section Break","label":"Academic Defaults"},
+  {"fieldname":"default_academic_year","fieldtype":"Link","label":"Default Academic Year","options":"Academic Year","link_filters":"[[\"Academic Year\",\"institution\",\"=\",\"eval:doc.institution\"]]"},
+  {"fieldname":"timezone","fieldtype":"Autocomplete","label":"Time Zone","options":"frappe.utils.moment.get_zones()","default":"Asia/Kolkata"},
+  {"fieldname":"date_format","fieldtype":"Select","label":"Date Format","options":"dd-mm-yyyy\ndd/mm/yyyy\nmm-dd-yyyy\nmm/dd/yyyy\nyyyy-mm-dd","default":"dd-mm-yyyy"},
+  {"fieldname":"first_day_of_week","fieldtype":"Select","label":"First Day of Week","options":"Monday\nSunday\nSaturday","default":"Monday"},
+  {"fieldname":"numbering_section","fieldtype":"Section Break","label":"Numbering"},
+  {"fieldname":"application_number_prefix","fieldtype":"Data","label":"Application Number Prefix","description":"Example: APP"},
+  {"fieldname":"student_number_prefix","fieldtype":"Data","label":"Student Number Prefix","description":"Example: STU"},
+  {"fieldname":"status","fieldtype":"Select","label":"Status","options":"Active\nInactive","default":"Active","reqd":1,"in_list_view":1,"in_standard_filter":1}
+ ],
+ "links": [], "modified": "2026-10-04 00:00:00.000000", "modified_by": "Administrator", "module": "Master", "name": "Institution Settings", "naming_rule": "By fieldname", "owner": "Administrator",
+ "permissions": [{"create":1,"delete":1,"email":1,"export":1,"print":1,"read":1,"report":1,"role":"System Manager","share":1,"write":1},{"create":1,"delete":1,"email":1,"export":1,"print":1,"read":1,"report":1,"role":"Trust Admin","write":1},{"create":1,"email":1,"export":1,"print":1,"read":1,"report":1,"role":"Institution Admin","write":1}],
+ "sort_field": "modified", "sort_order": "DESC", "track_changes": 1
+}

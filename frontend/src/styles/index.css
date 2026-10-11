@@ -172,31 +172,40 @@
 
 	/* The rail: one step deeper than the nav column, so the two read as a recession rail →
      panel → content rather than one slab. 1.29:1 apart. */
-	--sidebar-deep: oklch(0.38 0.09 241.1); /* #00476D */
-	--sidebar: oklch(0.44 0.103 241.1); /* #005886 */
+	--rail: oklch(0.18 0.025 258);
+	--rail-foreground: oklch(0.985 0.004 258);
+	--rail-foreground-muted: oklch(0.72 0.025 258);
+	--rail-primary: oklch(0.985 0.004 258);
+	--rail-primary-foreground: var(--primary);
+	--rail-accent: oklch(1 0 0 / 9%);
+	--rail-active: oklch(1 0 0 / 14%);
+	--rail-border: oklch(1 0 0 / 12%);
+	--rail-ring: oklch(1 0 0);
+	--sidebar-deep: var(--rail);
+	--sidebar: oklch(0.985 0.004 258);
 	/* Near-pure white, not an off-white: at this slab lightness every 0.01 of L is contrast that
      the muted tier below needs. 7.57:1 on the panel, 9.76:1 on the rail. */
-	--sidebar-foreground: oklch(0.995 0.002 241); /* #FCFEFF */
+	--sidebar-foreground: oklch(0.2101 0.0318 264.66);
 	/* The rest-state tier — nav labels, group eyebrows. It is TEXT, so it answers to 4.5:1 and
      not to the 3:1 non-text bar; 4.55:1 on the panel is deliberate and has no slack in it. */
-	--sidebar-foreground-muted: oklch(0.829 0.035 241); /* #B4CBDC */
+	--sidebar-foreground-muted: oklch(0.4455 0.0374 257.28);
 	/* The selected module tile: a near-white plate carrying the literal brand glyph. 9.76:1
      against the rail, so the selected state clears WCAG 1.4.11 on the fill alone. */
-	--sidebar-primary: oklch(0.995 0.002 241); /* #FCFEFF */
-	--sidebar-primary-foreground: oklch(0.558 0.13 241.1); /* the brand blue, 4.56:1 on the plate */
+	--sidebar-primary: var(--primary);
+	--sidebar-primary-foreground: var(--primary-foreground);
 	/* States are BLACK alpha, not white. White over a saturated blue desaturates it — 12% white
      turns #005886 into a grey-blue #617D9B and drops the label to 4.20:1. Black keeps the hue,
      deepens the plate, and RAISES the text contrast: the current row reads 8.67:1. */
-	--sidebar-accent: oklch(0 0 0 / 10%);
-	--sidebar-accent-foreground: oklch(0.995 0.002 241);
-	--sidebar-active: oklch(0 0 0 / 20%);
-	--sidebar-active-foreground: var(--sidebar-foreground);
-	--sidebar-active-hover: oklch(0 0 0 / 26%);
-	--sidebar-indicator: oklch(1 0 0);
+	--sidebar-accent: oklch(0.938 0.01 258);
+	--sidebar-accent-foreground: var(--sidebar-foreground);
+	--sidebar-active: var(--primary-subtle);
+	--sidebar-active-foreground: var(--primary-subtle-foreground);
+	--sidebar-active-hover: oklch(0.905 0.045 241.1);
+	--sidebar-indicator: var(--primary);
 	/* The seam goes the other way — a hairline has to be LIGHTER than the slab to read as an edge
      rather than as another state. 2.33:1. */
-	--sidebar-border: oklch(1 0 0 / 20%);
-	--sidebar-ring: oklch(1 0 0);
+	--sidebar-border: oklch(0.9 0.012 256);
+	--sidebar-ring: var(--ring);
 
 	/* --- Brand panel -----------------------------------------------------------
      The sign-in identity panel, and the ONE surface that stays deep in both themes.
@@ -398,6 +407,15 @@
 	--sidebar-indicator: oklch(1 0 0);
 	--sidebar-border: oklch(1 0 0 / 13%);
 	--sidebar-ring: oklch(1 0 0);
+	--rail: oklch(0.13 0.018 258);
+	--rail-foreground: oklch(0.965 0.006 241);
+	--rail-foreground-muted: oklch(0.72 0.024 241);
+	--rail-primary: oklch(0.9 0.022 241);
+	--rail-primary-foreground: oklch(0.46 0.105 241.1);
+	--rail-accent: oklch(1 0 0 / 9%);
+	--rail-active: oklch(1 0 0 / 14%);
+	--rail-border: oklch(1 0 0 / 12%);
+	--rail-ring: oklch(1 0 0);
 
 	/* The sign-in panel goes one octave down in dark mode but stays DEEP — it is the one
      surface that does not follow the chrome, in either theme. See the light block. */
@@ -531,6 +549,15 @@
 	--color-sidebar-indicator: var(--sidebar-indicator);
 	--color-sidebar-border: var(--sidebar-border);
 	--color-sidebar-ring: var(--sidebar-ring);
+	--color-rail: var(--rail);
+	--color-rail-foreground: var(--rail-foreground);
+	--color-rail-foreground-muted: var(--rail-foreground-muted);
+	--color-rail-primary: var(--rail-primary);
+	--color-rail-primary-foreground: var(--rail-primary-foreground);
+	--color-rail-accent: var(--rail-accent);
+	--color-rail-active: var(--rail-active);
+	--color-rail-border: var(--rail-border);
+	--color-rail-ring: var(--rail-ring);
 	--color-brand-panel: var(--brand-panel);
 	--color-brand-panel-foreground: var(--brand-panel-foreground);
 	--color-brand-panel-muted: var(--brand-panel-muted);
